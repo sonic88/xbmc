@@ -51,8 +51,9 @@ cPVRClientMediaPortal::cPVRClientMediaPortal()
 cPVRClientMediaPortal::~cPVRClientMediaPortal()
 {
   XBMC->Log(LOG_DEBUG, "->~cPVRClientMediaPortal()");
-  Disconnect();
-  delete m_tcpclient;
+  if (m_bConnected)
+    Disconnect();
+  delete_null(m_tcpclient);
 }
 
 string cPVRClientMediaPortal::SendCommand(string command)
@@ -184,7 +185,7 @@ void cPVRClientMediaPortal::Disconnect()
 {
   string result;
 
-  XBMC->Log(LOG_DEBUG, "->Disconnect()");
+  XBMC->Log(LOG_INFO, "Disconnect");
 
   if (m_tcpclient->is_valid() && m_bTimeShiftStarted)
   {
@@ -195,8 +196,6 @@ void cPVRClientMediaPortal::Disconnect()
       result = SendCommand("StopTimeshift:\n");
     }
   }
-
-  result = SendCommand("CloseConnection:\n");
 
   m_bStop = true;
 

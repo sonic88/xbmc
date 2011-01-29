@@ -1158,6 +1158,12 @@ config.log
 /xbmc/pvrclients/*/.dependencies
 /xbmc/pvrclients/mythtv/Makefile
 /xbmc/pvrclients/vdr-streamdev/Makefile
+/xbmc/pvrclients/MediaPortal/project/VS2008Express/Debug
+/xbmc/pvrclients/MediaPortal/project/VS2008Express/Release
+/xbmc/pvrclients/MediaPortal/project/VS2008Express/Release-tsreader
+/xbmc/pvrclients/MediaPortal/project/VS2008Express/Debug-tsreader
+/xbmc/pvrclients/MediaPortal/lib/live555/obj
+/xbmc/pvrclients/MediaPortal/lib/live555/shared
 
 /xbmc/screensavers/Makefile
 
@@ -1216,3 +1222,4 @@ config.log
 
 /xbmc/win32/svn_rev.h
 
+/portable_data

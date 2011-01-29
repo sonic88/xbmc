@@ -482,6 +482,8 @@ bool cVNSIData::GetTimersList(PVRHANDLE handle)
       tag.repeat      = tag.repeatflags == 0 ? false : true;
       tag.title       = vresp->extract_String();
       tag.directory   = "";
+      tag.marginstart = 0;
+      tag.marginstop  = 0;
 
       PVR->TransferTimerEntry(handle, &tag);
       delete tag.title;

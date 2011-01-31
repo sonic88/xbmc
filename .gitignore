@@ -38,6 +38,7 @@ config.log
 *.vcxproj.*.user
 *.vcxproj.user
 *.obj
+*.idb
 
 .libs/
 .deps/
@@ -89,6 +90,15 @@ config.log
 /addons/pvr.*/*.pvr
 /addons/pvr.fortherecord.argus/libcurld.dll
 /addons/pvr.fortherecord.argus/libcurl.dll
+/addons/pvr.team-mediaportal.tvserver/TVServerXBMC
+/addons/pvr.vdr.streamdev/XBMC_VDR_win32.lib
+/addons/pvr.hts/XBMC_Tvheadend_win32.lib
+/addons/library.xbmc.addon/libXBMC_addon.lib
+/addons/library.xbmc.addon/libXBMC_addon.dll
+/addons/library.xbmc.gui/libXBMC_gui.lib
+/addons/library.xbmc.gui/libXBMC_gui.dll
+/addons/library.xbmc.pvr/libXBMC_pvr.lib
+/addons/library.xbmc.pvr/libXBMC_pvr.dll
 
 # /guilib/
 /guilib/Makefile
@@ -291,6 +301,10 @@ config.log
 /project/VS2010Express/libs
 /project/VS2010Express/objs
 /project/VS2010Express/ipch
+
+/project/Win32BuildSetup/BUILD_WIN32
+/project/Win32BuildSetup/dependencies/SDL.dll
+/project/Win32BuildSetup/dependencies/glew32.dll
 
 # /skin/
 /skin/Confluence/media/Textures.xbt
@@ -1166,6 +1180,10 @@ config.log
 /xbmc/pvrclients/*/.dependencies
 /xbmc/pvrclients/mythtv/Makefile
 /xbmc/pvrclients/vdr-streamdev/Makefile
+/xbmc/pvrclients/vdr-streamdev/project/VS2008Express/Release
+/xbmc/pvrclients/vdr-streamdev/project/VS2008Express/Debug
+/xbmc/pvrclients/tvheadend/project/VS2008Express/Release
+/xbmc/pvrclients/tvheadend/project/VS2008Express/Debug
 /xbmc/pvrclients/MediaPortal/project/VS2008Express/Debug
 /xbmc/pvrclients/MediaPortal/project/VS2008Express/Release
 /xbmc/pvrclients/MediaPortal/project/VS2008Express/Release-tsreader
@@ -1236,5 +1254,6 @@ config.log
 /xbmc/visualizations/XBMCProjectM/libprojectM/config.inp
 
 /xbmc/win32/svn_rev.h
+/xbmc/win32/git_rev.h
 
 /portable_data

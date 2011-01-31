@@ -114,6 +114,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
+				CommandLine="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -206,6 +208,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
+				CommandLine="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -306,6 +310,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
+				CommandLine="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
 			/>
 		</Configuration>
 		<Configuration
@@ -399,6 +405,8 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				Description="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
+				CommandLine="copy &quot;$(ProjectDir)\..\Win32BuildSetup\dependencies\SDL.dll&quot; &quot;$(TargetDir)&quot;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -3372,6 +3380,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\..\xbmc\TVDatabase.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\..\xbmc\TVDatabase.h"
+					>
+				</File>
+				<File
 					RelativePath="..\..\xbmc\VideoDatabase.cpp"
 					>
 				</File>
@@ -3385,14 +3401,6 @@
 				</File>
 				<File
 					RelativePath="..\..\xbmc\ViewDatabase.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\xbmc\TVDatabase.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\..\xbmc\TVDatabase.h"
 					>
 				</File>
 			</Filter>

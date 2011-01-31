@@ -171,6 +171,14 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="Header Files"
+			>
+			<File
+				RelativePath="..\..\..\..\..\addons\library.xbmc.addon\libXBMC_addon.h"
+				>
+			</File>
+		</Filter>
 	</Files>
 	<Globals>
 	</Globals>

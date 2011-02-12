@@ -566,14 +566,18 @@ namespace ForTheRecord
 
     if(curl)
     {
-      std::string command = "ForTheRecord/Control/DeleteRecording/";
-      char* pch = curl_easy_escape(curl, recordingfilename.c_str(), 0);
-      command += pch;
-      curl_free(pch);
+      std::string command = "ForTheRecord/Control/DeleteRecording?deleteRecordingFile=true";
+      //char* pch = curl_easy_escape(curl, recordingfilename.c_str(), 0);
+      std::string arguments = recordingfilename;
+      //curl_free(pch);
       
-      XBMC->Log(LOG_DEBUG, "DeleteRecording - URL: %s\n", command.c_str());
+      XBMC->Log(LOG_DEBUG, "DeleteRecording - URL : %s\n", command.c_str());
+      XBMC->Log(LOG_DEBUG, "                  body: %s\n", arguments.c_str());
 
-      retval = ForTheRecord::ForTheRecordJSONRPC(command, "?deleteRecordingFile=true", response);
+      bool oldLogSetting = l_logCurl;
+      l_logCurl = true;
+      retval = ForTheRecord::ForTheRecordJSONRPC(command, arguments, response);
+      l_logCurl = oldLogSetting;
 
       curl_easy_cleanup(curl);
     }
@@ -610,6 +614,78 @@ namespace ForTheRecord
 
       curl_easy_cleanup(curl);
     }
+    return retval;
+  }
+
+  /**
+   * \brief Fetch the list of schedules for tv or radio
+   * \param channeltype  The type of channel to fetch the list for
+   */
+  int GetScheduleList(enum ChannelType channelType, Json::Value& response)
+  {
+    int retval = -1;
+
+    XBMC->Log(LOG_DEBUG, "GetScheduleList");
+
+    // http://madcat:49943/ForTheRecord/Scheduler/Schedules/0/82
+    char command[256];
+    
+    //Format: ForTheRecord/Guide/Programs/{guideChannelId}/{lowerTime}/{upperTime}
+    snprintf(command, 256, "ForTheRecord/Scheduler/Schedules/%i/%i" ,
+      channelType, Recording );
+    retval = ForTheRecordJSONRPC(command, "", response);
+
+    if(retval >= 0)
+    {           
+      if( response.type() == Json::arrayValue)
+      {
+        int size = response.size();
+        return size;
+      }
+      else
+      {
+        XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
+        return -1;
+      }
+    }
+    else
+    {
+      XBMC->Log(LOG_DEBUG, "GetScheduleList failed. Return value: %i\n", retval);
+    }
+
+    return retval;
+  }
+
+  /**
+   * \brief Fetch the list of upcoming recordings
+   */
+  int GetUpcomingRecordings(Json::Value& response)
+  {
+    int retval = -1;
+
+    XBMC->Log(LOG_DEBUG, "GetUpcomingRecordings");
+
+    // http://madcat:49943/ForTheRecord/Control/UpcomingRecordings/1?includeActive=true
+    retval = ForTheRecordJSONRPC("ForTheRecord/Control/UpcomingRecordings/1?includeActive=true", "", response);
+
+    if(retval >= 0)
+    {           
+      if( response.type() == Json::arrayValue)
+      {
+        int size = response.size();
+        return size;
+      }
+      else
+      {
+        XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
+        return -1;
+      }
+    }
+    else
+    {
+      XBMC->Log(LOG_DEBUG, "GetUpcomingRecordings failed. Return value: %i\n", retval);
+    }
+
     return retval;
   }
 

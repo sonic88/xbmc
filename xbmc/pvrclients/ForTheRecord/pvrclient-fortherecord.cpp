@@ -19,6 +19,7 @@
 #include "client.h"
 //#include "timers.h"
 #include "channel.h"
+#include "upcomingrecording.h"
 #include "recordinggroup.h"
 #include "recordingsummary.h"
 #include "recording.h"
@@ -458,41 +459,85 @@ PVR_ERROR cPVRClientForTheRecord::RenameRecording(const PVR_RECORDINGINFO &recin
 
 int cPVRClientForTheRecord::GetNumTimers(void)
 {
-  return 0;
+  // Not directly possible in ForTheRecord
+  Json::Value response;
+
+  // pick up the schedulelist for TV
+  int retval = ForTheRecord::GetUpcomingRecordings(response);
+  if (retval < 0) 
+  {
+    return 0;
+  }
+
+  return response.size();
 }
 
 PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
 {
+  Json::Value response;
+  int iNumSchedules = 0;
+
+  // pick up the upcoming recordings
+  int retval = ForTheRecord::GetUpcomingRecordings(response);
+  if (retval < 0) 
+  {
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+  int numberoftimers = response.size();
+  for (int i = 0; i < numberoftimers; i++)
+  {
+    cUpcomingRecording upcomingrecording;
+    if (upcomingrecording.Parse(response[i]))
+    {
+      PVR_TIMERINFO tag;
+      tag.index       = iNumSchedules;
+      tag.active      = true;
+      cChannel* pChannel = FetchChannel(upcomingrecording.ChannelId());
+      tag.channelNum  = pChannel->ID();
+      tag.firstday    = 0;
+      tag.starttime   = upcomingrecording.StartTime();
+      tag.endtime     = upcomingrecording.StopTime();
+      tag.recording   = upcomingrecording.IsRecording();
+      tag.title       = upcomingrecording.Title().c_str();
+      tag.directory   = "";
+      tag.priority    = 0;
+      tag.lifetime    = 0;
+      tag.repeat      = false;
+      tag.repeatflags = 0;
+      tag.marginstart = 0;
+      tag.marginstop  = 0;
+
+      PVR->TransferTimerEntry(handle, &tag);
+    }
+  }
+
   return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR cPVRClientForTheRecord::GetTimerInfo(unsigned int timernumber, PVR_TIMERINFO &tag)
 {
-  return PVR_ERROR_NO_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR cPVRClientForTheRecord::AddTimer(const PVR_TIMERINFO &timerinfo)
 {
-  return PVR_ERROR_NOT_SAVED;
-  //return PVR_ERROR_NO_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR cPVRClientForTheRecord::DeleteTimer(const PVR_TIMERINFO &timerinfo, bool force)
 {
-  return PVR_ERROR_NOT_DELETED;
-  //return PVR_ERROR_NO_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR cPVRClientForTheRecord::RenameTimer(const PVR_TIMERINFO &timerinfo, const char *newname)
 {
-  return PVR_ERROR_NOT_SAVED;
-  //return PVR_ERROR_NO_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 PVR_ERROR cPVRClientForTheRecord::UpdateTimer(const PVR_TIMERINFO &timerinfo)
 {
-  return PVR_ERROR_NOT_SAVED;
-  //return PVR_ERROR_NO_ERROR;
+  return PVR_ERROR_NOT_IMPLEMENTED;
 }
 
 
@@ -506,6 +551,23 @@ cChannel* cPVRClientForTheRecord::FetchChannel(int channel_uid)
   for ( it=m_Channels.begin(); it < m_Channels.end(); it++ )
   {
     if (it->ID() == channel_uid)
+    {
+      return &*it;
+      break;
+    }
+  }
+
+  return NULL;
+}
+
+cChannel* cPVRClientForTheRecord::FetchChannel(std::string channelid)
+{
+  // Search for this channel in our local channel list to find the original ChannelID back:
+  vector<cChannel>::iterator it;
+
+  for ( it=m_Channels.begin(); it < m_Channels.end(); it++ )
+  {
+    if (it->Guid() == channelid)
     {
       return &*it;
       break;

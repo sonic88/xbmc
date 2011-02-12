@@ -255,7 +255,7 @@ PVR_ERROR GetProperties(PVR_SERVERPROPS* props)
   props->SupportTimeShift          = false;
   props->SupportEPG                = true;
   props->SupportRecordings         = true;
-  props->SupportTimers             = false; //TODO: implement scheduler related code and enable
+  props->SupportTimers             = true;
   props->SupportTV                 = true;
   props->SupportRadio              = g_bRadioEnabled;
   props->SupportChannelSettings    = true;

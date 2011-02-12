@@ -93,6 +93,7 @@ public:
 
 private:
   cChannel* FetchChannel(int channel_uid);
+  cChannel* FetchChannel(std::string channelid);
   void Close();
   bool FetchRecordingDetails(const Json::Value& data, cRecording& recording);
   bool FetchGuideProgramDetails(std::string Id, cGuideProgram& guideprogram);

@@ -50,6 +50,14 @@ namespace ForTheRecord
     VeryHigh = 4
   };
 
+  enum ScheduleType {
+    Recording = 82,   // 'R'
+    Suggestion = 83,  // 'S'
+    Alert = 45        // 'A'
+  };
+
+
+
   enum KeepUntilMode {
     UntilSpaceIsNeeded = 0,
     Forever = 1,
@@ -149,6 +157,17 @@ namespace ForTheRecord
    * \param response Reference to a std::string used to store the json response string
    */
   int GetProgramById(const std::string& id, Json::Value& response);
+
+  /**
+   * \brief Fetch the list of schedules for tv or radio
+   * \param channeltype  The type of channel to fetch the list for
+   */
+  int GetScheduleList(enum ChannelType channelType, Json::Value& response);
+
+  /**
+   * \brief Fetch the list of upcoming recordings
+   */
+  int GetUpcomingRecordings(Json::Value& response);
 
   time_t WCFDateToTimeT(const std::string& wcfdate, int& offset);
 

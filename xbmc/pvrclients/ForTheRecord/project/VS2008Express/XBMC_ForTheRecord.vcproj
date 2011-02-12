@@ -238,6 +238,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\upcomingrecording.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\uri.cpp"
 				>
 			</File>
@@ -361,6 +365,10 @@
 			</File>
 			<File
 				RelativePath="..\..\recordingsummary.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\upcomingrecording.h"
 				>
 			</File>
 			<File

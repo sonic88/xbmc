@@ -452,10 +452,12 @@ namespace ForTheRecord
       char command[256];
       
       //Format: ForTheRecord/Guide/Programs/{guideChannelId}/{lowerTime}/{upperTime}
-      snprintf(command, 256, "ForTheRecord/Guide/Programs/%s/%i-%02i-%02i/%i-%02i-%02i", 
+      snprintf(command, 256, "ForTheRecord/Guide/Programs/%s/%i-%02i-%02iT%02i:%02i:%02i%/%i-%02i-%02iT%02i:%02i:%02i", 
                guidechannel_id.c_str(),
                epg_start.tm_year + 1900, epg_start.tm_mon + 1, epg_start.tm_mday,
-               epg_end.tm_year + 1900, epg_end.tm_mon + 1, epg_end.tm_mday);
+               epg_start.tm_hour, epg_start.tm_min, epg_start.tm_sec,
+               epg_end.tm_year + 1900, epg_end.tm_mon + 1, epg_end.tm_mday,
+               epg_end.tm_hour, epg_end.tm_min, epg_end.tm_sec);
 
       int retval = ForTheRecordJSONRPC(command, "", response);
 
@@ -504,6 +506,18 @@ namespace ForTheRecord
       XBMC->Log(LOG_DEBUG, "GetRecordingsForTitle - URL: %s\n", command.c_str());
 
       retval = ForTheRecord::ForTheRecordJSONRPC(command, "?includeNonExisting=false", response);
+      if(retval >= 0)
+      {           
+        if (response.type() != Json::arrayValue)
+        {
+          retval = E_FAILED;
+          XBMC->Log(LOG_NOTICE, "GetRecordingsForTitle did not return a Json::arrayValue [%d].", response.type());
+        }
+      }
+      else
+      {
+        XBMC->Log(LOG_NOTICE, "GetRecordingsForTitle remote call failed.");
+      }
 
       curl_easy_cleanup(curl);
     }
@@ -515,14 +529,14 @@ namespace ForTheRecord
     int retval = E_FAILED;
     CURL *curl;
 
-    XBMC->Log(LOG_DEBUG, "GetRecordingsById");
+    XBMC->Log(LOG_DEBUG, "GetRecordingById");
 
     curl = curl_easy_init();
 
     if(curl)
     {
       std::string command = "ForTheRecord/Control/RecordingById/" + id;
-      XBMC->Log(LOG_DEBUG, "RecordingsById - URL: %s\n", command.c_str());
+      XBMC->Log(LOG_DEBUG, "RecordingById - URL: %s\n", command.c_str());
 
       retval = ForTheRecord::ForTheRecordJSONRPC(command, "", response);
 

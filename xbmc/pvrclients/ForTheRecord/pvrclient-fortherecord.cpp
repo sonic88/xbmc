@@ -190,6 +190,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channe
             cGuideProgram guideprogram;
             if (FetchGuideProgramDetails(epg.UniqueId(), guideprogram))
             {
+              XBMC->Log(LOG_DEBUG, "  Title: \"%s\".", guideprogram.Title());
               m_epg_id_offset++;
               proginfo.channum         = channel.number;
               proginfo.uid             = m_epg_id_offset;
@@ -394,7 +395,14 @@ PVR_ERROR cPVRClientForTheRecord::RequestRecordingsList(PVRHANDLE handle)
               tag.description     = recording.Description();;
               tag.title           = recording.Title();
               tag.subtitle        = recording.SubTitle();
-              tag.directory       = recordinggroup.ProgramTitle().c_str(); //used in XBMC as directory structure below "Server X - hostname"
+              if (nrOfRecordings > 1)
+              {
+                tag.directory     = recordinggroup.ProgramTitle().c_str(); //used in XBMC as directory structure below "Server X - hostname"
+              }
+              else
+              {
+                tag.directory     = "";
+              }
               tag.stream_url      = recording.RecordingFileName();
               PVR->TransferRecordingEntry(handle, &tag);
               iNumRecordings++;

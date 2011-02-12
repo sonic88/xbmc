@@ -1,8 +1,8 @@
 /**
  * \brief  Proof of concept code to access ForTheRecord's REST api using C++ code
- * \author Marcel Groothuis
+ * \author Marcel Groothuis, Fred Hoogduin
  ***************************************************************************
- *      Copyright (C) 2010 Marcel Groothuis
+ *      Copyright (C) 2010-2011 Marcel Groothuis, Fred Hoogduin
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,11 @@
 #include "client.h"
 #include "utils.h"
 #include "fortherecordrpc.h"
+
+// Some version dependent API strings
+#define FTR_GETEPG_40 "ForTheRecord/Guide/Programs/%s/%i-%02i-%02iT%02i:%02i:%02i%/%i-%02i-%02iT%02i:%02i:%02i"
+#define FTR_GETEPG_45 "ForTheRecord/Guide/FullPrograms/%s/%i-%02i-%02iT%02i:%02i:%02i%/%i-%02i-%02iT%02i:%02i:%02i/false"
+
 
 // set l_logCurl to true to enable detailed protocol info logging by CURL
 static bool l_logCurl = false;
@@ -369,14 +374,16 @@ namespace ForTheRecord
   //Remember the last LiveStream object to be able to stop the stream again
   Json::Value g_current_livestream;
 
-  int TuneLiveStream(const std::string& channel_id, std::string& stream)
+  int TuneLiveStream(const std::string& channel_id, ChannelType channeltype, std::string& stream)
   {
     // Send only a channel object in json format, no LiveStream object.
     // FTR will answer with a LiveStream object.
-    std::string arguments = "{\"Channel\":{\"BroadcastStart\":\"\",\"BroadcastStop\":\"\",\"ChannelId\":\"";
-    arguments += channel_id;
-    arguments += "\",\"ChannelType\":0,\"DefaultPostRecordSeconds\":0,\"DefaultPreRecordSeconds\":0,\"DisplayName\":\"\",\"GuideChannelId\":\"00000000-0000-0000-0000-000000000000\",\"LogicalChannelNumber\":0,\"Sequence\":0,\"Version\":0,\"VisibleInGuide\":true}";
-    arguments += "}";
+
+    char command[512];
+      
+    snprintf(command, 512, "{\"Channel\":{\"BroadcastStart\":\"\",\"BroadcastStop\":\"\",\"ChannelId\":\"%s\",\"ChannelType\":%i,\"DefaultPostRecordSeconds\":0,\"DefaultPreRecordSeconds\":0,\"DisplayName\":\"\",\"GuideChannelId\":\"00000000-0000-0000-0000-000000000000\",\"LogicalChannelNumber\":0,\"Sequence\":0,\"Version\":0,\"VisibleInGuide\":true}}",
+      channel_id.c_str(), channeltype);
+    std::string arguments = command;
 
     XBMC->Log(LOG_DEBUG, "ForTheRecord/Control/TuneLiveStream, body [%s]", arguments.c_str());
 
@@ -449,14 +456,14 @@ namespace ForTheRecord
     return false;
   }
 
-  int GetEPGData(const std::string& guidechannel_id, struct tm epg_start, struct tm epg_end, Json::Value& response)
+  int GetEPGData(const int backendversion, const std::string& guidechannel_id, struct tm epg_start, struct tm epg_end, Json::Value& response)
   {
     if ( guidechannel_id.length() > 0 )
     {
       char command[256];
       
       //Format: ForTheRecord/Guide/Programs/{guideChannelId}/{lowerTime}/{upperTime}
-      snprintf(command, 256, "ForTheRecord/Guide/Programs/%s/%i-%02i-%02iT%02i:%02i:%02i%/%i-%02i-%02iT%02i:%02i:%02i", 
+      snprintf(command, 256, backendversion == 45 ? FTR_GETEPG_45 : FTR_GETEPG_40 , 
                guidechannel_id.c_str(),
                epg_start.tm_year + 1900, epg_start.tm_mon + 1, epg_start.tm_mday,
                epg_start.tm_hour, epg_start.tm_min, epg_start.tm_sec,

@@ -40,6 +40,7 @@ void cEpg::Reset()
   m_guideprogramid.clear();
   m_title.clear();
   m_subtitle.clear();
+  m_description.clear();
 
   m_starttime       = 0;
   m_endtime         = 0;
@@ -72,6 +73,7 @@ bool cEpg::Parse(const Json::Value& data)
     m_guideprogramid = data["GuideProgramId"].asString();
     m_title = data["Title"].asString();
     m_subtitle = data["SubTitle"].asString();
+    m_description = data["Description"].asString();
 
     // Dates are returned in a WCF compatible format ("/Date(9991231231+0100)/")
     std::string starttime = data["StartTime"].asString();

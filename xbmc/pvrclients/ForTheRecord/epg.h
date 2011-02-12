@@ -33,6 +33,7 @@ private:
   std::string m_guideprogramid;
   std::string m_title;
   std::string m_subtitle;
+  std::string m_description;
   time_t m_starttime;
   time_t m_endtime;
   time_t m_utcdiff;
@@ -48,6 +49,7 @@ public:
   time_t EndTime(void) const { return m_endtime; }
   const char *Title(void) const { return m_title.c_str(); }
   const char *Subtitle(void) const { return m_subtitle.c_str(); }
+  const char *Description(void) const { return m_description.c_str(); }
 };
 
 #endif //__EPG_H

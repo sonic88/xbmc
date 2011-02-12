@@ -60,28 +60,24 @@ bool cPVRClientForTheRecord::Connect()
 
   XBMC->Log(LOG_INFO, "Connect() - Connecting to %s", g_szBaseURL.c_str());
 
-  int backendversion = FTR_REST_MINIMUM_API_VERSION;
+  int backendversion = FTR_REST_MAXIMUM_API_VERSION;
   int rc = ForTheRecord::Ping(backendversion);
-  while (rc == -1)
+  if (rc == 1)
   {
-    backendversion++;
+    backendversion = FTR_REST_MINIMUM_API_VERSION;
     rc = ForTheRecord::Ping(backendversion);
   }
+
   m_BackendVersion = backendversion;
 
   switch (rc)
   {
   case 0:
-    if (m_BackendVersion <= FTR_REST_MAXIMUM_API_VERSION)
-    {
-      XBMC->Log(LOG_INFO, "Ping Ok. The client and server are compatible.\n");
-    }
-    else
-    {
-      XBMC->Log(LOG_NOTICE, "Ping Ok. The client is too old for the server.\n");
-      return false;
-    }
+    XBMC->Log(LOG_INFO, "Ping Ok. The client and server are compatible, API version %d.\n", m_BackendVersion);
     break;
+  case -1:
+    XBMC->Log(LOG_NOTICE, "Ping Ok. The client is too old for the server.\n");
+    return false;
   case 1:
     XBMC->Log(LOG_NOTICE, "Ping Ok. The client is too new for the server.\n");
     return false;
@@ -171,7 +167,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channe
     Json::Value response;
     int retval;
 
-    retval = ForTheRecord::GetEPGData(ftrchannel->GuideChannelID(), tm_start, tm_end, response);
+    retval = ForTheRecord::GetEPGData(m_BackendVersion, ftrchannel->GuideChannelID(), tm_start, tm_end, response);
 
     if (retval != E_FAILED)
     {
@@ -181,29 +177,25 @@ PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channe
         int size = response.size();
         PVR_PROGINFO proginfo;
         cEpg epg;
-        
+
         // parse channel list
         for ( int index =0; index < size; ++index )
         {
           if (epg.Parse(response[index]))
           {
-            cGuideProgram guideprogram;
-            if (FetchGuideProgramDetails(epg.UniqueId(), guideprogram))
-            {
-              m_epg_id_offset++;
-              proginfo.channum         = channel.number;
-              proginfo.uid             = m_epg_id_offset;
-              proginfo.title           = guideprogram.Title();
-              proginfo.subtitle        = guideprogram.SubTitle();
-              proginfo.description     = guideprogram.Description();
-              proginfo.starttime       = guideprogram.StartTime();
-              proginfo.endtime         = guideprogram.StopTime();
-              proginfo.genre_type      = 0;
-              proginfo.genre_sub_type  = 0;
-              proginfo.genre_text      = guideprogram.Category();
-              proginfo.parental_rating = 0;
-              PVR->TransferEpgEntry(handle, &proginfo);
-            }
+            m_epg_id_offset++;
+            proginfo.channum         = channel.number;
+            proginfo.uid             = m_epg_id_offset;
+            proginfo.title           = epg.Title();
+            proginfo.subtitle        = epg.Subtitle();
+            proginfo.description     = epg.Description();
+            proginfo.starttime       = epg.StartTime();
+            proginfo.endtime         = epg.EndTime();
+            proginfo.genre_type      = 0;
+            proginfo.genre_sub_type  = 0;
+            proginfo.genre_text      = "";
+            proginfo.parental_rating = 0;
+            PVR->TransferEpgEntry(handle, &proginfo);
           }
           epg.Reset();
         }
@@ -535,7 +527,8 @@ bool cPVRClientForTheRecord::OpenLiveStream(const PVR_CHANNEL &channelinfo)
     std::string filename;
     XBMC->Log(LOG_INFO, "Tune XBMC channel: %i", channelinfo.number);
     XBMC->Log(LOG_INFO, "Corresponding ForTheRecord channel: %s", channel->Guid().c_str());
-    ForTheRecord::TuneLiveStream(channel->Guid(), filename);
+
+    ForTheRecord::TuneLiveStream(channel->Guid(), channel->Type(), filename);
 
     if (filename.length() == 0)
     {

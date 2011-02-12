@@ -91,7 +91,7 @@ namespace ForTheRecord
    * \param channel_id  The ForTheRecord ChannelID of the channel
    * \param stream      Reference to a string that will point to the tsbuffer file/RTSP stream
    */
-  int TuneLiveStream(const std::string& channel_id, std::string& stream);
+  int TuneLiveStream(const std::string& channel_id, ChannelType channeltype, std::string& stream);
 
   /**
    * \brief Stops the last tuned live stream
@@ -115,7 +115,7 @@ namespace ForTheRecord
    * \param epg_start        Start from this date
    * \param epg_stop         Until this date
    */
-  int GetEPGData(const std::string& guidechannel_id, struct tm epg_start, struct tm epg_end, Json::Value& response);
+  int GetEPGData(const int backendversion, const std::string& guidechannel_id, struct tm epg_start, struct tm epg_end, Json::Value& response);
 
   /**
    * \brief Fetch the recording groups sorted by title

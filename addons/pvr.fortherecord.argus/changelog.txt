@@ -1,3 +1,7 @@
+v0.0.1.111 (01-02-2011)
+- EPG loading optimised. Programme descriptions only loaded for ForTheRecord 1.5.1.
+- EPG loads 48 hours of data now.
+- Tune live stream now also supports radio.
 v0.0.1.110 (22-01-2011)
 - Delete recording implemented, needs ForTheRecord 1.5.1.0 Beta 6 or newer
 - Programme descriptions added to EPG and TV channels screen

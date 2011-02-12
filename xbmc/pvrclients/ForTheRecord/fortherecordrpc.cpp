@@ -30,6 +30,9 @@
 #include "utils.h"
 #include "fortherecordrpc.h"
 
+// set l_logCurl to true to enable detailed protocol info logging by CURL
+static bool l_logCurl = false;
+
 /**
  * \brief CURL callback function that receives the return data from the HTTP get/post calls
  */
@@ -45,6 +48,30 @@ static size_t curl_write_data(void *buffer, size_t size, size_t nmemb, void *str
   *response += (char*) buffer;
 
   return realsize;
+}
+
+/**
+ * \brief CURL debug callback function
+ */
+static int my_curl_debug_callback(CURL* curl, curl_infotype infotype, char* data, size_t size, void* p)
+{
+  char *pch = new char[size +1];
+    strncpy(pch, data, size);
+    pch[size] = '\0';
+  switch(infotype)
+  {
+  case CURLINFO_TEXT:
+    XBMC->Log(LOG_DEBUG, "CURL info    : %s", pch);
+    break;
+  case CURLINFO_DATA_OUT:
+    XBMC->Log(LOG_DEBUG, "CURL data-out: %s", pch);
+    break;
+  case CURLINFO_DATA_IN:
+    XBMC->Log(LOG_DEBUG, "CURL data-in : %s", pch);
+    break;
+  }
+  delete [] pch;
+  return 0;
 }
 
 /**
@@ -89,12 +116,19 @@ namespace ForTheRecord
       json_response = "";
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json_response);
 
+      /* debugging only */
+      if (l_logCurl)
+      {
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_curl_debug_callback);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+      }
+
       /* Perform the request */
       res = curl_easy_perform(curl);
 
-        /* always cleanup */
-        curl_easy_cleanup(curl);
-        return 0;
+      /* always cleanup */
+      curl_easy_cleanup(curl);
+      return 0;
     }
     else
     {
@@ -269,22 +303,6 @@ namespace ForTheRecord
       if( response.type() == Json::arrayValue)
       {
         int size = response.size();
-#if FALSE
-        // parse channel list
-        for ( int index =0; index < size; ++index )
-        {
-          std::string name = response[index]["DisplayName"].asString();
-          std::string guid = response[index]["ChannelId"].asString();
-          if (channelType == Television)
-          {
-            XBMC->Log(LOG_DEBUG, "Found TV channel %s: %s\n", guid.c_str(), name.c_str());
-          }
-          else if (channelType == Radio)
-          {
-            XBMC->Log(LOG_DEBUG, "Found Radio channel %s: %s\n", guid.c_str(), name.c_str());
-          }
-        }
-#endif
         return size;
       }
       else
@@ -355,10 +373,12 @@ namespace ForTheRecord
   {
     // Send only a channel object in json format, no LiveStream object.
     // FTR will answer with a LiveStream object.
-    std::string arguments = "{\"Channel\":{\"BroadcastStart\":\"String content\",\"BroadcastStop\":\"String content\",\"ChannelId\":\"";
+    std::string arguments = "{\"Channel\":{\"BroadcastStart\":\"\",\"BroadcastStop\":\"\",\"ChannelId\":\"";
     arguments += channel_id;
-    arguments += "\",\"ChannelType\":0,\"DefaultPostRecordSeconds\":2147483647,\"DefaultPreRecordSeconds\":2147483647,\"DisplayName\":\"String content\",\"GuideChannelId\":\"1627aea5-8e0a-4371-9022-9b504344e724\",\"LogicalChannelNumber\":2147483647,\"Sequence\":2147483647,\"Version\":2147483647,\"VisibleInGuide\":true}";
+    arguments += "\",\"ChannelType\":0,\"DefaultPostRecordSeconds\":0,\"DefaultPreRecordSeconds\":0,\"DisplayName\":\"\",\"GuideChannelId\":\"00000000-0000-0000-0000-000000000000\",\"LogicalChannelNumber\":0,\"Sequence\":0,\"Version\":0,\"VisibleInGuide\":true}";
     arguments += "}";
+
+    XBMC->Log(LOG_DEBUG, "ForTheRecord/Control/TuneLiveStream, body [%s]", arguments.c_str());
 
     Json::Value response;
     int retval = ForTheRecordJSONRPC("ForTheRecord/Control/TuneLiveStream", arguments, response);
@@ -487,7 +507,6 @@ namespace ForTheRecord
       char* pch = curl_easy_escape(curl, title.c_str(), 0);
       command += pch;
       curl_free(pch);
-      XBMC->Log(LOG_DEBUG, "GetRecordingsForTitle - URL: %s\n", command.c_str());
 
       retval = ForTheRecord::ForTheRecordJSONRPC(command, "?includeNonExisting=false", response);
       if(retval >= 0)
@@ -520,7 +539,6 @@ namespace ForTheRecord
     if(curl)
     {
       std::string command = "ForTheRecord/Control/RecordingById/" + id;
-      XBMC->Log(LOG_DEBUG, "RecordingById - URL: %s\n", command.c_str());
 
       retval = ForTheRecord::ForTheRecordJSONRPC(command, "", response);
 
@@ -568,7 +586,6 @@ namespace ForTheRecord
     if(curl)
     {
       std::string command = "ForTheRecord/Guide/Program/" + id;
-      XBMC->Log(LOG_DEBUG, "GetProgramById - URL: %s\n", command.c_str());
 
       retval = ForTheRecord::ForTheRecordJSONRPC(command, "", response);
       if(retval >= 0)

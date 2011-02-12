@@ -190,7 +190,6 @@ PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channe
             cGuideProgram guideprogram;
             if (FetchGuideProgramDetails(epg.UniqueId(), guideprogram))
             {
-              XBMC->Log(LOG_DEBUG, "  Title: \"%s\".", guideprogram.Title());
               m_epg_id_offset++;
               proginfo.channum         = channel.number;
               proginfo.uid             = m_epg_id_offset;

@@ -242,9 +242,28 @@ bool cPVRClientForTheRecord::FetchGuideProgramDetails(std::string Id, cGuideProg
 int cPVRClientForTheRecord::GetNumChannels()
 {
   // Not directly possible in ForTheRecord
-  // Just return a non-zero value to XBMC otherwise
-  // XBMC won't call RequestChannelList
-  return 1; //0 = no channels available
+  Json::Value response;
+
+  // pick up the channellist for TV
+  int retval = ForTheRecord::GetChannelList(ForTheRecord::Television, response);
+  if (retval < 0) 
+  {
+    return 0;
+  }
+
+  int numberofchannels = response.size();
+
+  // When radio is enabled, add the number of radio channels
+  if (g_bRadioEnabled)
+  {
+    retval = ForTheRecord::GetChannelList(ForTheRecord::Radio, response);
+    if (retval >= 0)
+    {
+      numberofchannels += response.size();
+    }
+  }
+
+  return numberofchannels;
 }
 
 PVR_ERROR cPVRClientForTheRecord::RequestChannelList(PVRHANDLE handle, int radio)
@@ -254,70 +273,62 @@ PVR_ERROR cPVRClientForTheRecord::RequestChannelList(PVRHANDLE handle, int radio
 
   if (!radio)
   {
-    retval = ForTheRecord::ForTheRecordJSONRPC("ForTheRecord/Scheduler/Channels/Television", "?visibleOnly=false", response);
+    retval = ForTheRecord::GetChannelList(ForTheRecord::Television, response);
   }
   else
   {
-    retval = ForTheRecord::ForTheRecordJSONRPC("ForTheRecord/Scheduler/Channels/Radio", "?visibleOnly=false", response);        
+    retval = ForTheRecord::GetChannelList(ForTheRecord::Radio, response);
   }
 
   if(retval >= 0)
   {           
-    if( response.type() == Json::arrayValue)
-    {
-      int size = response.size();
+    int size = response.size();
 
-      // parse channel list
-      for ( int index = 0; index < size; ++index )
+    // parse channel list
+    for ( int index = 0; index < size; ++index )
+    {
+
+      cChannel channel;
+      if( channel.Parse(response[index]) )
       {
+        PVR_CHANNEL tag;
+        memset(&tag, 0 , sizeof(tag));
+        //Hack: assumes that the order of the channel list is fixed.
+        //      We can't use the ForTheRecord channel id's. They are GUID strings (128 bit int).       
+        tag.number =  m_channel_id_offset + 1;
+        //if (channel.LCN())
+        //  tag.uid = channel.LCN();
+        //else
+        tag.uid = tag.number;
+        tag.name = channel.Name();
+        tag.callsign = channel.Name(); //Used for automatic channel icon search
+        tag.iconpath = "";
+        tag.encryption = 0; //How to fetch this from ForTheRecord??
+        tag.radio = (channel.Type() == ForTheRecord::Radio ? true : false);
+        tag.hide = false;
+        tag.recording = false;
+        tag.bouquet = 0;
+        tag.multifeed = false;
+        //Use OpenLiveStream to read from the timeshift .ts file or an rtsp stream
+        tag.stream_url = "";
+        tag.input_format = "mpegts";
 
-        cChannel channel;
-        if( channel.Parse(response[index]) )
+        if (!tag.radio)
         {
-          PVR_CHANNEL tag;
-          memset(&tag, 0 , sizeof(tag));
-          //Hack: assumes that the order of the channel list is fixed.
-          //      We can't use the ForTheRecord channel id's. They are GUID strings (128 bit int).       
-          tag.number =  m_channel_id_offset + 1;
-          //if (channel.LCN())
-          //  tag.uid = channel.LCN();
-          //else
-          tag.uid = tag.number;
-          tag.name = channel.Name();
-          tag.callsign = channel.Name(); //Used for automatic channel icon search
-          tag.iconpath = "";
-          tag.encryption = 0; //How to fetch this from ForTheRecord??
-          tag.radio = (channel.Type() == ForTheRecord::Radio ? true : false);
-          tag.hide = false;
-          tag.recording = false;
-          tag.bouquet = 0;
-          tag.multifeed = false;
-          //Use OpenLiveStream to read from the timeshift .ts file or an rtsp stream
-          tag.stream_url = "";
-          tag.input_format = "mpegts";
-
-          if (!tag.radio)
-          {
-            XBMC->Log(LOG_DEBUG, "Found TV channel: %s\n", channel.Name());
-          }
-          else
-          {
-            XBMC->Log(LOG_DEBUG, "Found Radio channel: %s\n", channel.Name());
-          }
-          channel.SetID(tag.uid);
-          m_Channels.push_back(channel); //Local cache...
-          PVR->TransferChannelEntry(handle, &tag);
-          m_channel_id_offset++;
+          XBMC->Log(LOG_DEBUG, "Found TV channel: %s\n", channel.Name());
         }
+        else
+        {
+          XBMC->Log(LOG_DEBUG, "Found Radio channel: %s\n", channel.Name());
+        }
+        channel.SetID(tag.uid);
+        m_Channels.push_back(channel); //Local cache...
+        PVR->TransferChannelEntry(handle, &tag);
+        m_channel_id_offset++;
       }
+    }
 
-      return PVR_ERROR_NO_ERROR;
-    }
-    else
-    {
-      XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-      return PVR_ERROR_UNKNOWN;
-    }
+    return PVR_ERROR_NO_ERROR;
   }
   else
   {
@@ -325,8 +336,6 @@ PVR_ERROR cPVRClientForTheRecord::RequestChannelList(PVRHANDLE handle, int radio
   }
 
   return PVR_ERROR_SERVER_ERROR;
-
-
 }
 
 /************************************************************/

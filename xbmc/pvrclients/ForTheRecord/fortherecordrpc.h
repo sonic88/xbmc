@@ -103,6 +103,11 @@ namespace ForTheRecord
    */
   bool KeepLiveStreamAlive();
 
+  /**
+   * \brief Fetch the list of availalable channels for tv or radio
+   * \param channeltype  The type of channel to fetch the list for
+   */
+  int GetChannelList(enum ChannelType channelType, Json::Value& response);
 
   /**
    * \brief Fetch the EPG data for the given guidechannel id

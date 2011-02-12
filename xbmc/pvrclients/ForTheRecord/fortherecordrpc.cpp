@@ -251,9 +251,8 @@ namespace ForTheRecord
    * \brief Get the list with channels from 4TR
    * \param channelType The channel type (Television or Radio)
    */
-  int RequestChannels(enum ChannelType channelType)
+  int GetChannelList(enum ChannelType channelType, Json::Value& response)
   {
-    Json::Value response;
     int retval = -1;
 
     if (channelType == Television)
@@ -270,7 +269,7 @@ namespace ForTheRecord
       if( response.type() == Json::arrayValue)
       {
         int size = response.size();
-
+#if FALSE
         // parse channel list
         for ( int index =0; index < size; ++index )
         {
@@ -285,6 +284,7 @@ namespace ForTheRecord
             XBMC->Log(LOG_DEBUG, "Found Radio channel %s: %s\n", guid.c_str(), name.c_str());
           }
         }
+#endif
         return size;
       }
       else
@@ -301,22 +301,6 @@ namespace ForTheRecord
     return retval;
   }
 
-  /*
-   * \brief Get the list with TV channel groups from 4TR
-   */
-  int RequestTVChannels()
-  {
-    return RequestChannels(Television);
-  }
-    
-  /*
-   * \brief Get the list with Radio channel groups from 4TR
-   */
-  int RequestRadioChannels()
-  {
-    return RequestChannels(Radio);
-  }
-    
   /*
    * \brief Ping core service.
    * \param requestedApiVersion The API version the client needs, pass in Constants.ForTheRecordRestApiVersion.

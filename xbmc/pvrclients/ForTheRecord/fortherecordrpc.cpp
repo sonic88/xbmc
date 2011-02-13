@@ -657,16 +657,16 @@ namespace ForTheRecord
   }
 
   /**
-   * \brief Fetch the list of upcoming recordings
+   * \brief Fetch the list of upcoming programs
    */
-  int GetUpcomingRecordings(Json::Value& response)
+  int GetUpcomingPrograms(Json::Value& response)
   {
     int retval = -1;
 
-    XBMC->Log(LOG_DEBUG, "GetUpcomingRecordings");
+    XBMC->Log(LOG_DEBUG, "GetUpcomingPrograms");
 
-    // http://madcat:49943/ForTheRecord/Control/UpcomingRecordings/1?includeActive=true
-    retval = ForTheRecordJSONRPC("ForTheRecord/Control/UpcomingRecordings/1?includeActive=true", "", response);
+    // http://madcat:49943/ForTheRecord/Scheduler/UpcomingPrograms/82?includeCancelled=false
+    retval = ForTheRecordJSONRPC("ForTheRecord/Scheduler/UpcomingPrograms/82?includeCancelled=false", "", response);
 
     if(retval >= 0)
     {           
@@ -683,8 +683,33 @@ namespace ForTheRecord
     }
     else
     {
-      XBMC->Log(LOG_DEBUG, "GetUpcomingRecordings failed. Return value: %i\n", retval);
+      XBMC->Log(LOG_DEBUG, "GetUpcomingPrograms failed. Return value: %i\n", retval);
     }
+
+    return retval;
+  }
+
+  /**
+   * \brief Cancel an upcoming program
+   */
+  int CancelUpcomingProgram(const std::string& scheduleid, const std::string& channelid, const time_t starttime, const std::string& upcomingprogramid)
+  {
+    int retval = -1;
+    std::string response;
+
+    XBMC->Log(LOG_DEBUG, "CancelUpcomingProgram");
+    struct tm* convert = gmtime(&starttime);
+    struct tm tm_start = *convert;
+
+    
+    //Format: ForTheRecord/Scheduler/CancelUpcomingProgram/{scheduleId}/{channelId}/{startTime}?guideProgramId={guideProgramId}
+    char command[256];
+    snprintf(command, 256, "ForTheRecord/Scheduler/CancelUpcomingProgram/%s/%s/%i-%02i-%02iT%02i:%02i:%02i%?guideProgramId=%s" ,
+      scheduleid.c_str(), channelid.c_str(),
+      tm_start.tm_year + 1900, tm_start.tm_mon + 1, tm_start.tm_mday,
+      tm_start.tm_hour, tm_start.tm_min, tm_start.tm_sec,
+      upcomingprogramid.c_str() );
+    retval = ForTheRecordRPC(command, "", response);
 
     return retval;
   }
@@ -708,6 +733,55 @@ namespace ForTheRecord
     offset = (offsetc == '+' ? offsetv : -offsetv);
 
     return ticks;
+  }
+
+  std::string TimeTToWCFDate(const time_t thetime, std::string& offset)
+  {
+    std::string wcfdate;
+
+    wcfdate.clear();
+    offset.clear();
+    if (thetime != 0)
+    {
+      struct tm *gmTime;
+      time_t localEpoch, gmEpoch;
+
+      /*First get local epoch time*/
+      localEpoch = time(NULL);
+
+      /* Using local time epoch get the GM Time */
+      gmTime = gmtime(&localEpoch);
+
+      /* Convert gm time in to epoch format */
+      gmEpoch = mktime(gmTime);
+
+      /* get the absolute different between them */
+      double utcoffset = difftime(localEpoch, gmEpoch);
+      int iOffset = (int) utcoffset;
+
+      time_t utctime = thetime - iOffset;
+
+      iOffset = (iOffset / 36);
+
+      char ticks[15], offset[8];
+      snprintf(ticks, sizeof(ticks), "%010i", utctime);
+      snprintf(offset, sizeof(offset), "%s%04i", iOffset < 0 ? "-" : "+", abs(iOffset));
+      char result[29];
+      snprintf(result, sizeof(result), "\\/Date(%s000%s)\\/", ticks, offset );
+      wcfdate = result;
+    }
+    return wcfdate;
+
+#if FALSE
+    //WCF compatible format "/Date(1290896700000+0100)/" => 2010-11-27 23:25:00
+    ticks = atoi(wcfdate.substr(6, 10).c_str()); //only take the first 10 chars (fits in a 32-bit time_t value)
+    offsetc = wcfdate[19]; // + or -
+    offsetv = atoi(wcfdate.substr(20, 4).c_str());
+
+    offset = (offsetc == '+' ? offsetv : -offsetv);
+
+    return ticks;
+#endif
   }
 }
 

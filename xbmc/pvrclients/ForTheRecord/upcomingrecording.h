@@ -32,9 +32,13 @@ private:
   time_t date;
   time_t starttime;
   time_t stoptime;
+  int prerecordseconds;
+  int postrecordseconds;
   std::string title;
   bool isactive;
   bool isrecording;
+  std::string upcomingprogramid;
+  std::string scheduleid;
 public:
   cUpcomingRecording(void);
   virtual ~cUpcomingRecording(void);
@@ -44,7 +48,11 @@ public:
   const std::string& ChannelId(void) const { return channelid; }
   time_t StartTime(void) const { return starttime; }
   time_t StopTime(void) const { return stoptime; }
+  int PreRecordSeconds(void) const { return prerecordseconds; }
+  int PostRecordSeconds(void) const { return postrecordseconds; }
   const std::string& Title(void) const { return title; }
   bool IsActive(void) const { return isactive; }
   bool IsRecording(void) const { return isrecording; }
+  const std::string& UpcomingProgramId(void) const { return upcomingprogramid; }
+  const std::string& ScheduleId(void) const { return scheduleid; }
 };

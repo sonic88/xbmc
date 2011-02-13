@@ -236,6 +236,8 @@ int cPVRClientForTheRecord::GetNumChannels()
   // Not directly possible in ForTheRecord
   Json::Value response;
 
+  XBMC->Log(LOG_DEBUG, "GetNumChannels()");
+
   // pick up the channellist for TV
   int retval = ForTheRecord::GetChannelList(ForTheRecord::Television, response);
   if (retval < 0) 
@@ -263,6 +265,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestChannelList(PVRHANDLE handle, int radio
   Json::Value response;
   int retval = -1;
 
+  XBMC->Log(LOG_DEBUG, "RequestChannelList(%s)", radio ? "radio" : "television");
   if (!radio)
   {
     retval = ForTheRecord::GetChannelList(ForTheRecord::Television, response);
@@ -364,6 +367,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestRecordingsList(PVRHANDLE handle)
   int retval = -1;
   int iNumRecordings = 0;
 
+  XBMC->Log(LOG_DEBUG, "RequestRecordingsList()");
   retval = ForTheRecord::GetRecordingGroupByTitle(recordinggroupresponse);
   if(retval >= 0)
   {           
@@ -462,8 +466,9 @@ int cPVRClientForTheRecord::GetNumTimers(void)
   // Not directly possible in ForTheRecord
   Json::Value response;
 
+  XBMC->Log(LOG_DEBUG, "GetNumTimers()");
   // pick up the schedulelist for TV
-  int retval = ForTheRecord::GetUpcomingRecordings(response);
+  int retval = ForTheRecord::GetUpcomingPrograms(response);
   if (retval < 0) 
   {
     return 0;
@@ -477,8 +482,10 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
   Json::Value response;
   int iNumSchedules = 0;
 
+  XBMC->Log(LOG_DEBUG, "RequestTimerList()");
+
   // pick up the upcoming recordings
-  int retval = ForTheRecord::GetUpcomingRecordings(response);
+  int retval = ForTheRecord::GetUpcomingPrograms(response);
   if (retval < 0) 
   {
     return PVR_ERROR_SERVER_ERROR;
@@ -496,8 +503,10 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
       cChannel* pChannel = FetchChannel(upcomingrecording.ChannelId());
       tag.channelNum  = pChannel->ID();
       tag.firstday    = 0;
-      tag.starttime   = upcomingrecording.StartTime();
-      tag.endtime     = upcomingrecording.StopTime();
+      tag.marginstart = upcomingrecording.PreRecordSeconds() / 60;
+      tag.marginstop  = upcomingrecording.PostRecordSeconds() / 60;
+      tag.starttime   = upcomingrecording.StartTime() - (tag.marginstart * 60);
+      tag.endtime     = upcomingrecording.StopTime() + (tag.marginstop * 60);
       tag.recording   = upcomingrecording.IsRecording();
       tag.title       = upcomingrecording.Title().c_str();
       tag.directory   = "";
@@ -505,8 +514,6 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
       tag.lifetime    = 0;
       tag.repeat      = false;
       tag.repeatflags = 0;
-      tag.marginstart = 0;
-      tag.marginstop  = 0;
 
       PVR->TransferTimerEntry(handle, &tag);
     }
@@ -527,7 +534,45 @@ PVR_ERROR cPVRClientForTheRecord::AddTimer(const PVR_TIMERINFO &timerinfo)
 
 PVR_ERROR cPVRClientForTheRecord::DeleteTimer(const PVR_TIMERINFO &timerinfo, bool force)
 {
-  return PVR_ERROR_NOT_IMPLEMENTED;
+  Json::Value response;
+
+  XBMC->Log(LOG_DEBUG, "DeleteTimer()");
+
+  // re-synthesize the FTR startime, stoptime and channel GUID
+  time_t starttime = timerinfo.starttime + (timerinfo.marginstart * 60);
+  time_t stoptime = timerinfo.endtime - (timerinfo.marginstop * 60);
+  cChannel* pChannel = FetchChannel(timerinfo.channelNum);
+
+  // pick up the upcoming recordings
+  int retval = ForTheRecord::GetUpcomingPrograms(response);
+  if (retval < 0) 
+  {
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+  // try to find the upcoming recording that matches this xbmc timer
+  int numberoftimers = response.size();
+  for (int i = 0; i < numberoftimers; i++)
+  {
+    cUpcomingRecording upcomingrecording;
+    if (upcomingrecording.Parse(response[i]))
+    {
+      if (upcomingrecording.ChannelId() == pChannel->Guid())
+      {
+        if (upcomingrecording.StartTime() == starttime)
+        {
+          if (upcomingrecording.StopTime() == stoptime)
+          {
+            retval = ForTheRecord::CancelUpcomingProgram(upcomingrecording.ScheduleId(), upcomingrecording.ChannelId(),
+              upcomingrecording.StartTime(), upcomingrecording.UpcomingProgramId());
+            if (retval >= 0) return PVR_ERROR_NO_ERROR;
+            else return PVR_ERROR_SERVER_ERROR;
+          }
+        }
+      }
+    }
+  }
+  return PVR_ERROR_NOT_POSSIBLE;
 }
 
 PVR_ERROR cPVRClientForTheRecord::RenameTimer(const PVR_TIMERINFO &timerinfo, const char *newname)

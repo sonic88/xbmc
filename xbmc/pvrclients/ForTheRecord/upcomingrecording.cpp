@@ -44,29 +44,28 @@ bool cUpcomingRecording::Parse(const Json::Value& data)
   int offset;
   std::string t;
 
-  channeldisplayname = "";
-  channelid = "";
   date = 0;
-  t = data["ActualStartTime"].asString();
+  t = data["StartTime"].asString();
   starttime = ForTheRecord::WCFDateToTimeT(t, offset);
   starttime += ((offset/100)*3600);
-  t = data["ActualStopTime"].asString();
+  t = data["StopTime"].asString();
   stoptime = ForTheRecord::WCFDateToTimeT(t, offset);
   stoptime += ((offset/100)*3600);
+  prerecordseconds = data["PreRecordSeconds"].asInt();
+  postrecordseconds = data["PostRecordSeconds"].asInt();
   title = data["Title"].asString();
   isactive = true;
   isrecording = false;
-
-  // Pickup the C# Program class
-  Json::Value programobject;
-  programobject = data["Program"];
+  upcomingprogramid = data["UpcomingProgramId"].asString();
+  scheduleid = data["ScheduleId"].asString();
 
   // From the Program class pickup the C# Channel class
   Json::Value channelobject;
-  channelobject = programobject["Channel"];
+  channelobject = data["Channel"];
 
   // And -finally- our channel id
   channelid = channelobject["ChannelId"].asString();
+  channeldisplayname = channelobject["DisplayName"].asString();
 
   return true;
 }

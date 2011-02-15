@@ -1,5 +1,6 @@
 v0.0.1.112 (??-02-2011)
-- Upcoming recordings now showing as timers in EPG and timerlist.
+- Upcoming recordings now showing as timers in EPG and timerlist
+- Delete timer implemented
 v0.0.1.111 (01-02-2011)
 - EPG loading optimised. Programme descriptions only loaded for ForTheRecord 1.5.1.
 - EPG loads 48 hours of data now.
@@ -9,7 +10,7 @@ v0.0.1.110 (22-01-2011)
 - Programme descriptions added to EPG and TV channels screen
 - More fixes to memory handling
 v0.0.1.109 (13-01-2011)
-- Initial support for retrieval of recordings on the ForTheRecord Argus server.
+- Initial support for retrieval of recordings on the ForTheRecord Argus server
 - Overview of recordings, grouped by Title
 - Viewing of a selected recording via the ForTheRecord shares
 - Fixes some memory corruptions 

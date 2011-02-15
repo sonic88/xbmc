@@ -165,10 +165,16 @@ namespace ForTheRecord
   int GetScheduleList(enum ChannelType channelType, Json::Value& response);
 
   /**
-   * \brief Fetch the list of upcoming recordings
+   * \brief Fetch the list of upcoming programs
    */
-  int GetUpcomingRecordings(Json::Value& response);
+  int GetUpcomingPrograms(Json::Value& response);
+
+  /**
+   * \brief Cancel an upcoming program
+   */
+  int CancelUpcomingProgram(const std::string& scheduleid, const std::string& channelid, const time_t starttime, const std::string& upcomingprogramid);
 
   time_t WCFDateToTimeT(const std::string& wcfdate, int& offset);
+  std::string TimeTToWCFDate(const time_t thetime, std::string& offset);
 
 } //namespace ForTheRecord

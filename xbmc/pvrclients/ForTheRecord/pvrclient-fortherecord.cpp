@@ -290,10 +290,16 @@ PVR_ERROR cPVRClientForTheRecord::RequestChannelList(PVRHANDLE handle, int radio
         memset(&tag, 0 , sizeof(tag));
         //Hack: assumes that the order of the channel list is fixed.
         //      We can't use the ForTheRecord channel id's. They are GUID strings (128 bit int).       
-        tag.number =  m_channel_id_offset + 1;
-        //if (channel.LCN())
-        //  tag.uid = channel.LCN();
-        //else
+		//      But only if it isn't cached yet!
+		if (FetchChannel(channel.Guid()) == NULL)
+		{
+			tag.number =  m_channel_id_offset + 1;
+			m_channel_id_offset++;
+		}
+		else
+		{
+			tag.number = FetchChannel(channel.Guid())->ID();
+		}
         tag.uid = tag.number;
         tag.name = channel.Name();
         tag.callsign = channel.Name(); //Used for automatic channel icon search
@@ -317,9 +323,11 @@ PVR_ERROR cPVRClientForTheRecord::RequestChannelList(PVRHANDLE handle, int radio
           XBMC->Log(LOG_DEBUG, "Found Radio channel: %s\n", channel.Name());
         }
         channel.SetID(tag.uid);
-        m_Channels.push_back(channel); //Local cache...
+		if (FetchChannel(channel.Guid()) == NULL)
+		{
+			m_Channels.push_back(channel); //Local cache...
+		}
         PVR->TransferChannelEntry(handle, &tag);
-        m_channel_id_offset++;
       }
     }
 

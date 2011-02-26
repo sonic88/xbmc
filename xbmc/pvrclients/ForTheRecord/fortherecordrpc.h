@@ -174,7 +174,12 @@ namespace ForTheRecord
    */
   int CancelUpcomingProgram(const std::string& scheduleid, const std::string& channelid, const time_t starttime, const std::string& upcomingprogramid);
 
+  /**
+   * \brief Add a xbmc timer as a one time schedule
+   */
+  int AddOneTimeSchedule(const std::string& channelid, const time_t starttime, const std::string& title, int prerecordseconds, int postrecordseconds);
+
   time_t WCFDateToTimeT(const std::string& wcfdate, int& offset);
-  std::string TimeTToWCFDate(const time_t thetime, std::string& offset);
+  std::string TimeTToWCFDate(const time_t thetime);
 
 } //namespace ForTheRecord

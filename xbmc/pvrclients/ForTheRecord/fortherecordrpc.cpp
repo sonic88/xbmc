@@ -574,10 +574,7 @@ namespace ForTheRecord
       XBMC->Log(LOG_DEBUG, "DeleteRecording - URL : %s\n", command.c_str());
       XBMC->Log(LOG_DEBUG, "                  body: %s\n", arguments.c_str());
 
-      bool oldLogSetting = l_logCurl;
-      l_logCurl = true;
       retval = ForTheRecord::ForTheRecordJSONRPC(command, arguments, response);
-      l_logCurl = oldLogSetting;
 
       curl_easy_cleanup(curl);
     }
@@ -711,8 +708,52 @@ namespace ForTheRecord
       upcomingprogramid.c_str() );
     retval = ForTheRecordRPC(command, "", response);
 
+    if (retval < 0)
+    {
+      XBMC->Log(LOG_DEBUG, "CancelUpcomingProgram failed. Return value: %i\n", retval);
+    }
+
     return retval;
   }
+
+    /**
+   * \brief Add a xbmc timer as a one time schedule
+   */
+  int AddOneTimeSchedule(const std::string& channelid, const time_t starttime, const std::string& title, int prerecordseconds, int postrecordseconds)
+  {
+    int retval = -1;
+    Json::Value response;
+
+    XBMC->Log(LOG_DEBUG, "AddOneTimeSchedule");
+    struct tm* convert = gmtime(&starttime);
+    struct tm tm_start = *convert;
+
+    // Format: ForTheRecord/Scheduler/SaveSchedule
+    // argument: {"ChannelType":0,"IsActive":true,"IsOneTime":true,"KeepUntilMode":0,"KeepUntilValue":null,
+    //    "LastModifiedTime":"\/Date(1297889326000+0100)\/","Name":"Astro TV","PostRecordSeconds":null,
+    //    "PreRecordSeconds":null,"ProcessingCommands":[],"RecordingFileFormatId":null,
+    //    "Rules":[{"Arguments":["Astro TV"],"Type":"TitleEquals"},{"Arguments":["2011-02-17T00:00:00+01:00"],"Type":"OnDate"},{"Arguments":["00:45:00"],"Type":"AroundTime"},{"Arguments":["ed49a4ef-5777-40c4-80b8-715e4c87f1a6"],"Type":"Channels"}],
+    //    "ScheduleId":"00000000-0000-0000-0000-000000000000","SchedulePriority":0,"ScheduleType":82,"Version":0}
+
+    time_t now = time(NULL);
+    std::string modifiedtime = TimeTToWCFDate(mktime(localtime(&now)));
+    char arguments[1024];
+    snprintf( arguments, sizeof(arguments),
+      "{\"ChannelType\":0,\"IsActive\":true,\"IsOneTime\":true,\"KeepUntilMode\":0,\"KeepUntilValue\":null,\"LastModifiedTime\":\"%s\",\"Name\":\"XBMC - %s\",\"PostRecordSeconds\":%i,\"PreRecordSeconds\":%i,\"ProcessingCommands\":[],\"RecordingFileFormatId\":null,\"Rules\":[{\"Arguments\":[\"%s\"],\"Type\":\"TitleEquals\"},{\"Arguments\":[\"%i-%02i-%02iT00:00:00\"],\"Type\":\"OnDate\"},{\"Arguments\":[\"%02i:%02i:%02i\"],\"Type\":\"AroundTime\"},{\"Arguments\":[\"%s\"],\"Type\":\"Channels\"}],\"ScheduleId\":\"00000000-0000-0000-0000-000000000000\",\"SchedulePriority\":0,\"ScheduleType\":82,\"Version\":0}",
+      modifiedtime.c_str(), title.c_str(), postrecordseconds, prerecordseconds, title.c_str(),
+      tm_start.tm_year + 1900, tm_start.tm_mon + 1, tm_start.tm_mday,
+      tm_start.tm_hour, tm_start.tm_min, tm_start.tm_sec,
+      channelid.c_str());
+
+    retval = ForTheRecordJSONRPC("ForTheRecord/Scheduler/SaveSchedule", arguments, response);
+
+    if (retval < 0)
+    {
+      XBMC->Log(LOG_DEBUG, "AddOneTimeSchedule failed. Return value: %i\n", retval);
+    }
+    return retval;
+  }
+
 
   time_t WCFDateToTimeT(const std::string& wcfdate, int& offset)
   {
@@ -735,12 +776,11 @@ namespace ForTheRecord
     return ticks;
   }
 
-  std::string TimeTToWCFDate(const time_t thetime, std::string& offset)
+  std::string TimeTToWCFDate(const time_t thetime)
   {
     std::string wcfdate;
 
     wcfdate.clear();
-    offset.clear();
     if (thetime != 0)
     {
       struct tm *gmTime;
@@ -771,17 +811,6 @@ namespace ForTheRecord
       wcfdate = result;
     }
     return wcfdate;
-
-#if FALSE
-    //WCF compatible format "/Date(1290896700000+0100)/" => 2010-11-27 23:25:00
-    ticks = atoi(wcfdate.substr(6, 10).c_str()); //only take the first 10 chars (fits in a 32-bit time_t value)
-    offsetc = wcfdate[19]; // + or -
-    offsetv = atoi(wcfdate.substr(20, 4).c_str());
-
-    offset = (offsetc == '+' ? offsetv : -offsetv);
-
-    return ticks;
-#endif
   }
 }
 

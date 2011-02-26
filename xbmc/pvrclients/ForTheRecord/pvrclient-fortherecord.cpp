@@ -506,6 +506,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
     if (upcomingrecording.Parse(response[i]))
     {
       PVR_TIMERINFO tag;
+      memset(&tag, 0 , sizeof(tag));
       tag.index       = iNumSchedules;
       tag.active      = true;
       cChannel* pChannel = FetchChannel(upcomingrecording.ChannelId());
@@ -524,6 +525,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
       tag.repeatflags = 0;
 
       PVR->TransferTimerEntry(handle, &tag);
+      iNumSchedules++;
     }
   }
 
@@ -537,7 +539,19 @@ PVR_ERROR cPVRClientForTheRecord::GetTimerInfo(unsigned int timernumber, PVR_TIM
 
 PVR_ERROR cPVRClientForTheRecord::AddTimer(const PVR_TIMERINFO &timerinfo)
 {
-  return PVR_ERROR_NOT_IMPLEMENTED;
+  XBMC->Log(LOG_DEBUG, "AddTimer()");
+
+  // re-synthesize the FTR startime, stoptime and channel GUID
+  time_t starttime = timerinfo.starttime + (timerinfo.marginstart * 60);
+  cChannel* pChannel = FetchChannel(timerinfo.channelNum);
+
+  int retval = ForTheRecord::AddOneTimeSchedule(pChannel->Guid(), starttime, timerinfo.title, timerinfo.marginstart * 60, timerinfo.marginstop * 60);
+  if (retval < 0) 
+  {
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+  return PVR_ERROR_NO_ERROR;
 }
 
 PVR_ERROR cPVRClientForTheRecord::DeleteTimer(const PVR_TIMERINFO &timerinfo, bool force)

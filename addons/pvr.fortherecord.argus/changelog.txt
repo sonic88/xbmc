@@ -1,6 +1,9 @@
-v0.0.1.112 (??-02-2011)
+v0.0.1.113 (26-02-2011)
 - Upcoming recordings now showing as timers in EPG and timerlist
 - Delete timer implemented
+- Add timer implemented
+v0.0.1.112 (23-02-2011)
+- Fixed bad bug that caused loss of epg data every 10 minutes
 v0.0.1.111 (01-02-2011)
 - EPG loading optimised. Programme descriptions only loaded for ForTheRecord 1.5.1.
 - EPG loads 48 hours of data now.

@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\;..\..\lib\jsoncpp\include;..\..\..\MediaPortal\tsreader;..\..\..\..\..\addons\library.xbmc.addon;..\..\..\..\..\addons\library.xbmc.pvr;..\..\..\..\addons\include;..\..\lib\curl-7.21.3\include"
+				AdditionalIncludeDirectories="..\..\;..\..\lib\jsoncpp\include;..\..\..\MediaPortal\tsreader;..\..\..\..\..\addons\library.xbmc.addon;..\..\..\..\..\addons\library.xbmc.pvr;..\..\..\..\addons\include"
 				PreprocessorDefinitions="_WIN32;_DEBUG;_WINDOWS;_WIN32PC;_USE_32BIT_TIME_T;TSREADER"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -126,7 +126,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\;..\..\lib\jsoncpp\include;..\..\..\MediaPortal\tsreader;..\..\..\..\..\addons\library.xbmc.addon;..\..\..\..\..\addons\library.xbmc.pvr;..\..\..\..\addons\include;..\..\lib\curl-7.21.3\include"
+				AdditionalIncludeDirectories="..\..\;..\..\lib\jsoncpp\include;..\..\..\MediaPortal\tsreader;..\..\..\..\..\addons\library.xbmc.addon;..\..\..\..\..\addons\library.xbmc.pvr;..\..\..\..\addons\include"
 				PreprocessorDefinitions="_WIN32;_WINDOWS;_WIN32PC;_USE_32BIT_TIME_T;TSREADER"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="0"

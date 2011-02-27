@@ -405,14 +405,14 @@ int cVNSIData::GetTimersCount()
 PVR_ERROR cVNSIData::GetTimerInfo(unsigned int timernumber, PVR_TIMERINFO &tag)
 {
   cRequestPacket vrp;
-  if (!vrp.init(VDR_TIMER_GET))           return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timernumber))          return PVR_ERROR_UNKOWN;
+  if (!vrp.init(VDR_TIMER_GET))           return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timernumber))          return PVR_ERROR_UNKNOWN;
 
   cResponsePacket* vresp = ReadResult(&vrp);
   if (!vresp)
   {
     delete vresp;
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
   }
 
   uint32_t returnCode = vresp->extract_U32();
@@ -499,25 +499,25 @@ PVR_ERROR cVNSIData::AddTimer(const PVR_TIMERINFO &timerinfo)
   if (!vrp.init(VDR_TIMER_ADD))
   {
     XBMC->Log(LOG_ERROR, "cVNSIData::AddTimer - Can't init cRequestPacket");
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
   }
-  if (!vrp.add_U32(timerinfo.active))     return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.priority))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.lifetime))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.channelNum)) return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.starttime))  return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.endtime))    return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.repeat ? timerinfo.firstday : 0))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.repeatflags))return PVR_ERROR_UNKOWN;
-  if (!vrp.add_String(timerinfo.title))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_String(""))                return PVR_ERROR_UNKOWN;
+  if (!vrp.add_U32(timerinfo.active))     return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.priority))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.lifetime))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.channelNum)) return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.starttime))  return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.endtime))    return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.repeat ? timerinfo.firstday : 0))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.repeatflags))return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_String(timerinfo.title))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_String(""))                return PVR_ERROR_UNKNOWN;
 
   cResponsePacket* vresp = ReadResult(&vrp);
   if (vresp->noResponse())
   {
     delete vresp;
     XBMC->Log(LOG_ERROR, "cVNSIData::AddTimer - Can't get response packed");
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
   }
   uint32_t returnCode = vresp->extract_U32();
   delete vresp;
@@ -535,19 +535,19 @@ PVR_ERROR cVNSIData::DeleteTimer(const PVR_TIMERINFO &timerinfo, bool force)
 {
   cRequestPacket vrp;
   if (!vrp.init(VDR_TIMER_DELETE))
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
 
   if (!vrp.add_U32(timerinfo.index))
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
 
   if (!vrp.add_U32(force))
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
 
   cResponsePacket* vresp = ReadResult(&vrp);
   if (vresp->noResponse())
   {
     delete vresp;
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
   }
 
   uint32_t returnCode = vresp->extract_U32();
@@ -579,24 +579,24 @@ PVR_ERROR cVNSIData::RenameTimer(const PVR_TIMERINFO &timerinfo, const char *new
 PVR_ERROR cVNSIData::UpdateTimer(const PVR_TIMERINFO &timerinfo)
 {
   cRequestPacket vrp;
-  if (!vrp.init(VDR_TIMER_UPDATE))        return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.index))      return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.active))     return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.priority))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.lifetime))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.channelNum)) return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.starttime))  return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.endtime))    return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.repeat ? timerinfo.firstday : 0))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_U32(timerinfo.repeatflags))return PVR_ERROR_UNKOWN;
-  if (!vrp.add_String(timerinfo.title))   return PVR_ERROR_UNKOWN;
-  if (!vrp.add_String(""))                return PVR_ERROR_UNKOWN;
+  if (!vrp.init(VDR_TIMER_UPDATE))        return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.index))      return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.active))     return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.priority))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.lifetime))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.channelNum)) return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.starttime))  return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.endtime))    return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.repeat ? timerinfo.firstday : 0))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_U32(timerinfo.repeatflags))return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_String(timerinfo.title))   return PVR_ERROR_UNKNOWN;
+  if (!vrp.add_String(""))                return PVR_ERROR_UNKNOWN;
 
   cResponsePacket* vresp = ReadResult(&vrp);
   if (vresp->noResponse())
   {
     delete vresp;
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
   }
   uint32_t returnCode = vresp->extract_U32();
   delete vresp;
@@ -648,14 +648,14 @@ PVR_ERROR cVNSIData::GetRecordingsList(PVRHANDLE handle)
     if (!vrp.init(VDR_RECORDINGS_GETLIST))
     {
       XBMC->Log(LOG_ERROR, "cVNSIData::GetRecordingsList - Can't init cRequestPacket");
-      return PVR_ERROR_UNKOWN;
+      return PVR_ERROR_UNKNOWN;
     }
 
     cResponsePacket* vresp = ReadResult(&vrp);
     if (!vresp)
     {
       XBMC->Log(LOG_ERROR, "cVNSIData::GetRecordingsList - Can't get response packed");
-      return PVR_ERROR_UNKOWN;
+      return PVR_ERROR_UNKNOWN;
     }
 
     char* videodir = vresp->extract_String();
@@ -756,16 +756,16 @@ PVR_ERROR cVNSIData::DeleteRecording(CStdString path)
 {
   cRequestPacket vrp;
   if (!vrp.init(VDR_RECORDINGS_DELETE))
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
 
   if (!vrp.add_String(path))
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
 
   cResponsePacket* vresp = ReadResult(&vrp);
   if (vresp->noResponse())
   {
     delete vresp;
-    return PVR_ERROR_UNKOWN;
+    return PVR_ERROR_UNKNOWN;
   }
 
   uint32_t returnCode = vresp->extract_U32();

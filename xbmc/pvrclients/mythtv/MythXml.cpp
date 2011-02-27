@@ -79,7 +79,7 @@ PVR_ERROR MythXml::requestChannelList(PVRHANDLE handle, int radio){
 	cmd.execute(hostname_, port_, params, result, timeout_);
   
 	if(!result.isSuccess())
-	  return PVR_ERROR_UNKOWN;
+	  return PVR_ERROR_UNKNOWN;
 	
 	const vector<SChannel>& channellist = result.getChannels();
 	vector<SChannel>::const_iterator it;
@@ -111,7 +111,7 @@ PVR_ERROR MythXml::requestEPGForChannel(PVRHANDLE handle, const PVR_CHANNEL &cha
 	cmd.execute(hostname_, port_, params, result, timeout_);
   
 	if(!result.isSuccess())
-	  return PVR_ERROR_UNKOWN;
+	  return PVR_ERROR_UNKNOWN;
 	
 	PVR_PROGINFO guideItem;
 	const vector<SEpg>& epgInfo = result.getEpg();

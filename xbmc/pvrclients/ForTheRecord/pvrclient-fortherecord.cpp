@@ -506,7 +506,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
     if (upcomingrecording.Parse(response[i]))
     {
       PVR_TIMERINFO tag;
-	  memset(&tag, 0 , sizeof(tag));
+      memset(&tag, 0 , sizeof(tag));
       tag.index       = iNumSchedules;
       tag.active      = true;
       cChannel* pChannel = FetchChannel(upcomingrecording.ChannelId());
@@ -525,7 +525,7 @@ PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
       tag.repeatflags = 0;
 
       PVR->TransferTimerEntry(handle, &tag);
-	  iNumSchedules++;
+      iNumSchedules++;
     }
   }
 

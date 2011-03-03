@@ -30,7 +30,9 @@
 //typedef int ssize_t;
 typedef int mode_t;
 typedef int bool_t;
+#if (_MSC_VER < 1600)
 typedef __int8 int8_t;
+#endif
 typedef signed __int16 int16_t;
 typedef signed __int32 int32_t;
 typedef signed __int64 int64_t;
@@ -48,8 +50,6 @@ typedef long off_t;
 
 #define NAME_MAX         255   /* # chars in a file name */
 #define MAXPATHLEN       255
-#define INT64_MAX _I64_MAX
-#define INT64_MIN _I64_MIN
 
 #ifndef S_ISLNK
 # define S_ISLNK(x) 0
@@ -172,9 +172,11 @@ typedef int gid_t;
 #include <stddef.h>
 #include <process.h>
 #if defined(_MSC_VER) /* Microsoft C Compiler ONLY */
-/* Hack to suppress compiler warnings on FD_SET() & FD_CLR() */
 #pragma warning (push)
+/* Hack to suppress compiler warnings on FD_SET() & FD_CLR() */
 #pragma warning (disable:4142)
+/* Suppress compiler warnings about double definition of _WINSOCKAPI_ */
+#pragma warning (disable:4005)
 #endif
 /* prevent inclusion of wingdi.h */
 #define NOGDI
@@ -194,6 +196,9 @@ typedef char * caddr_t;
 #undef FD_OPEN
 #undef FD_READ
 #undef FD_WRITE
+
+#if (_MSC_VER < 1600)
+// Not yet defined in errno.h under VS2008
 #define EISCONN WSAEISCONN
 #define EINPROGRESS WSAEINPROGRESS
 #define EWOULDBLOCK WSAEWOULDBLOCK
@@ -208,6 +213,7 @@ typedef char * caddr_t;
 #define ENOTCONN WSAENOTCONN
 #define ENOBUFS WSAENOBUFS
 #define EOVERFLOW 2006
+#endif
 
 #undef h_errno
 #define h_errno errno /* we'll set it ourselves */

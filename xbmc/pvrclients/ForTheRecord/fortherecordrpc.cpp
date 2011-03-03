@@ -716,7 +716,7 @@ namespace ForTheRecord
     return retval;
   }
 
-    /**
+  /**
    * \brief Add a xbmc timer as a one time schedule
    */
   int AddOneTimeSchedule(const std::string& channelid, const time_t starttime, const std::string& title, int prerecordseconds, int postrecordseconds)

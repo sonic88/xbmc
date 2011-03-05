@@ -15,6 +15,7 @@ SRCS=Addon.cpp \
 		 AddonHelpers_PVR.cpp \
 		 AddonHelpers_local.cpp \
 		 Repository.cpp \
+		 AddonInstaller.cpp \
 
 LIB=addons.a
 

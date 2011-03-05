@@ -278,6 +278,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\xbmc\AddonDatabase.cpp" />
+    <ClCompile Include="..\..\xbmc\addons\AddonInstaller.cpp" />
     <ClCompile Include="..\..\xbmc\addons\AddonHelpers_Addon.cpp" />
     <ClCompile Include="..\..\xbmc\addons\AddonHelpers_GUI.cpp" />
     <ClCompile Include="..\..\xbmc\addons\AddonHelpers_local.cpp" />
@@ -1013,6 +1014,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\AddonDatabase.h" />
+    <ClInclude Include="..\..\xbmc\addons\AddonInstaller.h" />
     <ClInclude Include="..\..\xbmc\addons\AddonHelpers_Addon.h" />
     <ClInclude Include="..\..\xbmc\addons\AddonHelpers_GUI.h" />
     <ClInclude Include="..\..\xbmc\addons\AddonHelpers_local.h" />

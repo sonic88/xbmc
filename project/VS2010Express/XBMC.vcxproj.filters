@@ -2104,6 +2104,9 @@
     <ClCompile Include="..\..\xbmc\utils\Variant.cpp">
       <Filter>Source Files\Utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\addons\AddonInstaller.cpp">
+      <Filter>Source Files\Addons</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\PVRManager.cpp">
       <Filter>Source Files\PVR</Filter>
     </ClCompile>
@@ -4512,6 +4515,9 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\utils\Variant.h">
       <Filter>Source Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\addons\AddonInstaller.h">
+      <Filter>Source Files\Addons</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\PVRManager.h">
       <Filter>Source Files\PVR</Filter>

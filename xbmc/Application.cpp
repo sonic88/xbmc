@@ -326,6 +326,7 @@ CApplication::CApplication(void) : m_itemCurrentFile(new CFileItem), m_progressT
   m_strPlayListFile = "";
   m_nextPlaylistItem = -1;
   m_bPlaybackStarting = false;
+  m_skinReloading = false;
 
 #ifdef HAS_GLX
   XInitThreads();
@@ -509,11 +510,11 @@ bool CApplication::Create()
 
   CLog::Log(LOGNOTICE, "-----------------------------------------------------------------------");
 #if defined(__APPLE__)
-  CLog::Log(LOGNOTICE, "Starting XBMC, Platform: Mac OS X (%s). Built on %s (SVN:%s)", g_sysinfo.GetUnameVersion().c_str(), __DATE__, SVN_REV);
+  CLog::Log(LOGNOTICE, "Starting XBMC, Platform: Mac OS X (%s). Built on %s (Git:%s)", g_sysinfo.GetUnameVersion().c_str(), __DATE__, GIT_REV);
 #elif defined(_LINUX)
-  CLog::Log(LOGNOTICE, "Starting XBMC, Platform: Linux (%s, %s). Built on %s (SVN:%s)", g_sysinfo.GetLinuxDistro().c_str(), g_sysinfo.GetUnameVersion().c_str(), __DATE__, SVN_REV);
+  CLog::Log(LOGNOTICE, "Starting XBMC, Platform: Linux (%s, %s). Built on %s (Git:%s)", g_sysinfo.GetLinuxDistro().c_str(), g_sysinfo.GetUnameVersion().c_str(), __DATE__, GIT_REV);
 #elif defined(_WIN32)
-  CLog::Log(LOGNOTICE, "Starting XBMC, Platform: %s. Built on %s (SVN:%s, compiler %i)",g_sysinfo.GetKernelVersion().c_str(), __DATE__, SVN_REV, _MSC_VER);
+  CLog::Log(LOGNOTICE, "Starting XBMC, Platform: %s. Built on %s (Git:%s, compiler %i)",g_sysinfo.GetKernelVersion().c_str(), __DATE__, GIT_REV, _MSC_VER);
   CLog::Log(LOGNOTICE, g_cpuInfo.getCPUModel().c_str());
   CLog::Log(LOGNOTICE, CWIN32Util::GetResInfoString());
   CLog::Log(LOGNOTICE, "Running with %s rights", (CWIN32Util::IsCurrentUserLocalAdministrator() == TRUE) ? "administrator" : "restricted");
@@ -568,6 +569,13 @@ bool CApplication::Create()
 
 #ifdef HAS_SDL_JOYSTICK
   sdlFlags |= SDL_INIT_JOYSTICK;
+#endif
+
+  //depending on how it's compiled, SDL periodically calls XResetScreenSaver when it's fullscreen
+  //this might bring the monitor out of standby, so we have to disable it explicitly
+  //by passing 0 for overwrite to setsenv, the user can still override this by setting the environment variable
+#if defined(_LINUX) && !defined(__APPLE__)
+  setenv("SDL_VIDEO_ALLOW_SCREENSAVER", "1", 0);
 #endif
 
 #endif // HAS_SDL
@@ -1513,6 +1521,7 @@ void CApplication::StopServices()
 
 void CApplication::ReloadSkin()
 {
+  m_skinReloading = false;
   CGUIMessage msg(GUI_MSG_LOAD_SKIN, -1, g_windowManager.GetActiveWindow());
   g_windowManager.SendMessage(msg);
   // Reload the skin, restoring the previously focused control.  We need this as
@@ -1530,6 +1539,9 @@ void CApplication::ReloadSkin()
 
 bool CApplication::LoadSkin(const CStdString& skinID)
 {
+  if (m_skinReloading)
+    return false;
+
   AddonPtr addon;
   if (CAddonMgr::Get().GetAddon(skinID, addon, ADDON_SKIN))
   {
@@ -1575,7 +1587,6 @@ void CApplication::LoadSkin(const SkinPtr& skin)
   vector<int> currentModelessWindows;
   g_windowManager.GetActiveModelessWindows(currentModelessWindows);
 
-  CLog::Log(LOGINFO, "  delete old skin...");
   UnloadSkin();
 
   CLog::Log(LOGINFO, "  load skin from:%s", skin->Path().c_str());
@@ -1684,8 +1695,12 @@ void CApplication::LoadSkin(const SkinPtr& skin)
   }
 }
 
-void CApplication::UnloadSkin()
+void CApplication::UnloadSkin(bool forReload /* = false */)
 {
+  m_skinReloading = forReload;
+
+  CLog::Log(LOGINFO, "Unloading old skin %s...", forReload ? "for reload " : "");
+
   g_audioManager.Enable(false);
 
   g_windowManager.DeInitialize();
@@ -4145,14 +4160,14 @@ void CApplication::UpdateFileState()
         m_progressTrackingVideoResumeBookmark.playerState = m_pPlayer->GetPlayerState();
         m_progressTrackingVideoResumeBookmark.thumbNailImage.Empty();
 
-        if (g_advancedSettings.m_videoIgnoreAtEnd > 0 &&
-            GetTotalTime() - GetTime() < g_advancedSettings.m_videoIgnoreAtEnd)
+        if (g_advancedSettings.m_videoIgnorePercentAtEnd > 0 &&
+            GetTotalTime() - GetTime() < 0.01f * g_advancedSettings.m_videoIgnorePercentAtEnd * GetTotalTime())
         {
           // Delete the bookmark
           m_progressTrackingVideoResumeBookmark.timeInSeconds = -1.0f;
         }
         else
-        if (GetTime() > g_advancedSettings.m_videoIgnoreAtStart)
+        if (GetTime() > g_advancedSettings.m_videoIgnoreSecondsAtStart)
         {
           // Update the bookmark
           m_progressTrackingVideoResumeBookmark.timeInSeconds = GetTime();
@@ -4305,6 +4320,9 @@ bool CApplication::WakeUpScreenSaver()
 
 void CApplication::CheckScreenSaverAndDPMS()
 {
+  if (!m_dpmsIsActive)
+    g_Windowing.ResetOSScreensaver();
+
   bool maybeScreensaver =
       !m_dpmsIsActive && !m_bScreenSave
       && !g_guiSettings.GetString("screensaver.mode").IsEmpty();
@@ -4560,7 +4578,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
       
       // In case playback ended due to user eg. skipping over the end, clear
       // our resume bookmark here
-      if (message.GetMessage() == GUI_MSG_PLAYBACK_ENDED && m_progressTrackingPlayCountUpdate && g_advancedSettings.m_videoIgnoreAtEnd > 0)
+      if (message.GetMessage() == GUI_MSG_PLAYBACK_ENDED && m_progressTrackingPlayCountUpdate && g_advancedSettings.m_videoIgnorePercentAtEnd > 0)
       {
         // Delete the bookmark
         m_progressTrackingVideoResumeBookmark.timeInSeconds = -1.0f;

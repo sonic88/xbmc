@@ -304,7 +304,7 @@ static MpegTSFilter *mpegts_open_section_filter(MpegTSContext *ts, unsigned int 
     sec = &filter->u.section_filter;
     sec->section_cb = section_cb;
     sec->opaque = opaque;
-    sec->section_buf = av_malloc(MAX_SECTION_SIZE);
+    sec->section_buf = av_mallocz(MAX_SECTION_SIZE);
     sec->check_crc = check_crc;
     if (!sec->section_buf) {
         av_free(filter);
@@ -448,7 +448,7 @@ static char *getstr8(const uint8_t **pp, const uint8_t *p_end)
         return NULL;
     if ((p + len) > p_end)
         return NULL;
-    str = av_malloc(len + 1);
+    str = av_mallocz(len + 1);
     if (!str)
         return NULL;
     memcpy(str, p, len);
@@ -587,7 +587,7 @@ static int mpegts_set_stream_info(AVStream *st, PESContext *pes,
             // audio track - add a second stream for this
             AVStream *sub_st;
             // priv_data cannot be shared between streams
-            PESContext *sub_pes = av_malloc(sizeof(*sub_pes));
+            PESContext *sub_pes = av_mallocz(sizeof(*sub_pes));
             if (!sub_pes)
                 return AVERROR(ENOMEM);
             memcpy(sub_pes, pes, sizeof(*sub_pes));
@@ -625,6 +625,10 @@ static int64_t get_pts(const uint8_t *p)
 
 static void new_pes_packet(PESContext *pes, AVPacket *pkt)
 {
+    if(pkt->data) {
+      av_log(pes->stream, AV_LOG_ERROR, "ignoring previously allocated packet on stream %d\n", pkt->stream_index);
+      av_free_packet(pkt);
+    }
     av_init_packet(pkt);
 
     pkt->destruct = av_destruct_packet;
@@ -714,7 +718,7 @@ static int mpegts_push_data(MpegTSFilter *filter,
                         pes->total_size = MAX_PES_PAYLOAD;
 
                     /* allocate pes buffer */
-                    pes->buffer = av_malloc(pes->total_size+FF_INPUT_BUFFER_PADDING_SIZE);
+                    pes->buffer = av_mallocz(pes->total_size+FF_INPUT_BUFFER_PADDING_SIZE);
                     if (!pes->buffer)
                         return AVERROR(ENOMEM);
 
@@ -810,7 +814,7 @@ static int mpegts_push_data(MpegTSFilter *filter,
                 if (pes->data_index+buf_size > pes->total_size) {
                     new_pes_packet(pes, ts->pkt);
                     pes->total_size = MAX_PES_PAYLOAD;
-                    pes->buffer = av_malloc(pes->total_size+FF_INPUT_BUFFER_PADDING_SIZE);
+                    pes->buffer = av_mallocz(pes->total_size+FF_INPUT_BUFFER_PADDING_SIZE);
                     if (!pes->buffer)
                         return AVERROR(ENOMEM);
                     ts->stop_parse = 1;
@@ -1572,6 +1576,7 @@ static int mpegts_read_packet(AVFormatContext *s,
     }
 
     ts->pkt = pkt;
+    ts->pkt->data = NULL;
     ret = handle_packets(ts, 0);
     if (ret < 0) {
         /* flush pes data left */
@@ -1770,9 +1775,8 @@ MpegTSContext *ff_mpegts_parse_open(AVFormatContext *s)
     ts->raw_packet_size = TS_PACKET_SIZE;
     ts->stream = s;
     ts->auto_guess = 1;
-    //margro: causes crashes under Windows 7
-    //mpegts_open_section_filter(ts, SDT_PID, sdt_cb, ts, 1);
-    //mpegts_open_section_filter(ts, PAT_PID, pat_cb, ts, 1);
+    mpegts_open_section_filter(ts, SDT_PID, sdt_cb, ts, 1);
+    mpegts_open_section_filter(ts, PAT_PID, pat_cb, ts, 1);
 
     return ts;
 }
@@ -1786,6 +1790,7 @@ int ff_mpegts_parse_packet(MpegTSContext *ts, AVPacket *pkt,
 
     len1 = len;
     ts->pkt = pkt;
+    ts->pkt->data = NULL;
     ts->stop_parse = 0;
     for(;;) {
         if (ts->stop_parse>0)

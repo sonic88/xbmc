@@ -450,7 +450,11 @@ bool cPVRClientForTheRecord::FetchRecordingDetails(const Json::Value& data, cRec
 
 PVR_ERROR cPVRClientForTheRecord::DeleteRecording(const PVR_RECORDINGINFO &recinfo)
 {
-  if (ForTheRecord::DeleteRecording(recinfo.stream_url) >= 0) 
+  // JSONify the stream_url
+  Json::Value recordingname (recinfo.stream_url);
+  Json::StyledWriter writer;
+  std::string jsonval = writer.write(recordingname);
+  if (ForTheRecord::DeleteRecording(jsonval) >= 0) 
   {
     return PVR_ERROR_NO_ERROR;
   }

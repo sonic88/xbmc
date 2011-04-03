@@ -26,7 +26,7 @@
  *    http://forums.dvbowners.com/
  */
 
-#if defined _WIN32 && defined TSREADER
+#if defined TSREADER
 
 #include "FileReader.h"
 #include "client.h" //for XBMC->Log
@@ -34,14 +34,14 @@
 
 FileReader::FileReader() :
   m_hFile(INVALID_HANDLE_VALUE),
+  m_hInfoFile(INVALID_HANDLE_VALUE),
   m_pFileName(0),
   m_bReadOnly(false),
+  m_bDelay(false),
   m_fileSize(0),
   m_infoFileSize(0),
   m_fileStartPos(0),
-  m_hInfoFile(INVALID_HANDLE_VALUE),
-  m_bDelay(false),
-  m_llBufferPointer(0),  
+  m_llBufferPointer(0),
   m_bDebugOutput(false)
 {
 }
@@ -111,6 +111,7 @@ long FileReader::OpenFile()
 
   do
   {
+#ifdef _WIN32
     // do not try to open a tsbuffer file without SHARE_WRITE so skip this try if we have a buffer file
     if (strstr(m_pFileName, ".ts.tsbuffer") == NULL) 
     {
@@ -140,7 +141,13 @@ long FileReader::OpenFile()
 //              FILE_FLAG_RANDOM_ACCESS,        // More flags
 //              FILE_FLAG_SEQUENTIAL_SCAN,      // More flags
               NULL);                            // Template
-
+#elif defined _LINUX
+    // Try to open the file
+    m_hFile = open(m_pFileName,              // The filename
+              O_RDONLY);                     // File access
+#else
+#error FIXME: Add an OpenFile() implementation for your OS
+#endif
     m_bReadOnly = TRUE;
     if (m_hFile != INVALID_HANDLE_VALUE) break;
 
@@ -154,9 +161,14 @@ long FileReader::OpenFile()
   }
   else
   {
-    XBMC->Log(LOG_DEBUG, "FileReader::OpenFile(), open file %s failed.", m_pFileName);
+#ifdef _WIN32
     DWORD dwErr = GetLastError();
+    XBMC->Log(LOG_DEBUG, "FileReader::OpenFile(), open file %s failed. Error code %d", m_pFileName, dwErr);
     return HRESULT_FROM_WIN32(dwErr);
+#else
+    XBMC->Log(LOG_DEBUG, "FileReader::OpenFile(), open file %s failed. Error %d: %s", m_pFileName, errno, strerror(errno));
+    return S_FALSE;
+#endif
   }
 
   XBMC->Log(LOG_DEBUG, "FileReader::OpenFile() handle %i %s", m_hFile, m_pFileName );
@@ -165,6 +177,7 @@ long FileReader::OpenFile()
   strncpy(infoName, m_pFileName, 512);
   strncat(infoName, ".info", 512 - strlen(infoName) - 1);
 
+#ifdef _WIN32
   m_hInfoFile = ::CreateFile(infoName,    // The filename
       (DWORD) GENERIC_READ,               // File access
       (DWORD) (FILE_SHARE_READ |
@@ -177,6 +190,12 @@ long FileReader::OpenFile()
 //      FILE_ATTRIBUTE_NORMAL |
 //      FILE_FLAG_RANDOM_ACCESS,          // More flags
       NULL);
+#elif defined _LINUX
+  m_hInfoFile = open(infoName,            // The filename
+                O_RDONLY);
+#else
+#error FIXME: Add an OpenFile() implementation for your OS
+#endif
 
   //XBMC->Log(LOG_DEBUG, "FileReader::OpenFile() info file handle %i", m_hInfoFile);
 
@@ -208,11 +227,26 @@ long FileReader::CloseFile()
 
 //  BoostThread Boost;
 
+#ifdef _WIN32
   ::CloseHandle(m_hFile);
+#elif defined _LINUX
+  close(m_hFile);
+#else
+#error FIXME: Add a CloseFile() implementation for your OS
+#endif
+
   m_hFile = INVALID_HANDLE_VALUE; // Invalidate the file
 
   if (m_hInfoFile != INVALID_HANDLE_VALUE)
+  {
+#ifdef _WIN32
     ::CloseHandle(m_hInfoFile);
+#elif defined _LINUX
+    close(m_hInfoFile);
+#else
+#error FIXME: Add a CloseFile() implementation for your OS
+#endif
+  }
 
   m_hInfoFile = INVALID_HANDLE_VALUE; // Invalidate the file
 
@@ -235,13 +269,14 @@ long FileReader::GetFileSize(int64_t *pStartPosition, int64_t *pLength)
 
   GetStartPosition(pStartPosition);
 
+#ifdef _WIN32
   //Do not get file size if static file or first time 
   if (m_bReadOnly || !m_fileSize) {
     
     if (m_hInfoFile != INVALID_HANDLE_VALUE)
     {
       int64_t length = -1;
-      DWORD read = 0;
+      unsigned long read = 0;
       LARGE_INTEGER li;
       li.QuadPart = 0;
       ::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
@@ -255,8 +290,8 @@ long FileReader::GetFileSize(int64_t *pStartPosition, int64_t *pLength)
       }
     }
 
-    DWORD dwSizeLow;
-    DWORD dwSizeHigh;
+    unsigned long dwSizeLow;
+    unsigned long dwSizeHigh;
 
     dwSizeLow = ::GetFileSize(m_hFile, &dwSizeHigh);
     if ((dwSizeLow == 0xFFFFFFFF) && (GetLastError() != NO_ERROR ))
@@ -270,11 +305,35 @@ long FileReader::GetFileSize(int64_t *pStartPosition, int64_t *pLength)
     m_fileSize = li.QuadPart;
   }
   *pLength = m_fileSize;
+#elif defined _LINUX
+#error FIXME: Finish the GetFileSize() implementation for your OS
+  if (m_bReadOnly || !m_fileSize)
+  {
+    if (m_hInfoFile != INVALID_HANDLE_VALUE)
+    {
+      //TODO (see Windows implementation)
+    }
+
+    struct stat filestatus;
+
+    if(fstat(m_hFile, &filestatus) < 0)
+    {
+      XBMC->Log(LOG_DEBUG, "%s: stat(%s) failed. Error %d: %s", __FUNCTION__, m_hInfoFile, errno, strerror(errno));
+      return E_FAIL;
+    }
+
+    m_fileSize = filestatus.st_size;
+  }
+  *pLength = m_fileSize;
+#else
+#error FIXME: Add a GetFileSize() implementation for your OS
+#endif
   return S_OK;
 }
 
 long FileReader::GetInfoFileSize(int64_t *lpllsize)
 {
+#ifdef _WIN32
   //Do not get file size if static file or first time 
   if (m_bReadOnly || !m_infoFileSize) {
     
@@ -293,6 +352,22 @@ long FileReader::GetInfoFileSize(int64_t *lpllsize)
     m_infoFileSize = li.QuadPart;
   }
   *lpllsize = m_infoFileSize;
+#elif defined _LINUX
+  if (m_bReadOnly || !m_infoFileSize) {
+    struct stat filestatus;
+
+    if(fstat(m_hInfoFile, &filestatus) < 0)
+    {
+      XBMC->Log(LOG_DEBUG, "%s: stat(%s) failed. Error %d: %s", __FUNCTION__, m_hInfoFile, errno, strerror(errno));
+      return E_FAIL;
+    }
+
+    m_infoFileSize = filestatus.st_size;
+  }
+  *lpllsize = m_infoFileSize;
+#else
+#error FIXME: Add a GetInfoFileSize() implementation for your OS
+#endif
   return S_OK;
 }
 
@@ -310,11 +385,16 @@ long FileReader::GetStartPosition(int64_t *lpllpos)
       {
         //Get the file start pointer
         int64_t length = -1;
+#ifdef _WIN32
         DWORD read = 0;
         LARGE_INTEGER li;
         li.QuadPart = sizeof(int64_t);
         ::SetFilePointer(m_hInfoFile, li.LowPart, &li.HighPart, FILE_BEGIN);
         ::ReadFile(m_hInfoFile, (void*)&length, (DWORD)sizeof(int64_t), &read, NULL);
+#else
+        //TODO: lseek (or fseek for fopen)
+#error FIXME: Add a GetStartPosition() implementation for your OS
+#endif
 
         if(length > -1)
         {
@@ -332,6 +412,7 @@ long FileReader::GetStartPosition(int64_t *lpllpos)
 
 unsigned long FileReader::SetFilePointer(int64_t llDistanceToMove, unsigned long dwMoveMethod)
 {
+#ifdef _WIN32
   LARGE_INTEGER li;
 
   if (dwMoveMethod == FILE_END && m_hInfoFile != INVALID_HANDLE_VALUE)
@@ -389,10 +470,16 @@ unsigned long FileReader::SetFilePointer(int64_t llDistanceToMove, unsigned long
   }
 
   return ::SetFilePointer(m_hFile, li.LowPart, &li.HighPart, dwMoveMethod);
+#else
+  //lseek (or fseek for fopen)
+#error FIXME: Add a SetFilePointer() implementation for your OS
+  return 0;
+#endif
 }
 
 int64_t FileReader::GetFilePointer()
 {
+#ifdef _WIN32
   LARGE_INTEGER li;
   li.QuadPart = 0;
   li.LowPart = ::SetFilePointer(m_hFile, 0, &li.HighPart, FILE_CURRENT);
@@ -413,6 +500,10 @@ int64_t FileReader::GetFilePointer()
   }
 
   return li.QuadPart;
+#else
+#error FIXME: Add a GetFilePointer() implementation for your OS
+  return 0;
+#endif
 }
 
 long FileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes)
@@ -427,6 +518,7 @@ long FileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned
   }
 //  BoostThread Boost;
 
+#ifdef _WIN32
   //Get File Position
   LARGE_INTEGER li;
   li.QuadPart = 0;
@@ -516,6 +608,10 @@ long FileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned
     return S_FALSE;
   }
   return S_OK;
+#else
+#error FIXME: Add a Read() implementation for your OS
+  return S_FALSE;
+#endif
 }
 
 long FileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes, int64_t llDistanceToMove, unsigned long dwMoveMethod)
@@ -592,4 +688,4 @@ int64_t FileReader::GetFileSize()
   GetFileSize(&pStartPosition, &pLength);
   return pLength;
 }
-#endif //_WIN32
+#endif //TSREADER

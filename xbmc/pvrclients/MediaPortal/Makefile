@@ -11,8 +11,8 @@ DESTDIR ?=
 PREFIX  ?= /usr/local
 ADDONDIR = $(PREFIX)/share/xbmc/addons
 LIBS     = -ldl
-INCLUDES = -I. -I../../linux -I../../ -I../../../xbmc/addons/include -I../../../addons/library.xbmc.pvr -I../../../addons/library.xbmc.addon
-DEFINES += -D_LINUX -fPIC
+INCLUDES = -I. -Itsreader -I../../linux -I../../ -I../../../xbmc/addons/include -I../../../addons/library.xbmc.pvr -I../../../addons/library.xbmc.addon
+DEFINES += -D_LINUX -DTSREADER -fPIC
 LIBDIR   = ../../../addons/pvr.team-mediaportal.tvserver
 LIB      = ../../../addons/pvr.team-mediaportal.tvserver/XBMC_MPTV.pvr
 
@@ -29,7 +29,7 @@ endif
 
 -include Make.config
 
-OBJS = channels.o client.o epg.o pvrclient-mediaportal.o recordings.o timers.o utils.o Socket.o
+OBJS = channels.o client.o epg.o pvrclient-mediaportal.o recordings.o timers.o utils.o Socket.o tsreader/AutoLock.o tsreader/CritSec.o tsreader/MemoryBuffer.o tsreader/MemoryReader.o tsreader/MemorySink.o tsreader/FileReader.o tsreader/MultiFileReader.o tsreader/RTSPClient.o tsreader/TSThread.o tsreader/WaitEvent.o
 
 all: $(LIB)
 

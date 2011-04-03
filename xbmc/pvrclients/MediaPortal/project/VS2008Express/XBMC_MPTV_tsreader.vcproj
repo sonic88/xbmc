@@ -300,6 +300,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\linux\os_posix.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\windows\os_windows.h"
 				>
 			</File>

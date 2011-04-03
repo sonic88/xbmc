@@ -42,8 +42,10 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <limits.h>
 
 typedef int bool_t;
+typedef unsigned char byte;
 //
 // Success codes
 #define S_OK                             0L
@@ -52,25 +54,48 @@ typedef int bool_t;
 // Error codes
 #define ERROR_FILENAME_EXCED_RANGE       206L
 #define E_OUTOFMEMORY                    0x8007000EL
+#define E_FAIL                           0x80004005L
+#define INVALID_HANDLE_VALUE             -1
 
 // Socket related:
 typedef int SOCKET;
-//#define closesocket(a) close(a)
-//#define SOCKET_ERROR   (-1)
-//#define INVALID_SOCKET (-1)
 #define SD_BOTH SHUT_RDWR
 #define sock_getlasterror errno
 #define sock_getlasterror_socktimeout (errno == EAGAIN)
 #define LIBTYPE
 
-//#define console_vprintf vprintf
-//#define console_printf printf
 #define THREAD_FUNC_PREFIX void *
 
 typedef pthread_mutex_t criticalsection_t;
-typedef sem_t waitevent_t;
+//typedef sem_t wait_event_t;
+#define wait_event_t sem_t
+typedef void* LPSECURITY_ATTRIBUTES; 
 
 #define PATH_SEPARATOR_CHAR '/'
+#ifdef PATH_MAX
+#define MAX_PATH PATH_MAX
+#else
+#define MAX_PATH 260
+#endif
+
+//From winbase.h
+#define FILE_BEGIN           0
+#define FILE_CURRENT         1
+#define FILE_END             2
+
+//From WinError.h
+#define SUCCEEDED(hr) (((long)(hr)) >= 0)
+#define FAILED(hr) (((long)(hr)) < 0)
+#define NOERROR              0
+#define ERROR_INVALID_NAME   123L
+
+static inline long min(int a, long b)
+{
+  if((long) a < b)
+    return a;
+  else
+    return b;
+}
 
 static inline uint64_t getcurrenttime(void)
 {

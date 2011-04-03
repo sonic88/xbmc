@@ -18,13 +18,13 @@
 
 #ifdef TSREADER
 
-#ifdef _WIN32
-
 #include "WaitEvent.h"
 
-CWaitEvent::CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,BOOL bManualReset,BOOL bInitialState,LPCTSTR lpName)
+#ifdef _WIN32
+
+CWaitEvent::CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes, int bManualReset, int bInitialState, const char* lpName)
 {
-  m_waitevent = ::CreateEvent(lpEventAttributes, bManualReset, bInitialState,lpName);
+  m_waitevent = ::CreateEvent(lpEventAttributes, bManualReset, bInitialState, (LPCTSTR) lpName);
 }
 
 CWaitEvent::~CWaitEvent(void)
@@ -52,13 +52,15 @@ bool CWaitEvent::Wait()
 }
 
 #elif defined _LINUX || defined __APPLE__
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
+#endif
 #include <semaphore.h>
 #include <time.h>
 
-CWaitEvent::CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,BOOL bManualReset,BOOL bInitialState,LPCTSTR lpName)
+CWaitEvent::CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes, int bManualReset, int bInitialState, const char* lpName)
 {
-  int retCode = sem_init(m_waitevent,   // handle to the event semaphore
+  int retCode = sem_init(&m_waitevent,   // handle to the event semaphore
                          0,       // not shared
                          0);      // initially set to non signaled state
 }

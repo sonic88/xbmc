@@ -24,7 +24,7 @@
 class CWaitEvent
 {
   public:
-    CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,BOOL bManualReset,BOOL bInitialState,LPCTSTR lpName);
+    CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes, int bManualReset, int bInitialState, const char* lpName);
     virtual ~CWaitEvent(void);
     bool Wait();
     void SetEvent();

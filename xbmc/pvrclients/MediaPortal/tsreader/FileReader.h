@@ -27,13 +27,9 @@
  *    http://forums.dvbowners.com/
  */
 
-#if defined _WIN32 && defined TSREADER
+#if defined TSREADER
 
 #include "os-dependent.h"
-
-#if _WIN32
-  #include <windows.h>
-#endif
 
 class FileReader
 {
@@ -71,8 +67,13 @@ class FileReader
     virtual int HasData(){return 0; } ;
 
   protected:
+#ifdef _WIN32
     HANDLE   m_hFile;               // Handle to file for streaming
     HANDLE   m_hInfoFile;           // Handle to Infofile for filesize from FileWriter
+#elif defined _LINUX
+    int      m_hFile;               // Handle to file for streaming
+    int      m_hInfoFile;           // Handle to Infofile for filesize from FileWriter
+#endif
     char*    m_pFileName;           // The filename where we stream
     bool     m_bReadOnly;
     bool     m_bDelay;

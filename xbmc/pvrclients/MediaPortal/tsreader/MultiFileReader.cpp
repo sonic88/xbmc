@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2011 Team XBMC
  *      http://www.xbmc.org
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -302,14 +302,20 @@ long MultiFileReader::RefreshTSBufferFile()
   long filesAdded, filesRemoved;
   long filesAdded2, filesRemoved2;
   long Error;
-  long Loop=10 ;
+  long Loop=10;
 
   //char* pBuffer;
   wchar_t* pBuffer;
 
   do
   {
-    Error=0;
+    Error = 0;
+    currentPosition = -1;
+    filesAdded = -1;
+    filesRemoved = -1;
+    filesAdded2 = -2;
+    filesRemoved2 = -2;
+
     m_TSBufferFile.SetFilePointer(0, FILE_END);
     int64_t fileLength = m_TSBufferFile.GetFilePointer();
 
@@ -318,15 +324,23 @@ long MultiFileReader::RefreshTSBufferFile()
       return S_FALSE;
 
     m_TSBufferFile.SetFilePointer(0, FILE_BEGIN);
-  
-    result=m_TSBufferFile.Read((unsigned char*)&currentPosition, sizeof(currentPosition), &bytesRead);
-    if (!SUCCEEDED(result)|| bytesRead!=sizeof(currentPosition)) Error|=0x02;
 
-    result=m_TSBufferFile.Read((unsigned char*)&filesAdded, sizeof(filesAdded), &bytesRead);
-    if (!SUCCEEDED(result)|| bytesRead!=sizeof(filesAdded)) Error=0x04;
+    int readLength = sizeof(currentPosition) + sizeof(filesAdded) + sizeof(filesRemoved);
+    unsigned char* readBuffer = new unsigned char[readLength];
 
-    result=m_TSBufferFile.Read((unsigned char*)&filesRemoved, sizeof(filesRemoved), &bytesRead);
-    if (!SUCCEEDED(result)||  bytesRead!=sizeof(filesRemoved)) Error=0x08;
+    result = m_TSBufferFile.Read(readBuffer, readLength, &bytesRead);
+
+    if (!SUCCEEDED(result) || bytesRead!=readLength)
+      Error |= 0x02;
+
+    if(Error == 0)
+    {
+      currentPosition = *((int64_t*)(readBuffer + 0));
+		  filesAdded = *((long*)(readBuffer + sizeof(int64_t)));
+		  filesRemoved = *((long*)(readBuffer + sizeof(int64_t) + sizeof(long)));
+    }
+
+    delete[] readBuffer;
 
     // If no files added or removed, break the loop !
     if ((m_filesAdded == filesAdded) && (m_filesRemoved == filesRemoved)) 
@@ -335,20 +349,32 @@ long MultiFileReader::RefreshTSBufferFile()
     int64_t remainingLength = fileLength - sizeof(int64_t) - sizeof(long) - sizeof(long) - sizeof(long) - sizeof(long) ;
 
     // Above 100kb seems stupid and figure out a problem !!!
-    if (remainingLength > 100000) Error=0x10;;
+    if (remainingLength > 100000)
+      Error=0x10;;
   
     pBuffer = (wchar_t*) new char[(unsigned int)remainingLength];
 
     result=m_TSBufferFile.Read((unsigned char*)pBuffer, (ULONG)remainingLength, &bytesRead);
-    if (!SUCCEEDED(result)||  bytesRead != remainingLength) Error=0x20 ;
+    if (!SUCCEEDED(result)||  bytesRead != remainingLength) Error=0x20;
+	
+    readLength = sizeof(filesAdded) + sizeof(filesRemoved);
 
-     result=m_TSBufferFile.Read((unsigned char*)&filesAdded2, sizeof(filesAdded2), &bytesRead);
-    if (!SUCCEEDED(result)|| bytesRead!=sizeof(filesAdded2)) Error=0x40 ;
+    readBuffer = new unsigned char[readLength];
 
-     result=m_TSBufferFile.Read((unsigned char*)&filesRemoved2, sizeof(filesRemoved2), &bytesRead);
-    if (!SUCCEEDED(result)|| bytesRead!=sizeof(filesRemoved2)) Error=0x40 ;
+    result = m_TSBufferFile.Read(readBuffer, readLength, &bytesRead);
 
-    if ((filesAdded2!=filesAdded) || (filesRemoved2!=filesRemoved))
+    if (!SUCCEEDED(result) || bytesRead != readLength) 
+      Error |= 0x40;
+
+    if(Error == 0)
+	  {
+		  filesAdded2 = *((long*)(readBuffer + 0));
+		  filesRemoved2 = *((long*)(readBuffer + sizeof(long)));
+	  }
+
+    delete[] readBuffer;
+
+    if ((filesAdded2 != filesAdded) || (filesRemoved2 != filesRemoved))
     {
       Error = 0x80;
 
@@ -654,7 +680,8 @@ void MultiFileReader::setBufferPointer()
 
 
 int64_t MultiFileReader::GetFileSize()
-{ //TODO: check me against the MediaPortal sources. Double return seems useless.
+{
+  RefreshTSBufferFile();
   return m_endPosition - m_startPosition;
   //if (m_cachedFileSize==0)
   //{

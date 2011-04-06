@@ -558,7 +558,7 @@ namespace ForTheRecord
   {
     int retval = E_FAILED;
     CURL *curl;
-    Json::Value response;
+    std::string response;
 
     XBMC->Log(LOG_DEBUG, "DeleteRecording");
 
@@ -567,14 +567,9 @@ namespace ForTheRecord
     if(curl)
     {
       std::string command = "ForTheRecord/Control/DeleteRecording?deleteRecordingFile=true";
-      //char* pch = curl_easy_escape(curl, recordingfilename.c_str(), 0);
       std::string arguments = recordingfilename;
-      //curl_free(pch);
       
-      XBMC->Log(LOG_DEBUG, "DeleteRecording - URL : %s\n", command.c_str());
-      XBMC->Log(LOG_DEBUG, "                  body: %s\n", arguments.c_str());
-
-      retval = ForTheRecord::ForTheRecordJSONRPC(command, arguments, response);
+      retval = ForTheRecord::ForTheRecordRPC(command, arguments, response);
 
       curl_easy_cleanup(curl);
     }

@@ -1,3 +1,5 @@
+v0.0.1.114 (26-02-2011)
+- Delete recording is now actually working...
 v0.0.1.113 (26-02-2011)
 - Upcoming recordings now showing as timers in EPG and timerlist
 - Delete timer implemented

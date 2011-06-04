@@ -33,6 +33,7 @@ typedef HANDLE pthread_mutex_t;
 typedef HANDLE wait_event_t;
 typedef CRITICAL_SECTION criticalsection_t;
 typedef unsigned __int32 uint;
+typedef unsigned char byte;
 
 #ifndef va_copy
 #define va_copy(x, y) x = y

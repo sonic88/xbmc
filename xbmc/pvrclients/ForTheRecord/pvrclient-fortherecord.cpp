@@ -19,6 +19,7 @@
 #include "client.h"
 //#include "timers.h"
 #include "channel.h"
+#include "activerecording.h"
 #include "upcomingrecording.h"
 #include "recordinggroup.h"
 #include "recordingsummary.h"
@@ -27,6 +28,10 @@
 #include "utils.h"
 #include "pvrclient-fortherecord.h"
 #include "fortherecordrpc.h"
+
+#ifdef TSREADER
+#include "TSReader.h"
+#endif
 
 using namespace std;
 
@@ -48,6 +53,8 @@ cPVRClientForTheRecord::cPVRClientForTheRecord()
 cPVRClientForTheRecord::~cPVRClientForTheRecord()
 {
   XBMC->Log(LOG_DEBUG, "->~cPVRClientForTheRecord()");
+  // Check if we are still reading a TV/Radio stream and close it here
+  CloseLiveStream();
 }
 
 
@@ -109,7 +116,7 @@ void cPVRClientForTheRecord::Disconnect()
 /** General handling */
 
 // Used among others for the server name string in the "Recordings" view
-const char* cPVRClientForTheRecord::GetBackendName()
+const char* cPVRClientForTheRecord::GetBackendName(void)
 {
   XBMC->Log(LOG_DEBUG, "->GetBackendName()");
 
@@ -123,23 +130,23 @@ const char* cPVRClientForTheRecord::GetBackendName()
   return m_BackendName.c_str();
 }
 
-const char* cPVRClientForTheRecord::GetBackendVersion()
+const char* cPVRClientForTheRecord::GetBackendVersion(void)
 {
   // Don't know how to fetch this from ForTheRecord
   return "0.0";
 }
 
-const char* cPVRClientForTheRecord::GetConnectionString()
+const char* cPVRClientForTheRecord::GetConnectionString(void)
 {
   XBMC->Log(LOG_DEBUG, "->GetConnectionString()");
 
   return g_szBaseURL.c_str();
 }
 
-PVR_ERROR cPVRClientForTheRecord::GetDriveSpace(long long *total, long long *used)
+PVR_ERROR cPVRClientForTheRecord::GetDriveSpace(long long *iTotal, long long *iUsed)
 {
-  *total = 0;
-  *used = 0;
+  *iTotal = 0;
+  *iUsed = 0;
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -154,7 +161,7 @@ PVR_ERROR cPVRClientForTheRecord::GetBackendTime(time_t *localTime, int *gmtOffs
 
 PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channel, PVRHANDLE handle, time_t start, time_t end)
 {
-  XBMC->Log(LOG_DEBUG, "->RequestEPGForChannel(%i)", channel.number);
+  XBMC->Log(LOG_DEBUG, "->RequestEPGForChannel(%i)", channel.uid);
 
   cChannel* ftrchannel = FetchChannel(channel.uid);
 
@@ -178,6 +185,8 @@ PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channe
         int size = response.size();
         PVR_PROGINFO proginfo;
         cEpg epg;
+
+        memset(&proginfo, NULL, sizeof(PVR_PROGINFO));
 
         // parse channel list
         for ( int index =0; index < size; ++index )
@@ -204,12 +213,12 @@ PVR_ERROR cPVRClientForTheRecord::RequestEPGForChannel(const PVR_CHANNEL &channe
     }
     else
     {
-      XBMC->Log(LOG_ERROR, "GetEPGData failed for channel id:%i", channel.number);
+      XBMC->Log(LOG_ERROR, "GetEPGData failed for channel id:%i", channel.uid);
     }
   }
   else
   {
-    XBMC->Log(LOG_ERROR, "Channel (%i) did not return a channel class.", channel.number);
+    XBMC->Log(LOG_ERROR, "Channel (%i) did not return a channel class.", channel.uid);
   }
 
   return PVR_ERROR_NO_ERROR;
@@ -491,45 +500,76 @@ int cPVRClientForTheRecord::GetNumTimers(void)
 
 PVR_ERROR cPVRClientForTheRecord::RequestTimerList(PVRHANDLE handle)
 {
-  Json::Value response;
-  int iNumSchedules = 0;
+  Json::Value activeRecordingsResponse, upcomingProgramsResponse;
+  int         iNumberOfTimers = 0;
+  PVR_TIMERINFO   tag;
+  int         numberoftimers;
 
-  XBMC->Log(LOG_DEBUG, "RequestTimerList()");
+  XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
+
+  // retrieve the currently active recordings
+  int retval = ForTheRecord::GetActiveRecordings(activeRecordingsResponse);
 
   // pick up the upcoming recordings
-  int retval = ForTheRecord::GetUpcomingPrograms(response);
+  retval = ForTheRecord::GetUpcomingPrograms(upcomingProgramsResponse);
   if (retval < 0) 
   {
     return PVR_ERROR_SERVER_ERROR;
   }
 
-  int numberoftimers = response.size();
+  memset(&tag, 0 , sizeof(tag));
+  numberoftimers = upcomingProgramsResponse.size();
+
   for (int i = 0; i < numberoftimers; i++)
   {
     cUpcomingRecording upcomingrecording;
-    if (upcomingrecording.Parse(response[i]))
+    if (upcomingrecording.Parse(upcomingProgramsResponse[i]))
     {
-      PVR_TIMERINFO tag;
-      memset(&tag, 0 , sizeof(tag));
-      tag.index       = iNumSchedules;
-      tag.active      = true;
+      tag.index       = iNumberOfTimers;
       cChannel* pChannel = FetchChannel(upcomingrecording.ChannelId());
       tag.channelNum  = pChannel->ID();
       tag.firstday    = 0;
-      tag.marginstart = upcomingrecording.PreRecordSeconds() / 60;
-      tag.marginstop  = upcomingrecording.PostRecordSeconds() / 60;
       tag.starttime   = upcomingrecording.StartTime() - (tag.marginstart * 60);
       tag.endtime     = upcomingrecording.StopTime() + (tag.marginstop * 60);
-      tag.recording   = upcomingrecording.IsRecording();
+      // build the XBMC PVR State
+      tag.recording   = false;
+      if (upcomingrecording.IsCancelled())
+      {
+        tag.active      = false;
+      }
+      else
+      {
+        tag.active      = true;
+        if (activeRecordingsResponse.size() > 0)
+        {
+          // Is the this upcoming program in the list of active recordings?
+          for (Json::Value::UInt j = 0; j < activeRecordingsResponse.size(); j++)
+          {
+            cActiveRecording activerecording;
+            if (activerecording.Parse(activeRecordingsResponse[j]))
+            {
+              if (upcomingrecording.UpcomingProgramId() == activerecording.UpcomingProgramId())
+              {
+                tag.recording = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+
       tag.title       = upcomingrecording.Title().c_str();
       tag.directory   = "";
       tag.priority    = 0;
       tag.lifetime    = 0;
       tag.repeat      = false;
       tag.repeatflags = 0;
+      tag.marginstart = upcomingrecording.PreRecordSeconds() / 60;
+      tag.marginstop  = upcomingrecording.PostRecordSeconds() / 60;
+
 
       PVR->TransferTimerEntry(handle, &tag);
-      iNumSchedules++;
+      iNumberOfTimers++;
     }
   }
 
@@ -549,9 +589,26 @@ PVR_ERROR cPVRClientForTheRecord::AddTimer(const PVR_TIMERINFO &timerinfo)
   time_t starttime = timerinfo.starttime + (timerinfo.marginstart * 60);
   cChannel* pChannel = FetchChannel(timerinfo.channelNum);
 
-  int retval = ForTheRecord::AddOneTimeSchedule(pChannel->Guid(), starttime, timerinfo.title, timerinfo.marginstart * 60, timerinfo.marginstop * 60);
+  Json::Value addScheduleResponse;
+  int retval = ForTheRecord::AddOneTimeSchedule(pChannel->Guid(), timerinfo.starttime, timerinfo.title, timerinfo.marginstart * 60, timerinfo.marginstop * 60, addScheduleResponse);
   if (retval < 0) 
   {
+    return PVR_ERROR_SERVER_ERROR;
+  }
+
+  std::string scheduleid = addScheduleResponse["ScheduleId"].asString();
+
+  // Ok, we created a schedule, but did that lead to an upcoming recording?
+  Json::Value upcomingProgramsResponse;
+  retval = ForTheRecord::GetUpcomingProgramsForSchedule(addScheduleResponse, upcomingProgramsResponse);
+
+  // We should have at least one upcoming program for this schedule, otherwise nothing will be recorded
+  if (retval <= 0)
+  {
+    // remove the added (now stale) schedule, ignore failure (what are we to do anyway?)
+    ForTheRecord::DeleteSchedule(scheduleid);
+
+    // TODO: remove the added (now stale) schedule and add a manual recording
     return PVR_ERROR_SERVER_ERROR;
   }
 
@@ -651,21 +708,21 @@ cChannel* cPVRClientForTheRecord::FetchChannel(std::string channelid)
 
 bool cPVRClientForTheRecord::OpenLiveStream(const PVR_CHANNEL &channelinfo)
 {
-  XBMC->Log(LOG_DEBUG, "->OpenLiveStream(%i)", channelinfo.number);
+  XBMC->Log(LOG_DEBUG, "->OpenLiveStream(%i)", channelinfo.uid);
 
   cChannel* channel = FetchChannel(channelinfo.uid);
 
   if (channel)
   {
     std::string filename;
-    XBMC->Log(LOG_INFO, "Tune XBMC channel: %i", channelinfo.number);
+    XBMC->Log(LOG_INFO, "Tune XBMC channel: %i", channelinfo.uid);
     XBMC->Log(LOG_INFO, "Corresponding ForTheRecord channel: %s", channel->Guid().c_str());
 
     ForTheRecord::TuneLiveStream(channel->Guid(), channel->Type(), filename);
 
     if (filename.length() == 0)
     {
-      XBMC->Log(LOG_ERROR, "Could not start the timeshift for channel %i (%s)", channelinfo.number, channel->Guid().c_str());
+      XBMC->Log(LOG_ERROR, "Could not start the timeshift for channel %i (%s)", channelinfo.uid, channel->Guid().c_str());
       return false;
     }
 
@@ -694,19 +751,19 @@ bool cPVRClientForTheRecord::OpenLiveStream(const PVR_CHANNEL &channelinfo)
   return false;
 }
 
-int cPVRClientForTheRecord::ReadLiveStream(unsigned char* buf, int buf_size)
+int cPVRClientForTheRecord::ReadLiveStream(unsigned char* pBuffer, int iBufferSize)
 {
 #ifdef TSREADER
-  unsigned long read_wanted = buf_size;
+  unsigned long read_wanted = iBufferSize;
   unsigned long read_done   = 0;
   static int read_timeouts  = 0;
-  unsigned char* bufptr = buf;
+  unsigned char* bufptr = pBuffer;
 
   //XBMC->Log(LOG_DEBUG, "->ReadLiveStream(buf_size=%i)", buf_size);
 
-  while (read_done < (unsigned long) buf_size)
+  while (read_done < (unsigned long) iBufferSize)
   {
-    read_wanted = buf_size - read_done;
+    read_wanted = iBufferSize - read_done;
     if (!m_tsreader)
       return -1;
 
@@ -718,7 +775,7 @@ int cPVRClientForTheRecord::ReadLiveStream(unsigned char* buf, int buf_size)
     }
     read_done += read_wanted;
 
-    if ( read_done < (unsigned long) buf_size )
+    if ( read_done < (unsigned long) iBufferSize )
     {
       if (read_timeouts > 50)
       {

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2010 Marcel Groothuis
+ *      Copyright (C) 2010-2011 Marcel Groothuis, Fred Hoogduin
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  *
  */
 
+#include "os-dependent.h"
+
 #include <vector>
 
 /* Master defines for client control */
@@ -25,11 +27,11 @@
 #include "channel.h"
 #include "recording.h"
 #include "guideprogram.h"
-#include "os-dependent.h"
 
 #ifdef TSREADER
-#include "TSReader.h"
+//#include "lib/tsreader/TSReader.h"
 #include "KeepAliveThread.h"
+class CTsReader;
 #endif
 
 class cPVRClientForTheRecord
@@ -45,10 +47,10 @@ public:
   bool IsUp();
 
   /* General handling */
-  const char* GetBackendName();
-  const char* GetBackendVersion();
-  const char* GetConnectionString();
-  PVR_ERROR GetDriveSpace(long long *total, long long *used);
+  const char* GetBackendName(void);
+  const char* GetBackendVersion(void);
+  const char* GetConnectionString(void);
+  PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
   PVR_ERROR GetBackendTime(time_t *localTime, int *gmtOffset);
 
   /* EPG handling */
@@ -85,7 +87,7 @@ public:
   bool OpenRecordedStream(const PVR_RECORDINGINFO &recinfo);
   void CloseRecordedStream(void);
   int ReadRecordedStream(unsigned char* buf, int buf_size);
-  long long SeekRecordedStream(long long pos, int whence=SEEK_SET);
+  long long SeekRecordedStream(long long iPosition, int iWhence = SEEK_SET);
   long long LengthRecordedStream(void);
 
   /* Used for rtsp streaming */

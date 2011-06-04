@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2011 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -18,10 +18,6 @@
  *
  */
 
-/*
-* for DESCRIPTION see 'PVRClient-MediaPortal.cpp'
-*/
-
 #include "os-dependent.h"
 
 #include <vector>
@@ -35,9 +31,8 @@
 /* Local includes */
 #include "Socket.h"
 
-#ifdef TSREADER
-#include "TSReader.h"
-#endif
+/* Use a forward declaration here. Including RTSPClient.h via TSReader.h at this point gives compile errors */
+class CTsReader;
 
 class cPVRClientMediaPortal
 {
@@ -55,10 +50,10 @@ public:
   bool IsUp();
 
   /* General handling */
-  const char* GetBackendName();
-  const char* GetBackendVersion();
-  const char* GetConnectionString();
-  PVR_ERROR GetDriveSpace(long long *total, long long *used);
+  const char* GetBackendName(void);
+  const char* GetBackendVersion(void);
+  const char* GetConnectionString(void);
+  PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed);
   PVR_ERROR GetMPTVTime(time_t *localTime, int *gmtOffset);
 
   /* EPG handling */
@@ -90,16 +85,14 @@ public:
   int GetCurrentClientChannel();
   bool SwitchChannel(const PVR_CHANNEL &channelinfo);
   PVR_ERROR SignalQuality(PVR_SIGNALQUALITY &qualityinfo);
+  const char* GetLiveStreamURL(const PVR_CHANNEL &channelinfo);
 
   /* Record stream handling */
   bool OpenRecordedStream(const PVR_RECORDINGINFO &recinfo);
   void CloseRecordedStream(void);
-  int ReadRecordedStream(unsigned char* buf, int buf_size);
-  long long SeekRecordedStream(long long pos, int whence=SEEK_SET);
+  int ReadRecordedStream(unsigned char *pBuffer, unsigned int iBufferSize);
+  long long SeekRecordedStream(long long iPosition, int iWhence = SEEK_SET);
   long long LengthRecordedStream(void);
-
-  //MG: Added for MediaPortal streaming
-  const char* GetLiveStreamURL(const PVR_CHANNEL &channelinfo);
 
 protected:
   MPTV::Socket           *m_tcpclient;
@@ -112,6 +105,7 @@ private:
   bool                    m_bStop;
   bool                    m_bTimeShiftStarted;
   std::string             m_ConnectionString;
+  std::string             m_PlaybackURL;
   std::string             m_BackendName;
   std::string             m_BackendVersion;
   time_t                  m_BackendUTCoffset;

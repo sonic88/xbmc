@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2011 Team XBMC
  *      http://www.xbmc.org
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -407,7 +407,7 @@ PVR_ERROR GetStreamProperties(PVR_STREAMPROPS* props)
 //-- GetBackendName -----------------------------------------------------------
 // Return the Name of the Backend
 //-----------------------------------------------------------------------------
-const char * GetBackendName()
+const char * GetBackendName(void)
 {
   return g_client->GetBackendName();
 }
@@ -415,7 +415,7 @@ const char * GetBackendName()
 //-- GetBackendVersion --------------------------------------------------------
 // Return the Version of the Backend as String
 //-----------------------------------------------------------------------------
-const char * GetBackendVersion()
+const char * GetBackendVersion(void)
 {
   return g_client->GetBackendVersion();
 }
@@ -423,7 +423,7 @@ const char * GetBackendVersion()
 //-- GetConnectionString ------------------------------------------------------
 // Return a String with connection info, if available
 //-----------------------------------------------------------------------------
-const char * GetConnectionString()
+const char * GetConnectionString(void)
 {
   return g_client->GetConnectionString();
 }
@@ -431,9 +431,9 @@ const char * GetConnectionString()
 //-- GetDriveSpace ------------------------------------------------------------
 // Return the Total and Free Drive space on the PVR Backend
 //-----------------------------------------------------------------------------
-PVR_ERROR GetDriveSpace(long long *total, long long *used)
+PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 {
-  return g_client->GetDriveSpace(total, used);
+  return g_client->GetDriveSpace(iTotal, iUsed);
 }
 
 PVR_ERROR GetBackendTime(time_t *localTime, int *gmtOffset)

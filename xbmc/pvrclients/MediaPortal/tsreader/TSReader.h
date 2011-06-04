@@ -18,9 +18,9 @@
  */
 #ifdef TSREADER
 
+#include "RTSPClient.h"
 #include "client.h"
 #include "FileReader.h"
-#include "RTSPClient.h"
 #include "MemoryBuffer.h"
 #include "StdString.h"
 
@@ -32,6 +32,7 @@ public:
   long Open(const char* pszFileName);
   long Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes);
   void Close();
+  void OnZap(void);
 
 private:
   bool            m_bTimeShifting;

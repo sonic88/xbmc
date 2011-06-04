@@ -226,6 +226,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\uri.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\uri.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\utils.cpp"
 				>
 			</File>

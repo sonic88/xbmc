@@ -603,6 +603,7 @@ bool CTVDatabase::GetEPGForChannel(const cPVRChannelInfoTag &channelinfo, cPVREp
   {
     if (NULL == m_pDB.get()) return false;
     if (NULL == m_pDS.get()) return false;
+    if (NULL == epg) return false;
 
     CStdString SQL=FormatSQL("select * from GuideData WHERE GuideData.idChannel = '%u' AND GuideData.EndTime > '%s' "
                              "AND GuideData.StartTime < '%s' ORDER BY GuideData.StartTime;", channelinfo.ChannelID(), start.GetAsDBDateTime().c_str(), end.GetAsDBDateTime().c_str());
@@ -614,15 +615,16 @@ bool CTVDatabase::GetEPGForChannel(const cPVRChannelInfoTag &channelinfo, cPVREp
     while (!m_pDS->eof())
     {
       PVR_PROGINFO broadcast;
+      memset(&broadcast, NULL, sizeof(PVR_PROGINFO));
       CDateTime startTime, endTime;
       time_t startTime_t, endTime_t;
       broadcast.uid             = m_pDS->fv("idUniqueBroadcast").get_asInt();
-      broadcast.title           = m_pDS->fv("strTitle").get_asString().c_str();
-      broadcast.subtitle        = m_pDS->fv("strPlotOutline").get_asString().c_str();
-      broadcast.description     = m_pDS->fv("strPlot").get_asString().c_str();
+      //broadcast.title           = m_pDS->fv("strTitle").get_asString().c_str();
+      //broadcast.subtitle        = m_pDS->fv("strPlotOutline").get_asString().c_str();
+      //broadcast.description     = m_pDS->fv("strPlot").get_asString().c_str();
       broadcast.genre_type      = m_pDS->fv("GenreType").get_asInt();
       broadcast.genre_sub_type  = m_pDS->fv("GenreSubType").get_asInt();
-      broadcast.genre_text      = m_pDS->fv("Genre").get_asString().c_str();
+      //broadcast.genre_text      = m_pDS->fv("Genre").get_asString().c_str();
       broadcast.parental_rating = m_pDS->fv("parentalRating").get_asInt();
       startTime.SetFromDBDateTime(m_pDS->fv("StartTime").get_asString());
       endTime.SetFromDBDateTime(m_pDS->fv("EndTime").get_asString());
@@ -631,7 +633,33 @@ bool CTVDatabase::GetEPGForChannel(const cPVRChannelInfoTag &channelinfo, cPVREp
       broadcast.starttime = startTime_t;
       broadcast.endtime = endTime_t;
 
-      cPVREpg::Add(&broadcast, epg);
+      //cPVREpg::Add(&broadcast, epg); //MG: doesn't work correctly (string corruption)
+      cPVREPGInfoTag *InfoTag     = NULL;
+      cPVREPGInfoTag *newInfoTag  = NULL;
+      long uniqueBroadcastID      = broadcast.uid;
+
+      InfoTag = (cPVREPGInfoTag *)epg->GetInfoTag(uniqueBroadcastID, broadcast.starttime);
+      if (!InfoTag)
+        InfoTag = newInfoTag = new cPVREPGInfoTag(uniqueBroadcastID);
+
+      if (InfoTag)
+      {
+        CStdString path;
+        path.Format("pvr://guide/channel-%04i/%s.epg", epg->m_Channel->Number(), InfoTag->Start().GetAsDBDateTime().c_str());
+        InfoTag->SetPath(path);
+        InfoTag->SetStart((time_t)broadcast.starttime);
+        InfoTag->SetEnd((time_t)broadcast.endtime);
+        InfoTag->SetTitle(m_pDS->fv("strTitle").get_asString());
+        InfoTag->SetPlotOutline(m_pDS->fv("strPlotOutline").get_asString());
+        InfoTag->SetPlot(m_pDS->fv("strPlot").get_asString());
+        InfoTag->SetGenre(broadcast.genre_type, broadcast.genre_sub_type, m_pDS->fv("Genre").get_asString().c_str());
+        InfoTag->SetParentalRating(broadcast.parental_rating);
+        InfoTag->SetIcon(epg->m_Channel->Icon());
+        InfoTag->m_Epg = epg;
+
+        if (newInfoTag)
+	        epg->AddInfoTag(newInfoTag);
+      }
 
       m_pDS->next();
     }

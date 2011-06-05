@@ -58,6 +58,7 @@ struct EPGSearchFilter
 class cPVREpg
 {
   friend class cPVREpgs;
+  friend class CTVDatabase;
 
 private:
   long m_channelID;
@@ -93,6 +94,7 @@ public:
 class cPVREPGInfoTag
 {
   friend class cPVREpg;
+  friend class CTVDatabase;
 private:
   cPVREpg *m_Epg;     // The Schedule this event belongs to
   const cPVRTimerInfoTag   *m_Timer;

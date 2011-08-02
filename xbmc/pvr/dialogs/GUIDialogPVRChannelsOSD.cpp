@@ -131,18 +131,12 @@ void CGUIDialogPVRChannelsOSD::Clear()
   m_vecItems->Clear();
 }
 
-void CGUIDialogPVRChannelsOSD::CloseOrSelect(void)
+void CGUIDialogPVRChannelsOSD::CloseOrSelect(unsigned int iItem)
 {
   if (g_guiSettings.GetBool("pvrmenu.closechannelosdonswitch"))
-  {
     Close();
-  }
   else
-  {
-    CPVRChannel channel;
-    g_PVRManager.GetCurrentChannel(&channel);
-    m_viewControl.SetSelectedItem(channel.ChannelNumber() - 1);
-  }
+    m_viewControl.SetSelectedItem(iItem);
 }
 
 void CGUIDialogPVRChannelsOSD::GotoChannel(int item)
@@ -153,17 +147,22 @@ void CGUIDialogPVRChannelsOSD::GotoChannel(int item)
 
   if (pItem->m_strPath == g_application.CurrentFile())
   {
-    CloseOrSelect();
+    CloseOrSelect(item);
     return;
   }
 
-  if (!g_application.PlayFile(*pItem))
+  if (g_PVRManager.IsPlaying() && pItem->HasPVRChannelInfoTag() && g_application.m_pPlayer)
   {
-    CGUIDialogOK::ShowAndGetInput(19033,0,19136,0);
-    return;
+    if (!g_application.m_pPlayer->SwitchChannel(*pItem->GetPVRChannelInfoTag()))
+    {
+      Close(true);
+      return;
+    }
   }
+  else
+    g_application.getApplicationMessenger().PlayFile(*pItem);
 
-  CloseOrSelect();
+  CloseOrSelect(item);
 }
 
 void CGUIDialogPVRChannelsOSD::ShowInfo(int item)

@@ -21,10 +21,6 @@
 
 #include "Application.h"
 #include "GUIInfoManager.h"
-#ifdef HAS_VIDEO_PLAYBACK
-#include "cores/VideoRenderers/RenderManager.h"
-#endif
-
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
@@ -370,6 +366,7 @@ void CPVRManager::ResetProperties(void)
   m_PreviousChannel[1]    = -1;
   m_PreviousChannelIndex  = 0;
   m_LastChannel           = 0;
+  m_bIsSwitchingChannels  = false;
 
   for (unsigned int iJobPtr = 0; iJobPtr < m_pendingUpdates.size(); iJobPtr++)
     delete m_pendingUpdates.at(iJobPtr);
@@ -560,106 +557,12 @@ bool CPVRManager::StartRecordingOnPlayingChannel(bool bOnOff)
 
 void CPVRManager::SaveCurrentChannelSettings(void)
 {
-  CSingleLock lock(m_critSection);
-
-  CPVRChannel channel;
-  if (!m_addons->GetPlayingChannel(&channel))
-    return;
-
-  if (!m_database->Open())
-  {
-    CLog::Log(LOGERROR, "PVR - %s - could not open the database", __FUNCTION__);
-    return;
-  }
-
-  if (g_settings.m_currentVideoSettings != g_settings.m_defaultVideoSettings)
-  {
-    CLog::Log(LOGDEBUG, "PVR - %s - persisting custom channel settings for channel '%s'",
-        __FUNCTION__, channel.ChannelName().c_str());
-    m_database->PersistChannelSettings(channel, g_settings.m_currentVideoSettings);
-  }
-  else
-  {
-    CLog::Log(LOGDEBUG, "PVR - %s - no custom channel settings for channel '%s'",
-        __FUNCTION__, channel.ChannelName().c_str());
-    m_database->DeleteChannelSettings(channel);
-  }
-
-  m_database->Close();
+  m_addons->SaveCurrentChannelSettings();
 }
 
 void CPVRManager::LoadCurrentChannelSettings()
 {
-  CPVRChannel channel;
-  if (!m_addons->GetPlayingChannel(&channel))
-    return;
-
-  if (!m_database->Open())
-  {
-    CLog::Log(LOGERROR, "PVR - %s - could not open the database", __FUNCTION__);
-    return;
-  }
-
-  if (g_application.m_pPlayer)
-  {
-    /* set the default settings first */
-    CVideoSettings loadedChannelSettings = g_settings.m_defaultVideoSettings;
-
-    /* try to load the settings from the database */
-    m_database->GetChannelSettings(channel, loadedChannelSettings);
-    m_database->Close();
-
-    g_settings.m_currentVideoSettings = g_settings.m_defaultVideoSettings;
-    g_settings.m_currentVideoSettings.m_Brightness          = loadedChannelSettings.m_Brightness;
-    g_settings.m_currentVideoSettings.m_Contrast            = loadedChannelSettings.m_Contrast;
-    g_settings.m_currentVideoSettings.m_Gamma               = loadedChannelSettings.m_Gamma;
-    g_settings.m_currentVideoSettings.m_Crop                = loadedChannelSettings.m_Crop;
-    g_settings.m_currentVideoSettings.m_CropLeft            = loadedChannelSettings.m_CropLeft;
-    g_settings.m_currentVideoSettings.m_CropRight           = loadedChannelSettings.m_CropRight;
-    g_settings.m_currentVideoSettings.m_CropTop             = loadedChannelSettings.m_CropTop;
-    g_settings.m_currentVideoSettings.m_CropBottom          = loadedChannelSettings.m_CropBottom;
-    g_settings.m_currentVideoSettings.m_CustomPixelRatio    = loadedChannelSettings.m_CustomPixelRatio;
-    g_settings.m_currentVideoSettings.m_CustomZoomAmount    = loadedChannelSettings.m_CustomZoomAmount;
-    g_settings.m_currentVideoSettings.m_CustomVerticalShift = loadedChannelSettings.m_CustomVerticalShift;
-    g_settings.m_currentVideoSettings.m_NoiseReduction      = loadedChannelSettings.m_NoiseReduction;
-    g_settings.m_currentVideoSettings.m_Sharpness           = loadedChannelSettings.m_Sharpness;
-    g_settings.m_currentVideoSettings.m_InterlaceMethod     = loadedChannelSettings.m_InterlaceMethod;
-    g_settings.m_currentVideoSettings.m_OutputToAllSpeakers = loadedChannelSettings.m_OutputToAllSpeakers;
-    g_settings.m_currentVideoSettings.m_AudioDelay          = loadedChannelSettings.m_AudioDelay;
-    g_settings.m_currentVideoSettings.m_AudioStream         = loadedChannelSettings.m_AudioStream;
-    g_settings.m_currentVideoSettings.m_SubtitleOn          = loadedChannelSettings.m_SubtitleOn;
-    g_settings.m_currentVideoSettings.m_SubtitleDelay       = loadedChannelSettings.m_SubtitleDelay;
-    g_settings.m_currentVideoSettings.m_CustomNonLinStretch = loadedChannelSettings.m_CustomNonLinStretch;
-    g_settings.m_currentVideoSettings.m_ScalingMethod       = loadedChannelSettings.m_ScalingMethod;
-    g_settings.m_currentVideoSettings.m_PostProcess         = loadedChannelSettings.m_PostProcess;
-
-    /* only change the view mode if it's different */
-    if (g_settings.m_currentVideoSettings.m_ViewMode != loadedChannelSettings.m_ViewMode)
-    {
-      g_settings.m_currentVideoSettings.m_ViewMode = loadedChannelSettings.m_ViewMode;
-
-      g_renderManager.SetViewMode(g_settings.m_currentVideoSettings.m_ViewMode);
-      g_settings.m_currentVideoSettings.m_CustomZoomAmount = g_settings.m_fZoomAmount;
-      g_settings.m_currentVideoSettings.m_CustomPixelRatio = g_settings.m_fPixelRatio;
-    }
-
-    /* only change the subtitle stream, if it's different */
-    if (g_settings.m_currentVideoSettings.m_SubtitleStream != loadedChannelSettings.m_SubtitleStream)
-    {
-      g_settings.m_currentVideoSettings.m_SubtitleStream = loadedChannelSettings.m_SubtitleStream;
-
-      g_application.m_pPlayer->SetSubtitle(g_settings.m_currentVideoSettings.m_SubtitleStream);
-    }
-
-    /* only change the audio stream if it's different */
-    if (g_application.m_pPlayer->GetAudioStream() != g_settings.m_currentVideoSettings.m_AudioStream)
-      g_application.m_pPlayer->SetAudioStream(g_settings.m_currentVideoSettings.m_AudioStream);
-
-    g_application.m_pPlayer->SetAVDelay(g_settings.m_currentVideoSettings.m_AudioDelay);
-    g_application.m_pPlayer->SetDynamicRangeCompression((long)(g_settings.m_currentVideoSettings.m_VolumeAmplification * 100));
-    g_application.m_pPlayer->SetSubtitleVisible(g_settings.m_currentVideoSettings.m_SubtitleOn);
-    g_application.m_pPlayer->SetSubTitleDelay(g_settings.m_currentVideoSettings.m_SubtitleDelay);
-  }
+  m_addons->LoadCurrentChannelSettings();
 }
 
 void CPVRManager::SetPlayingGroup(CPVRChannelGroup *group)
@@ -737,18 +640,15 @@ bool CPVRChannelSettingsSaveJob::DoWork(void)
 
 bool CPVRManager::OpenLiveStream(const CPVRChannel &tag)
 {
-  bool bReturn = false;
-  CSingleLock lock(m_critSection);
-
+  bool bReturn(false);
   CLog::Log(LOGDEBUG,"PVRManager - %s - opening live stream on channel '%s'",
       __FUNCTION__, tag.ChannelName().c_str());
 
   if ((bReturn = m_addons->OpenLiveStream(tag)) != false)
   {
+    CSingleLock lock(m_critSection);
     if(m_currentFile)
-    {
       delete m_currentFile;
-    }
     m_currentFile = new CFileItem(tag);
 
     LoadCurrentChannelSettings();
@@ -892,7 +792,16 @@ bool CPVRManager::StartPlayback(const CPVRChannel *channel, bool bPreview /* = f
 
 bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview)
 {
+  bool bSwitched(false);
+
   CSingleLock lock(m_critSection);
+  if (m_bIsSwitchingChannels)
+  {
+    CLog::Log(LOGDEBUG, "PVRManager - %s - can't switch to channel '%s'. waiting for the previous switch to complete",
+        __FUNCTION__, channel.ChannelName().c_str());
+    return bSwitched;
+  }
+  m_bIsSwitchingChannels = true;
 
   CLog::Log(LOGDEBUG, "PVRManager - %s - switching to channel '%s'",
       __FUNCTION__, channel.ChannelName().c_str());
@@ -907,25 +816,36 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview
     m_currentFile = NULL;
   }
 
+  lock.Leave();
+
   if (!bPreview && (channel.ClientID() < 0 || !m_addons->SwitchChannel(channel)))
   {
+    lock.Enter();
+    m_bIsSwitchingChannels = false;
+    lock.Leave();
+
     CLog::Log(LOGERROR, "PVRManager - %s - failed to switch to channel '%s'",
         __FUNCTION__, channel.ChannelName().c_str());
-    CGUIDialogOK::ShowAndGetInput(19033,0,19136,0);
-    return false;
   }
-
-  m_currentFile = new CFileItem(channel);
-
-  if (!bPreview)
+  else
   {
-    LoadCurrentChannelSettings();
+    bSwitched = true;
 
-    CLog::Log(LOGNOTICE, "PVRManager - %s - switched to channel '%s'",
-        __FUNCTION__, channel.ChannelName().c_str());
+    lock.Enter();
+    m_currentFile = new CFileItem(channel);
+
+    if (!bPreview)
+    {
+      LoadCurrentChannelSettings();
+
+      CLog::Log(LOGNOTICE, "PVRManager - %s - switched to channel '%s'",
+          __FUNCTION__, channel.ChannelName().c_str());
+    }
+
+    m_bIsSwitchingChannels = false;
   }
 
-  return true;
+  return bSwitched;
 }
 
 int CPVRManager::GetTotalTime(void) const

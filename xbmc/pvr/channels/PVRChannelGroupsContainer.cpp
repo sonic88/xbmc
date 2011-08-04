@@ -224,7 +224,7 @@ bool CPVRChannelGroupsContainer::GetDirectory(const CStdString& strPath, CFileIt
     if (!group)
       group = GetGroupAllTV();
     if (group)
-      group->GetMembers(&results, !fileName.Right(7).Equals(".hidden"));
+      group->GetMembers(results, !fileName.Right(7).Equals(".hidden"));
     return true;
   }
   else if (fileName.Left(15) == "channels/radio/")
@@ -235,7 +235,7 @@ bool CPVRChannelGroupsContainer::GetDirectory(const CStdString& strPath, CFileIt
     if (!group)
       group = GetGroupAllRadio();
     if (group)
-      group->GetMembers(&results, !fileName.Right(7).Equals(".hidden"));
+      group->GetMembers(results, !fileName.Right(7).Equals(".hidden"));
     return true;
   }
 
@@ -244,7 +244,7 @@ bool CPVRChannelGroupsContainer::GetDirectory(const CStdString& strPath, CFileIt
 
 int CPVRChannelGroupsContainer::GetNumChannelsFromAll()
 {
-  return GetGroupAllTV()->GetNumChannels() + GetGroupAllRadio()->GetNumChannels();
+  return GetGroupAllTV()->Size() + GetGroupAllRadio()->Size();
 }
 
 const CPVRChannel *CPVRChannelGroupsContainer::GetByUniqueID(int iClientChannelNumber, int iClientID)

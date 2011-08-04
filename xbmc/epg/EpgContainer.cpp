@@ -90,7 +90,7 @@ void CEpgContainer::Clear(bool bClearDb /* = false */)
   m_epgs.clear();
 
   /* clear the database entries */
-  if (bClearDb)
+  if (bClearDb && !m_bIgnoreDbForClient)
   {
     if (m_database.Open())
     {
@@ -144,7 +144,7 @@ void CEpgContainer::Process(void)
   m_iLastEpgActiveTagCheck = 0;
   CDateTime::GetCurrentDateTime().GetAsTime(m_iLastEpgCleanup);
 
-  if (m_database.Open())
+  if (!m_bIgnoreDbForClient && m_database.Open())
   {
     m_database.DeleteOldEpgEntries();
     m_database.Get(*this);
@@ -206,13 +206,13 @@ bool CEpgContainer::UpdateEntry(const CEpg &entry, bool bUpdateDatabase /* = fal
   if (bThreadRunning && !Stop())
     return bReturn;
 
-  CEpg *epg = GetById(entry.EpgID());
-
+  CEpg *epg = entry.EpgID() > 0 ? GetById(entry.EpgID()) : NULL;
   if (!epg)
   {
-    epg = CreateEpg(entry.EpgID());
+    unsigned int iEpgId = entry.EpgID() > 0 ? entry.EpgID() : NextEpgId();
+    epg = CreateEpg(iEpgId);
     if (epg)
-      m_epgs.insert(std::make_pair(entry.EpgID(), epg));
+      m_epgs.insert(std::make_pair(iEpgId, epg));
   }
 
   bReturn = epg ? epg->Update(entry, bUpdateDatabase) : false;

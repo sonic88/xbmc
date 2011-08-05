@@ -180,10 +180,10 @@ bool CPVRManager::Load(void)
   m_addons->Start();
 
   /* load at least one client */
-  while (!m_addons->HasConnectedClients() && !m_bStop)
+  while (!g_application.m_bStop && !m_bStop && m_addons && !m_addons->HasConnectedClients())
     Sleep(50);
 
-  if (m_addons->HasConnectedClients() && !m_bLoaded && !m_bStop)
+  if (!g_application.m_bStop && !m_bStop && !m_bLoaded && m_addons->HasConnectedClients())
   {
     CLog::Log(LOGDEBUG, "PVRManager - %s - active clients found. continue to start", __FUNCTION__);
 
@@ -660,8 +660,6 @@ bool CPVRManager::OpenLiveStream(const CPVRChannel &tag)
     if(m_currentFile)
       delete m_currentFile;
     m_currentFile = new CFileItem(tag);
-
-    LoadCurrentChannelSettings();
   }
 
   return bReturn;
@@ -845,12 +843,8 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview
     m_currentFile = new CFileItem(channel);
 
     if (!bPreview)
-    {
-      LoadCurrentChannelSettings();
-
       CLog::Log(LOGNOTICE, "PVRManager - %s - switched to channel '%s'",
           __FUNCTION__, channel.ChannelName().c_str());
-    }
 
     m_bIsSwitchingChannels = false;
   }

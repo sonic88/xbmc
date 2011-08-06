@@ -31,7 +31,7 @@
 #include "PVRTimers.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
-#include "pvr/epg/PVREpgContainer.h"
+#include "epg/EpgContainer.h"
 #include "pvr/addons/PVRClients.h"
 
 using namespace std;
@@ -51,7 +51,7 @@ CPVRTimers::~CPVRTimers(void)
 int CPVRTimers::Load()
 {
   Unload();
-  g_PVREpg->RegisterObserver(this);
+  g_EpgContainer.RegisterObserver(this);
   Update();
 
   return size();
@@ -60,7 +60,7 @@ int CPVRTimers::Load()
 void CPVRTimers::Unload()
 {
   CSingleLock lock(m_critSection);
-  g_PVREpg->UnregisterObserver(this);
+  g_EpgContainer.UnregisterObserver(this);
 
   for (unsigned int iTimerPtr = 0; iTimerPtr < size(); iTimerPtr++)
     delete at(iTimerPtr);
@@ -192,7 +192,7 @@ bool CPVRTimers::UpdateEntries(CPVRTimers *timers)
         timerNotifications.push_back(strMessage);
       }
 
-      CPVREpgInfoTag *epgTag = (CPVREpgInfoTag *) at(iTimerPtr)->m_epgInfo;
+      CEpgInfoTag *epgTag = at(iTimerPtr)->m_epgInfo;
       if (epgTag)
         epgTag->SetTimer(NULL);
 
@@ -420,7 +420,7 @@ CPVRTimerInfoTag *CPVRTimers::InstantTimer(CPVRChannel *channel, bool bStartTime
   if (!channel)
     return NULL;
 
-  const CPVREpgInfoTag *epgTag = channel->GetEPGNow();
+  const CEpgInfoTag *epgTag = channel->GetEPGNow();
 
   CPVRTimerInfoTag *newTimer = epgTag ? CPVRTimerInfoTag::CreateFromEpg(*epgTag) : NULL;
   if (!newTimer)

@@ -29,6 +29,11 @@
 #include "EpgSearchFilter.h"
 #include "utils/Observer.h"
 
+namespace PVR
+{
+  class CPVRChannel;
+}
+
 /** EPG container for CEpgInfoTag instances */
 namespace EPG
 {
@@ -36,100 +41,28 @@ namespace EPG
   {
     friend class CEpgDatabase;
 
-  protected:
-    bool                       m_bChanged;        /*!< true if anything changed that needs to be persisted, false otherwise */
-    bool                       m_bInhibitSorting; /*!< don't sort the table if this is true */
-    bool                       m_bLoaded;         /*!< true when the initial entries have been loaded */
-    int                        m_iEpgID;          /*!< the database ID of this table */
-    CStdString                 m_strName;         /*!< the name of this table */
-    CStdString                 m_strScraperName;  /*!< the name of the scraper to use */
-    mutable const CEpgInfoTag *m_nowActive;       /*!< the tag that is currently active */
-
-    CDateTime                  m_lastScanTime;    /*!< the last time the EPG has been updated */
-    CDateTime                  m_firstDate;       /*!< start time of the first epg event in this table */
-    CDateTime                  m_lastDate;        /*!< end time of the last epg event in this table */
-
-    PVR::CPVRChannel *         m_Channel;         /*!< the channel this EPG belongs to */
-
-    mutable CCriticalSection   m_critSection;     /*!< critical section for changes in this table */
-
-    /*!
-     * @brief Update the EPG from a scraper set in the channel tag.
-     * TODO: not implemented yet
-     * @param start Get entries with a start date after this time.
-     * @param end Get entries with an end date before this time.
-     * @return True if the update was successful, false otherwise.
-     */
-    virtual bool UpdateFromScraper(time_t start, time_t end);
-
-    /*!
-     * @brief Persist all tags in this container.
-     * @param bQueueWrite Don't execute the query immediately but queue it if true.
-     * @return True if all tags were persisted, false otherwise.
-     */
-    virtual bool PersistTags(bool bQueueWrite = false) const;
-
-    /*!
-     * @brief Fix overlapping events from the tables.
-     * @param bStore Store in the database if true.
-     * @return True if the events were fixed successfully, false otherwise.
-     */
-    virtual bool FixOverlappingEvents(bool bStore = true);
-
-    /*!
-     * @brief Create a new tag.
-     * @return The new tag.
-     */
-    virtual CEpgInfoTag *CreateTag(void);
-
-    /*!
-     * @brief Sort all entries in this EPG by date.
-     */
-    virtual void Sort(void);
-
-    /*!
-     * @brief Add an infotag to this container.
-     * @param tag The tag to add.
-     */
-    virtual void AddEntry(const CEpgInfoTag &tag);
-
-    /*!
-     * @brief Remove all tags between begin and end from this table.
-     * @param begin Remove all entries after this start time. Use 0 to remove all entries before "end".
-     * @param end Remove all entries before this end time. Use 0 to remove all before after "begin". If both "begin" and "end" are 0, all entries will be removed.
-     * @param bRemoveFromDb Set to true to remove these entries from the database too.
-     */
-    virtual void RemoveTagsBetween(time_t begin, time_t end, bool bRemoveFromDb = false);
-
-    /*!
-     * @see RemoveTagsBetween(time_t begin, time_t end, bool bRemoveFromDb = false)
-     */
-    virtual void RemoveTagsBetween(const CDateTime &begin, const CDateTime &end, bool bRemoveFromDb = false);
-
-    /*!
-     * @brief Load all EPG entries from clients into a temporary table and update this table with the contents of that temporary table.
-     * @param start Only get entries after this start time. Use 0 to get all entries before "end".
-     * @param end Only get entries before this end time. Use 0 to get all entries after "begin". If both "begin" and "end" are 0, all entries will be updated.
-     * @return True if the update was successful, false otherwise.
-     */
-    virtual bool LoadFromClients(time_t start, time_t end);
-
-    /*!
-     * @brief Update the contents of this table with the contents provided in "epg"
-     * @param epg The updated contents.
-     * @param bStoreInDb True to store the updated contents in the db, false otherwise.
-     * @return True if the update was successful, false otherwise.
-     */
-    virtual bool UpdateEntries(const CEpg &epg, bool bStoreInDb = true);
-
-    /*!
-     * @brief Update the cached first and last date.
-     */
-    virtual void UpdateFirstAndLastDates(void);
-
-    virtual bool IsRemovableTag(const EPG::CEpgInfoTag *tag) const { return true; }
-
   public:
+    /*!
+     * @brief Create a new EPG instance.
+     * @param iEpgID The ID of this table or <= 0 to create a new ID.
+     * @param strName The name of this table.
+     * @param strScraperName The name of the scraper to use.
+     * @param bLoadedFromDb True if this table was loaded from the database, false otherwise.
+     */
+    CEpg(int iEpgID, const CStdString &strName = "", const CStdString &strScraperName = "", bool bLoadedFromDb = false);
+
+    /*!
+     * @brief Create a new EPG instance for a channel.
+     * @param channel The channel to create the EPG for.
+     * @param bLoadedFromDb True if this table was loaded from the database, false otherwise.
+     */
+    CEpg(PVR::CPVRChannel *channel, bool bLoadedFromDb = false);
+
+    /*!
+     * @brief Destroy this EPG instance.
+     */
+    virtual ~CEpg(void);
+
     /*!
      * @brief Update this table's info with the given info. Doesn't change the EpgID.
      * @param epg The new info.
@@ -142,27 +75,13 @@ namespace EPG
      * @brief Load all entries for this table from the database.
      * @return True if any entries were loaded, false otherwise.
      */
-    bool Load(void);
-
-    /*!
-     * @brief Create a new EPG instance.
-     * @param iEpgID The ID of this table or <= 0 to create a new ID.
-     * @param strName The name of this table.
-     * @param strScraperName The name of the scraper to use.
-     * @param bLoadedFromDb True if this table was loaded from the database, false otherwise.
-     */
-    CEpg(int iEpgID, const CStdString &strName = "", const CStdString &strScraperName = "", bool bLoadedFromDb = false);
-
-    /*!
-     * @brief Destroy this EPG instance.
-     */
-    virtual ~CEpg(void);
+    virtual bool Load(void);
 
     /*!
      * @brief The channel this EPG belongs to.
      * @return The channel this EPG belongs to
      */
-    const PVR::CPVRChannel *Channel(void) const { return m_Channel; }
+    virtual const PVR::CPVRChannel *Channel(void) const { return m_Channel; }
 
     /*!
      * @brief Channel the channel tag linked to this EPG table.
@@ -174,25 +93,25 @@ namespace EPG
      * @brief Get the name of the scraper to use for this table.
      * @return The name of the scraper to use for this table.
      */
-    const CStdString &ScraperName(void) const { return m_strScraperName; }
+    virtual const CStdString &ScraperName(void) const { return m_strScraperName; }
 
     /*!
      * @brief Change the name of the scraper to use.
      * @param strScraperName The new scraper.
      */
-    void SetScraperName(const CStdString &strScraperName);
+    virtual void SetScraperName(const CStdString &strScraperName);
 
     /*!
      * @brief Get the name of this table.
      * @return The name of this table.
      */
-    const CStdString &Name(void) const { return m_strName; }
+    virtual const CStdString &Name(void) const { return m_strName; }
 
     /*!
      * @brief Changed the name of this table.
      * @param strName The new name.
      */
-    void SetName(const CStdString &strName);
+    virtual void SetName(const CStdString &strName);
 
     /*!
      * @brief Get the database ID of this table.
@@ -205,6 +124,11 @@ namespace EPG
      * @return True if it has valid entries, false if not.
      */
     virtual bool HasValidEntries(void) const;
+
+    /*!
+     * @return True if this EPG has a PVR channel set, false otherwise.
+     */
+    virtual bool HasPVRChannel(void) const { return !(m_Channel == NULL); }
 
     /*!
      * @brief Delete an infotag from this EPG.
@@ -340,5 +264,111 @@ namespace EPG
      * @return A human readable name.
      */
     static const CStdString &ConvertGenreIdToString(int iID, int iSubID);
+
+    /*!
+     * @brief Update an entry in this EPG.
+     * @param data The tag to update.
+     * @param bUpdateDatabase If set to true, this event will be persisted in the database.
+     * @return True if it was updated successfully, false otherwise.
+     */
+    virtual bool UpdateEntry(const EPG_TAG *data, bool bUpdateDatabase = false);
+
+    /*!
+     * @return True if this is an EPG table for a radio channel, false otherwise.
+     */
+    virtual bool IsRadio(void) const;
+
+  protected:
+    /*!
+     * @brief Update the EPG from a scraper set in the channel tag.
+     * TODO: not implemented yet for non-pvr EPGs
+     * @param start Get entries with a start date after this time.
+     * @param end Get entries with an end date before this time.
+     * @return True if the update was successful, false otherwise.
+     */
+    virtual bool UpdateFromScraper(time_t start, time_t end);
+
+    /*!
+     * @brief Persist all tags in this container.
+     * @param bQueueWrite Don't execute the query immediately but queue it if true.
+     * @return True if all tags were persisted, false otherwise.
+     */
+    virtual bool PersistTags(bool bQueueWrite = false) const;
+
+    /*!
+     * @brief Fix overlapping events from the tables.
+     * @param bStore Store in the database if true.
+     * @return True if the events were fixed successfully, false otherwise.
+     */
+    virtual bool FixOverlappingEvents(bool bStore = true);
+
+    /*!
+     * @brief Create a new tag.
+     * @return The new tag.
+     */
+    virtual CEpgInfoTag *CreateTag(void);
+
+    /*!
+     * @brief Sort all entries in this EPG by date.
+     */
+    virtual void Sort(void);
+
+    /*!
+     * @brief Add an infotag to this container.
+     * @param tag The tag to add.
+     */
+    virtual void AddEntry(const CEpgInfoTag &tag);
+
+    /*!
+     * @brief Remove all tags between begin and end from this table.
+     * @param begin Remove all entries after this start time. Use 0 to remove all entries before "end".
+     * @param end Remove all entries before this end time. Use 0 to remove all before after "begin". If both "begin" and "end" are 0, all entries will be removed.
+     * @param bRemoveFromDb Set to true to remove these entries from the database too.
+     */
+    virtual void RemoveTagsBetween(time_t begin, time_t end, bool bRemoveFromDb = false);
+
+    /*!
+     * @see RemoveTagsBetween(time_t begin, time_t end, bool bRemoveFromDb = false)
+     */
+    virtual void RemoveTagsBetween(const CDateTime &begin, const CDateTime &end, bool bRemoveFromDb = false);
+
+    /*!
+     * @brief Load all EPG entries from clients into a temporary table and update this table with the contents of that temporary table.
+     * @param start Only get entries after this start time. Use 0 to get all entries before "end".
+     * @param end Only get entries before this end time. Use 0 to get all entries after "begin". If both "begin" and "end" are 0, all entries will be updated.
+     * @return True if the update was successful, false otherwise.
+     */
+    virtual bool LoadFromClients(time_t start, time_t end);
+
+    /*!
+     * @brief Update the contents of this table with the contents provided in "epg"
+     * @param epg The updated contents.
+     * @param bStoreInDb True to store the updated contents in the db, false otherwise.
+     * @return True if the update was successful, false otherwise.
+     */
+    virtual bool UpdateEntries(const CEpg &epg, bool bStoreInDb = true);
+
+    /*!
+     * @brief Update the cached first and last date.
+     */
+    virtual void UpdateFirstAndLastDates(void);
+
+    virtual bool IsRemovableTag(const EPG::CEpgInfoTag *tag) const;
+
+    bool                       m_bChanged;        /*!< true if anything changed that needs to be persisted, false otherwise */
+    bool                       m_bInhibitSorting; /*!< don't sort the table if this is true */
+    bool                       m_bLoaded;         /*!< true when the initial entries have been loaded */
+    int                        m_iEpgID;          /*!< the database ID of this table */
+    CStdString                 m_strName;         /*!< the name of this table */
+    CStdString                 m_strScraperName;  /*!< the name of the scraper to use */
+    mutable const CEpgInfoTag *m_nowActive;       /*!< the tag that is currently active */
+
+    CDateTime                  m_lastScanTime;    /*!< the last time the EPG has been updated */
+    CDateTime                  m_firstDate;       /*!< start time of the first epg event in this table */
+    CDateTime                  m_lastDate;        /*!< end time of the last epg event in this table */
+
+    PVR::CPVRChannel *         m_Channel;         /*!< the channel this EPG belongs to */
+
+    mutable CCriticalSection   m_critSection;     /*!< critical section for changes in this table */
   };
 }

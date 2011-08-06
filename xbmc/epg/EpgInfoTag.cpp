@@ -20,14 +20,18 @@
  */
 
 #include "guilib/LocalizeStrings.h"
+#include "Epg.h"
 #include "EpgInfoTag.h"
 #include "EpgContainer.h"
 #include "EpgDatabase.h"
+#include "pvr/channels/PVRChannel.h"
+#include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "addons/include/xbmc_pvr_types.h"
 
 using namespace std;
 using namespace EPG;
+using namespace PVR;
 
 CEpgInfoTag::CEpgInfoTag(int iUniqueBroadcastId) :
     m_bNotify(false),
@@ -50,6 +54,7 @@ CEpgInfoTag::CEpgInfoTag(int iUniqueBroadcastId) :
     m_strFileNameAndPath(""),
     m_nextEvent(NULL),
     m_previousEvent(NULL),
+    m_Timer(NULL),
     m_Epg(NULL)
 {
 }
@@ -75,8 +80,36 @@ CEpgInfoTag::CEpgInfoTag(void) :
     m_strFileNameAndPath(""),
     m_nextEvent(NULL),
     m_previousEvent(NULL),
+    m_Timer(NULL),
     m_Epg(NULL)
 {
+}
+
+CEpgInfoTag::CEpgInfoTag(const EPG_TAG &data) :
+    m_bNotify(false),
+    m_bChanged(false),
+    m_iBroadcastId(-1),
+    m_iGenreType(0),
+    m_iGenreSubType(0),
+    m_iParentalRating(0),
+    m_iStarRating(0),
+    m_iSeriesNumber(0),
+    m_iEpisodeNumber(0),
+    m_iEpisodePart(0),
+    m_iUniqueBroadcastID(-1),
+    m_strTitle(""),
+    m_strPlotOutline(""),
+    m_strPlot(""),
+    m_strGenre(""),
+    m_strEpisodeName(""),
+    m_strIconPath(""),
+    m_strFileNameAndPath(""),
+    m_nextEvent(NULL),
+    m_previousEvent(NULL),
+    m_Timer(NULL),
+    m_Epg(NULL)
+{
+  Update(data);
 }
 
 CEpgInfoTag::~CEpgInfoTag()
@@ -494,4 +527,54 @@ float CEpgInfoTag::ProgressPercentage(void) const
     fReturn = 100;
 
   return fReturn;
+}
+
+void CEpgInfoTag::Update(const EPG_TAG &tag)
+{
+  SetStartFromUTC(tag.startTime + g_advancedSettings.m_iPVRTimeCorrection);
+  SetEndFromUTC(tag.endTime + g_advancedSettings.m_iPVRTimeCorrection);
+  SetTitle(tag.strTitle);
+  SetPlotOutline(tag.strPlotOutline);
+  SetPlot(tag.strPlot);
+  SetGenre(tag.iGenreType, tag.iGenreSubType, tag.strGenreDescription);
+  SetParentalRating(tag.iParentalRating);
+  SetUniqueBroadcastID(tag.iUniqueBroadcastId);
+  SetNotify(tag.bNotify);
+  SetFirstAiredFromUTC(tag.firstAired + g_advancedSettings.m_iPVRTimeCorrection);
+  SetEpisodeNum(tag.iEpisodeNumber);
+  SetEpisodePart(tag.iEpisodePartNumber);
+  SetEpisodeName(tag.strEpisodeName);
+  SetStarRating(tag.iStarRating);
+  SetIcon(tag.strIconPath);
+}
+
+const PVR::CPVRChannel *CEpgInfoTag::ChannelTag(void) const
+{
+  return m_Epg ? m_Epg->Channel() : NULL;
+}
+
+void CEpgInfoTag::UpdatePath(void)
+{
+  if (!m_Epg)
+    return;
+
+  CStdString path;
+  if (m_Epg->HasPVRChannel())
+    path.Format("pvr://guide/%04i/%s.epg", m_Epg->Channel() ? m_Epg->Channel()->ChannelID() : m_Epg->EpgID(), m_startTime.GetAsDBDateTime().c_str());
+  else
+    path.Format("pvr://guide/%04i/%s.epg", m_Epg->EpgID(), m_startTime.GetAsDBDateTime().c_str());
+  SetPath(path);
+}
+
+const CStdString &CEpgInfoTag::Icon(void) const
+{
+  if (m_strIconPath.IsEmpty() && m_Epg && m_Epg->HasPVRChannel())
+    return m_Epg->Channel()->IconPath();
+
+  return m_strIconPath;
+}
+
+bool CEpgInfoTag::HasPVRChannel(void) const
+{
+  return m_Epg && m_Epg->HasPVRChannel();
 }

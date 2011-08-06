@@ -28,6 +28,9 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
+#include "pvr/PVRManager.h"
+#include "pvr/channels/PVRChannelGroupsContainer.h"
+#include "pvr/timers/PVRTimers.h"
 
 #include "EpgContainer.h"
 #include "Epg.h"
@@ -36,6 +39,7 @@
 
 using namespace std;
 using namespace EPG;
+using namespace PVR;
 
 typedef std::map<int, CEpg*>::iterator EPGITR;
 
@@ -46,7 +50,6 @@ CEpgContainer::CEpgContainer(void) :
   m_bStop = true;
   m_bIsUpdating = false;
   m_iNextEpgId = 0;
-  Clear(false);
 }
 
 CEpgContainer::~CEpgContainer(void)
@@ -82,6 +85,15 @@ void CEpgContainer::Clear(bool bClearDb /* = false */)
   {
     CLog::Log(LOGERROR, "%s - cannot stop the update thread", __FUNCTION__);
     return;
+  }
+
+  if (g_PVRManager.IsStarted())
+  {
+    // XXX stop the timers from being updated while clearing tags
+    /* remove all pointers to epg tables on timers */
+    CPVRTimers *timers = g_PVRTimers;
+    for (unsigned int iTimerPtr = 0; timers != NULL && iTimerPtr < timers->size(); iTimerPtr++)
+      timers->at(iTimerPtr)->SetEpgInfoTag(NULL);
   }
 
   /* clear all epg tables and remove pointers to epg tables on channels */
@@ -125,8 +137,6 @@ bool CEpgContainer::Stop(void)
 {
   StopThread();
 
-  g_guiSettings.UnregisterObserver(this);
-
   return true;
 }
 
@@ -135,6 +145,17 @@ void CEpgContainer::Notify(const Observable &obs, const CStdString& msg)
   /* settings were updated */
   if (msg == "settings")
     LoadSettings();
+}
+
+bool CEpgContainer::AutoCreateTablesHook(void)
+{
+  if (!g_application.m_bStop)
+  {
+    bool bReturn = g_PVRChannelGroups->GetGroupAllTV()->CreateChannelEpgs();
+    return g_PVRChannelGroups->GetGroupAllRadio()->CreateChannelEpgs() && bReturn;
+  }
+
+  return false;
 }
 
 void CEpgContainer::Process(void)
@@ -153,7 +174,7 @@ void CEpgContainer::Process(void)
 
   AutoCreateTablesHook();
 
-  while (!m_bStop)
+  while (!m_bStop && !g_application.m_bStop)
   {
     CDateTime::GetCurrentDateTime().GetAsTime(iNow);
 
@@ -182,6 +203,8 @@ void CEpgContainer::Process(void)
 
     Sleep(1000);
   }
+
+  g_guiSettings.UnregisterObserver(this);
 }
 
 CEpg *CEpgContainer::GetById(int iEpgId)
@@ -212,7 +235,14 @@ bool CEpgContainer::UpdateEntry(const CEpg &entry, bool bUpdateDatabase /* = fal
     unsigned int iEpgId = entry.EpgID() > 0 ? entry.EpgID() : NextEpgId();
     epg = CreateEpg(iEpgId);
     if (epg)
+    {
       m_epgs.insert(std::make_pair(iEpgId, epg));
+      if (epg->HasPVRChannel())
+      {
+        CPVRChannel *channel = (CPVRChannel *)epg->Channel();
+        channel->Persist();
+      }
+    }
   }
 
   bReturn = epg ? epg->Update(entry, bUpdateDatabase) : false;
@@ -277,7 +307,22 @@ bool CEpgContainer::RemoveOldEntries(void)
 
 CEpg *CEpgContainer::CreateEpg(int iEpgId)
 {
-  return new CEpg(iEpgId);
+  if (g_PVRManager.IsStarted())
+  {
+    CPVRChannel *channel = (CPVRChannel *) g_PVRChannelGroups->GetChannelByEpgId(iEpgId);
+    if (channel)
+      return new CEpg(channel, true);
+    else
+    {
+      CLog::Log(LOGERROR, "PVREpgContainer - %s - cannot find channel '%d'. not creating an EPG table.",
+          __FUNCTION__, iEpgId);
+      return NULL;
+    }
+  }
+  else
+  {
+    return new CEpg(iEpgId);
+  }
 }
 
 bool CEpgContainer::DeleteEpg(const CEpg &epg, bool bDeleteFromDatabase /* = false */)
@@ -340,7 +385,10 @@ void CEpgContainer::UpdateProgressDialog(int iCurrent, int iMax, const CStdStrin
 bool CEpgContainer::InterruptUpdate(void) const
 {
   CSingleLock lock(m_critSection);
-  return g_application.m_bStop || m_bStop;
+  return g_application.m_bStop || m_bStop ||
+    (g_guiSettings.GetBool("epg.preventupdateswhileplayingtv") &&
+     g_PVRManager.IsStarted() &&
+     g_PVRManager.IsPlaying());
 }
 
 bool CEpgContainer::UpdateEPG(bool bShowProgress /* = false */)
@@ -509,6 +557,10 @@ bool CEpgContainer::CheckPlayingEvents(void)
       SetChanged();
       NotifyObservers("epg-now", true);
     }
+
+    /* pvr tags always start on the full minute */
+    if (g_PVRManager.IsStarted())
+      m_iLastEpgActiveTagCheck -= m_iLastEpgActiveTagCheck % 60;
 
     bReturn = true;
   }

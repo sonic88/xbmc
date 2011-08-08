@@ -192,7 +192,7 @@ namespace EPG
      * @param beginTime The start time of the event to find if it wasn't found by it's unique ID.
      * @return The found tag or NULL if it wasn't found.
      */
-    virtual const CEpgInfoTag *GetTag(int uniqueID, const CDateTime &beginTime) const;
+    virtual CEpgInfoTag *GetTag(int uniqueID, const CDateTime &beginTime) const;
 
     /*!
      * @brief Update an entry in this EPG.
@@ -216,7 +216,7 @@ namespace EPG
      * @param results The file list to store the results in.
      * @return The amount of entries that were added.
      */
-    virtual int Get(CFileItemList *results) const;
+    virtual int Get(CFileItemList &results) const;
 
     /*!
      * @brief Get all EPG entries that and apply a filter.
@@ -224,7 +224,7 @@ namespace EPG
      * @param filter The filter to apply.
      * @return The amount of entries that were added.
      */
-    virtual int Get(CFileItemList *results, const EpgSearchFilter &filter) const;
+    virtual int Get(CFileItemList &results, const EpgSearchFilter &filter) const;
 
     /*!
      * @brief Persist this table in the database.

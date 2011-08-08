@@ -333,7 +333,7 @@ bool CEpg::CheckPlayingEvent(void)
   return bChanged;
 }
 
-const CEpgInfoTag *CEpg::GetTag(int uniqueID, const CDateTime &StartTime) const
+CEpgInfoTag *CEpg::GetTag(int uniqueID, const CDateTime &StartTime) const
 {
   CEpgInfoTag *returnTag = NULL;
   CSingleLock lock(m_critSection);
@@ -424,7 +424,7 @@ bool CEpg::UpdateEntry(const CEpgInfoTag &tag, bool bUpdateDatabase /* = false *
   bool bReturn(false);
   CSingleLock lock(m_critSection);
 
-  CEpgInfoTag *infoTag = (CEpgInfoTag *) GetTag(tag.UniqueBroadcastID(), tag.StartAsUTC());
+  CEpgInfoTag *infoTag = GetTag(tag.UniqueBroadcastID(), tag.StartAsUTC());
 
   /* create a new tag if no tag with this ID exists */
   if (!infoTag)
@@ -619,9 +619,9 @@ bool CEpg::Update(const time_t start, const time_t end, int iUpdateTime)
   return bGrabSuccess;
 }
 
-int CEpg::Get(CFileItemList *results) const
+int CEpg::Get(CFileItemList &results) const
 {
-  int iInitialSize = results->Size();
+  int iInitialSize = results.Size();
 
   CSingleLock lock(m_critSection);
 
@@ -632,15 +632,15 @@ int CEpg::Get(CFileItemList *results) const
 
     CFileItemPtr entry(new CFileItem(*at(iTagPtr)));
     entry->SetLabel2(at(iTagPtr)->StartAsLocalTime().GetAsLocalizedDateTime(false, false));
-    results->Add(entry);
+    results.Add(entry);
   }
 
-  return size() - iInitialSize;
+  return results.Size() - iInitialSize;
 }
 
-int CEpg::Get(CFileItemList *results, const EpgSearchFilter &filter) const
+int CEpg::Get(CFileItemList &results, const EpgSearchFilter &filter) const
 {
-  int iInitialSize = results->Size();
+  int iInitialSize = results.Size();
 
   if (!HasValidEntries())
     return -1;
@@ -653,11 +653,11 @@ int CEpg::Get(CFileItemList *results, const EpgSearchFilter &filter) const
     {
       CFileItemPtr entry(new CFileItem(*at(iTagPtr)));
       entry->SetLabel2(at(iTagPtr)->StartAsLocalTime().GetAsLocalizedDateTime(false, false));
-      results->Add(entry);
+      results.Add(entry);
     }
   }
 
-  return size() - iInitialSize;
+  return results.Size() - iInitialSize;
 }
 
 bool CEpg::Persist(bool bPersistTags /* = false */, bool bQueueWrite /* = false */)

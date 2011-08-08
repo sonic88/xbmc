@@ -24,6 +24,7 @@
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "music/tags/MusicInfoTag.h"
@@ -227,7 +228,7 @@ void CPVRManager::HideProgressDialog(void)
 {
   if (m_loadingProgressDialog)
   {
-    m_loadingProgressDialog->Close();
+    m_loadingProgressDialog->Close(true, 0, true, false);
     m_loadingProgressDialog = NULL;
   }
 }
@@ -501,7 +502,7 @@ bool CPVRManager::GetCurrentChannel(CPVRChannel *channel) const
   return m_addons->GetPlayingChannel(channel);
 }
 
-int CPVRManager::GetCurrentEpg(CFileItemList *results) const
+int CPVRManager::GetCurrentEpg(CFileItemList &results) const
 {
   int iReturn = -1;
 
@@ -833,6 +834,13 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview
           __FUNCTION__, channel.ChannelName().c_str());
 
     m_bIsSwitchingChannels = false;
+  }
+
+  if (!bSwitched)
+  {
+    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error,
+        g_localizeStrings.Get(19166),
+        g_localizeStrings.Get(19035));
   }
 
   return bSwitched;

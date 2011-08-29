@@ -66,6 +66,7 @@ public:
   const TransformMatrix &GetTransform() const { return m_matrix; };
   EFFECT_TYPE GetType() const { return m_effect; };
 
+  static Tweener* GetTweener(const TiXmlElement *pAnimationNode);
 protected:
   TransformMatrix m_matrix;
   EFFECT_TYPE m_effect;
@@ -201,4 +202,63 @@ private:
   unsigned int m_amount;
 
   std::vector<CAnimEffect *> m_effects;
+};
+
+/**
+ * Class used to handle scrolling, allow using tweeners.
+ * Usage:
+ *   start scrolling using ScrollTo() method / stop scrolling using Stop() method
+ *   update scroll value each frame with current time using Update() method
+ *   get/set scroll value using GetValue()/SetValue()
+ */
+class CScroller
+{
+public:
+  enum ESCROLLSTATE { NOT_SCROLLING = 0, SCROLLING, SCROLL_FINISHED };
+
+  CScroller(unsigned int duration = 200, Tweener *tweener = NULL);
+  CScroller(const CScroller& right);
+  const CScroller &operator=(const CScroller &src);
+  ~CScroller();
+
+  /**
+   * Set target value scroller will be scrolling to
+   * @param endPos target 
+   */
+  void ScrollTo(float endPos);
+  
+  /**
+   * Immediately stop scrolling
+   */
+  void Stop() { m_delta = 0; };
+  /**
+   * Update the scroller to where it would be at the given time point, calculating a new Value.
+   * @param time time point
+   * @return CScroller::SCROLLING if we are scrolling at given time point, CScroller::SCROLL_FINISHED if scrolling just finished or CScroller::NOT_SCROLLING if not scrolling
+   */
+  ESCROLLSTATE Update(unsigned int time);
+
+  /**
+   * Value of scroll
+   */
+  float GetValue() const { return m_scrollValue; };
+  void SetValue(float scrollValue) { m_scrollValue = scrollValue; };
+
+  bool IsScrolling() const { return m_delta != 0; };
+  bool IsScrollingUp() const { return m_delta < 0; };
+  bool IsScrollingDown() const { return m_delta > 0; };
+
+  unsigned int GetDuration() const { return m_duration; };
+private:
+  float Tween(float progress);
+
+  float        m_scrollValue;
+  float        m_delta;                   //!< Brief distance that we have to travel during scroll
+  float        m_startPosition;           //!< Brief starting position of scroll
+  bool         m_hasResumePoint;          //!< Brief check if we should tween from middle of the tween
+  unsigned int m_startTime;               //!< Brief starting time of scroll
+  unsigned int m_lastTime;                //!< Brief last remember time (updated each time Scroll() method is called)
+
+  unsigned int m_duration;                //!< Brief duration of scroll
+  Tweener* m_pTweener;
 };

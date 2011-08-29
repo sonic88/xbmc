@@ -289,6 +289,7 @@ void CURL::Parse(const CStdString& strURL1)
   if (m_strProtocol.CompareNoCase("iso9660") == 0
     || m_strProtocol.CompareNoCase("musicdb") == 0
     || m_strProtocol.CompareNoCase("videodb") == 0
+    || m_strProtocol.CompareNoCase("sources") == 0
     || m_strProtocol.CompareNoCase("lastfm") == 0
     || m_strProtocol.CompareNoCase("pvr") == 0
     || m_strProtocol.Left(3).CompareNoCase("mem") == 0)
@@ -531,9 +532,9 @@ CStdString CURL::GetWithoutUserDetails() const
     vector<CStdString> newItems;
     for (int i=0;i<items.Size();++i)
     {
-      CURL url(items[i]->m_strPath);
-      items[i]->m_strPath = url.GetWithoutUserDetails();
-      newItems.push_back(items[i]->m_strPath);
+      CURL url(items[i]->GetPath());
+      items[i]->SetPath(url.GetWithoutUserDetails());
+      newItems.push_back(items[i]->GetPath());
     }
     dir.ConstructStackPath(newItems,strURL);
     return strURL;

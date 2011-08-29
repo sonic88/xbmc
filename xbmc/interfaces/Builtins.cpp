@@ -471,8 +471,8 @@ int CBuiltins::Execute(const CStdString& execString)
       CFileItem item(params[0]);
       if (!item.m_bIsFolder)
       {
-        item.m_strPath = params[0];
-        CPluginDirectory::RunScriptWithParams(item.m_strPath);
+        item.SetPath(params[0]);
+        CPluginDirectory::RunScriptWithParams(item.GetPath());
       }
     }
     else
@@ -564,7 +564,7 @@ int CBuiltins::Execute(const CStdString& execString)
     if (item.m_bIsFolder)
     {
       CFileItemList items;
-      CDirectory::GetDirectory(item.m_strPath,items,g_settings.m_videoExtensions);
+      CDirectory::GetDirectory(item.GetPath(),items,g_settings.m_videoExtensions);
       g_playlistPlayer.Add(PLAYLIST_VIDEO,items);
       g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_VIDEO);
       g_playlistPlayer.Play();
@@ -763,7 +763,10 @@ int CBuiltins::Execute(const CStdString& execString)
       bool shuffled = g_playlistPlayer.IsShuffled(iPlaylist);
       if ((shuffled && parameter.Equals("randomon")) || (!shuffled && parameter.Equals("randomoff")))
         return 0;
-      g_playlistPlayer.SetShuffle(iPlaylist, !shuffled);
+
+      // check to see if we should notify the user
+      bool notify = (params.size() == 2 && params[1].Equals("notify"));
+      g_playlistPlayer.SetShuffle(iPlaylist, !shuffled, notify);
 
       // save settings for now playing windows
       switch (iPlaylist)
@@ -786,22 +789,28 @@ int CBuiltins::Execute(const CStdString& execString)
     {
       // get current playlist
       int iPlaylist = g_playlistPlayer.GetCurrentPlaylist();
-      PLAYLIST::REPEAT_STATE state = g_playlistPlayer.GetRepeat(iPlaylist);
+      PLAYLIST::REPEAT_STATE previous_state = g_playlistPlayer.GetRepeat(iPlaylist);
 
+      PLAYLIST::REPEAT_STATE state;
       if (parameter.Equals("repeatall"))
         state = PLAYLIST::REPEAT_ALL;
       else if (parameter.Equals("repeatone"))
         state = PLAYLIST::REPEAT_ONE;
       else if (parameter.Equals("repeatoff"))
         state = PLAYLIST::REPEAT_NONE;
-      else if (state == PLAYLIST::REPEAT_NONE)
+      else if (previous_state == PLAYLIST::REPEAT_NONE)
         state = PLAYLIST::REPEAT_ALL;
-      else if (state == PLAYLIST::REPEAT_ALL)
+      else if (previous_state == PLAYLIST::REPEAT_ALL)
         state = PLAYLIST::REPEAT_ONE;
       else
         state = PLAYLIST::REPEAT_NONE;
 
-      g_playlistPlayer.SetRepeat(iPlaylist, state);
+      if (state == previous_state)
+        return 0;
+
+      // check to see if we should notify the user
+      bool notify = (params.size() == 2 && params[1].Equals("notify"));
+      g_playlistPlayer.SetRepeat(iPlaylist, state, notify);
 
       // save settings for now playing windows
       switch (iPlaylist)
@@ -888,9 +897,13 @@ int CBuiltins::Execute(const CStdString& execString)
   {
     // format is alarmclock(name,command[,seconds,true]);
     float seconds = 0;
-    bool silent = false;
     if (params.size() > 2)
-      seconds = static_cast<float>(atoi(params[2].c_str())*60);
+    {
+      if (params[2].Find(':') == -1)
+        seconds = static_cast<float>(atoi(params[2].c_str())*60);
+      else
+        seconds = (float)StringUtils::TimeStringToSeconds(params[2]);
+    }
     else
     { // check if shutdown is specified in particular, and get the time for it
       CStdString strHeading;
@@ -907,13 +920,21 @@ int CBuiltins::Execute(const CStdString& execString)
       else
         return false;
     }
-    if (params.size() > 3 && params[3].CompareNoCase("true") == 0)
-      silent = true;
+    bool silent = false;
+    bool loop = false;
+    for (unsigned int i = 3; i < params.size() ; i++)
+    {
+      // check "true" for backward comp
+      if (params[i].CompareNoCase("true") == 0 || params[i].CompareNoCase("silent") == 0)
+        silent = true;
+      else if (params[i].CompareNoCase("loop") == 0)
+        loop = true;
+    }
 
     if( g_alarmClock.IsRunning() )
       g_alarmClock.Stop(params[0],silent);
 
-    g_alarmClock.Start(params[0], seconds, params[1], silent);
+    g_alarmClock.Start(params[0], seconds, params[1], silent, loop);
   }
   else if (execute.Equals("notification"))
   {
@@ -936,7 +957,10 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("playdvd"))
   {
 #ifdef HAS_DVD_DRIVE
-    CAutorun::PlayDisc();
+    bool restart = false;
+    if (params.size() > 0 && params[0].CompareNoCase("restart") == 0)
+      restart = true;
+    CAutorun::PlayDisc(restart);
 #endif
   }
   else if (execute.Equals("ripcd"))

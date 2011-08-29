@@ -158,14 +158,11 @@ CGUIWindowSettingsCategory::~CGUIWindowSettingsCategory(void)
   delete m_pOriginalEdit;
 }
 
-bool CGUIWindowSettingsCategory::OnAction(const CAction &action)
+bool CGUIWindowSettingsCategory::OnBack(int actionID)
 {
-  if (action.GetID() == ACTION_PREVIOUS_MENU || action.GetID() == ACTION_NAV_BACK)
-  {
-    g_settings.Save();
-    m_lastControlID = 0; // don't save the control as we go to a different window each time
-  }
-  return CGUIWindow::OnAction(action);
+  g_settings.Save();
+  m_lastControlID = 0; // don't save the control as we go to a different window each time
+  return CGUIWindow::OnBack(actionID);
 }
 
 bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
@@ -429,6 +426,17 @@ void CGUIWindowSettingsCategory::CreateSettings()
     else if (strSetting.Equals("subtitles.charset") || strSetting.Equals("locale.charset") || strSetting.Equals("karaoke.charset"))
     {
       FillInCharSets(pSetting);
+    }
+    else if (strSetting.Equals("subtitles.align"))
+    {
+      CSettingInt *pSettingInt = (CSettingInt*)pSetting;
+      CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(GetSetting(strSetting)->GetID());
+      pControl->AddLabel(g_localizeStrings.Get(21461), SUBTITLE_ALIGN_MANUAL);
+      pControl->AddLabel(g_localizeStrings.Get(21462), SUBTITLE_ALIGN_BOTTOM_INSIDE);
+      pControl->AddLabel(g_localizeStrings.Get(21463), SUBTITLE_ALIGN_BOTTOM_OUTSIDE);
+      pControl->AddLabel(g_localizeStrings.Get(21464), SUBTITLE_ALIGN_TOP_INSIDE);
+      pControl->AddLabel(g_localizeStrings.Get(21465), SUBTITLE_ALIGN_TOP_OUTSIDE);
+      pControl->SetValue(pSettingInt->GetData());
     }
     else if (strSetting.Equals("lookandfeel.font"))
     {
@@ -1372,6 +1380,14 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
     if(g_guiSettings.GetBool("services.zeroconf"))
       CZeroconf::GetInstance()->Start();
 #endif
+  }
+  else if (strSetting.Equals("services.airplay"))
+  {  
+#ifdef HAS_AIRPLAY
+    g_application.StopAirplayServer(true);
+    if (g_guiSettings.GetBool("services.airplay"))
+      g_application.StartAirplayServer();
+#endif         
   }
   else if (strSetting.Equals("network.ipaddress"))
   {

@@ -139,7 +139,7 @@ void CGUIDialogPVRTimerSettings::CreateSettings()
   // create our settings controls
   m_bTimerActive = tag->IsActive();
   AddBool(CONTROL_TMR_ACTIVE, 19074, &m_bTimerActive);
-  AddButton(CONTROL_TMR_NAME, 19075, &tag->m_strTitle, true);
+  AddString(CONTROL_TMR_NAME, 19075, &tag->m_strTitle);
   AddBool(CONTROL_TMR_RADIO, 19077, &tag->m_bIsRadio);
 
   /// Channel names
@@ -186,8 +186,8 @@ void CGUIDialogPVRTimerSettings::CreateSettings()
     AddSpin(CONTROL_TMR_DAY, 19079, &m_tmp_day, daystrings.size(), daystrings);
   }
 
-  AddButton(CONTROL_TMR_BEGIN, 19080, &timerStartTimeStr, true);
-  AddButton(CONTROL_TMR_END, 19081, &timerEndTimeStr, true);
+  AddString(CONTROL_TMR_BEGIN, 19080, &timerStartTimeStr);
+  AddString(CONTROL_TMR_END, 19081, &timerEndTimeStr);
   AddSpin(CONTROL_TMR_PRIORITY, 19082, &tag->m_iPriority, 0, 99);
   AddSpin(CONTROL_TMR_LIFETIME, 19083, &tag->m_iLifetime, 0, 365);
 

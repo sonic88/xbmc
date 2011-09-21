@@ -65,7 +65,7 @@
 #include "pvr/PVRManager.h"
 #include "pvr/recordings/PVRRecordings.h"
 #include "utils/URIUtils.h"
-#include "GUIUserMessages.h"
+
 #include "addons/Skin.h"
 
 using namespace std;
@@ -220,9 +220,6 @@ bool CGUIWindowVideoBase::OnMessage(CGUIMessage& message)
         }
       }
     }
-    break;
-  case GUI_MSG_SEARCH:
-    OnSearch();
     break;
   }
   return CGUIMediaWindow::OnMessage(message);

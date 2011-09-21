@@ -88,7 +88,7 @@ void CSettingBool::FromString(const CStdString &strValue)
   m_bData = (strValue == "true");
 }
 
-CStdString CSettingBool::ToString()
+CStdString CSettingBool::ToString() const
 {
   return m_bData ? "true" : "false";
 }
@@ -112,7 +112,7 @@ void CSettingFloat::FromString(const CStdString &strValue)
   SetData((float)atof(strValue.c_str()));
 }
 
-CStdString CSettingFloat::ToString()
+CStdString CSettingFloat::ToString() const
 {
   CStdString strValue;
   strValue.Format("%f", m_fData);
@@ -165,7 +165,7 @@ void CSettingInt::FromString(const CStdString &strValue)
   SetData(id);
 }
 
-CStdString CSettingInt::ToString()
+CStdString CSettingInt::ToString() const
 {
   CStdString strValue;
   strValue.Format("%i", m_iData);
@@ -179,7 +179,7 @@ void CSettingHex::FromString(const CStdString &strValue)
     SetData(iHexValue);
 }
 
-CStdString CSettingHex::ToString()
+CStdString CSettingHex::ToString() const
 {
   CStdString strValue;
   strValue.Format("%x", m_iData);
@@ -199,7 +199,7 @@ void CSettingString::FromString(const CStdString &strValue)
   m_strData = strValue;
 }
 
-CStdString CSettingString::ToString()
+CStdString CSettingString::ToString() const
 {
   return m_strData;
 }
@@ -478,6 +478,7 @@ void CGUISettings::Initialize()
 #endif
 
   CSettingsCategory* in = AddCategory(4, "input", 14094);
+  AddString(in, "input.peripherals", 35000, "", BUTTON_CONTROL_STANDARD);
 #if defined(__APPLE__)
   map<int,int> remotemode;
   remotemode.insert(make_pair(13610,APPLE_REMOTE_DISABLED));
@@ -1109,7 +1110,7 @@ void CGUISettings::AddDefaultAddon(CSettingsCategory* cat, const char *strSettin
   settingsMap.insert(pair<CStdString, CSetting*>(CStdString(strSetting).ToLower(), pSetting));
 }
 
-const CStdString &CGUISettings::GetString(const char *strSetting, bool bPrompt) const
+const CStdString &CGUISettings::GetString(const char *strSetting, bool bPrompt /* = true */) const
 {
   ASSERT(settingsMap.size());
   constMapIter it = settingsMap.find(CStdString(strSetting).ToLower());

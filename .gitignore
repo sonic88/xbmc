@@ -133,9 +133,6 @@ autom4te.cache
 /xbmc/guilib/Profile
 /xbmc/guilib/Profile_FastCap
 
-# /xbmc/peripherals/
-/xbmc/peripherals/bus/Makefile
-
 # /lib/
 /lib/Makefile
 

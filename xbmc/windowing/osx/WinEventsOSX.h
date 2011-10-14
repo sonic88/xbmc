@@ -30,4 +30,7 @@ public:
   ~CWinEventsOSX();
 
   static bool MessagePump();
+private:
+  void Initialize(void);
+
 };

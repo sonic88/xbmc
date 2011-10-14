@@ -94,8 +94,6 @@
 #include "filesystem/SpecialProtocol.h"
 
 #include "network/Zeroconf.h"
-#include "peripherals/Peripherals.h"
-#include "peripherals/dialogs/GUIDialogPeripheralManager.h"
 
 #ifdef _WIN32
 #include "WIN32Util.h"
@@ -123,7 +121,6 @@ using namespace std;
 using namespace XFILE;
 using namespace ADDON;
 using namespace PVR;
-using namespace PERIPHERALS;
 
 #define CONTROL_GROUP_BUTTONS           0
 #define CONTROL_GROUP_SETTINGS          1
@@ -1159,13 +1156,6 @@ void CGUIWindowSettingsCategory::OnClick(CBaseSettingControl *pSettingControl)
       setting->SetData(addonID);
     else
       return;
-  }
-  else if (strSetting.Equals("input.peripherals"))
-  {
-    CGUIDialogPeripheralManager *dialog = (CGUIDialogPeripheralManager *)g_windowManager.GetWindow(WINDOW_DIALOG_PERIPHERAL_MANAGER);
-    if (dialog)
-      dialog->DoModal();
-    return;
   }
 
   // if OnClick() returns false, the setting hasn't changed or doesn't

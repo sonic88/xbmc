@@ -124,6 +124,3 @@
 
 // Sent from filesystem if a path is known to have changed
 #define GUI_MSG_UPDATE_PATH           GUI_MSG_USER + 33
-
-// Sent to tell window to initiate a search dialog
-#define GUI_MSG_SEARCH                GUI_MSG_USER + 34

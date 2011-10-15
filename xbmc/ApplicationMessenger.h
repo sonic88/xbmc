@@ -75,7 +75,6 @@ class CGUIWindow;
 #define TMSG_SWITCHTOFULLSCREEN   308
 #define TMSG_MINIMIZE             309
 #define TMSG_TOGGLEFULLSCREEN     310
-#define TMSG_SETLANGUAGE          311
 
 #define TMSG_HTTPAPI              400
 
@@ -166,7 +165,6 @@ public:
   void PlayFile(const CFileItem &item, bool bRestart = false); // thread safe version of g_application.PlayFile()
   void PictureShow(std::string filename);
   void PictureSlideShow(std::string pathname, bool bScreensaver = false, bool addTBN = false);
-  void SetGUILanguage(const std::string &strLanguage);
   void Shutdown();
   void Powerdown();
   void Quit();

@@ -429,9 +429,6 @@ case TMSG_POWERDOWN:
       }
       break;
 
-    case TMSG_SETLANGUAGE:
-      g_guiSettings.SetLanguage(pMsg->strParam);
-      break;
     case TMSG_MEDIA_STOP:
       {
         // restore to previous window if needed
@@ -1009,13 +1006,6 @@ void CApplicationMessenger::PictureSlideShow(string pathname, bool bScreensaver 
   ThreadMessage tMsg = {dwMessage};
   tMsg.strParam = pathname;
   tMsg.dwParam1 = addTBN ? 1 : 0;
-  SendMessage(tMsg);
-}
-
-void CApplicationMessenger::SetGUILanguage(const std::string &strLanguage)
-{
-  ThreadMessage tMsg = {TMSG_SETLANGUAGE};
-  tMsg.strParam = strLanguage;
   SendMessage(tMsg);
 }
 

@@ -147,7 +147,7 @@ void CPeripheralBus::UnregisterRemovedDevices(const PeripheralScanResults &resul
       m_peripherals.erase(m_peripherals.begin() + iDevicePtr);
       lock.Leave();
 
-      m_manager->OnDeviceDeleted(*this, *peripheral);
+      m_manager->OnDeviceDeleted(*this, peripheral->FileLocation());
       delete peripheral;
     }
   }
@@ -282,7 +282,7 @@ void CPeripheralBus::Register(CPeripheral *peripheral)
     CLog::Log(LOGNOTICE, "%s - new %s device registered on %s->%s: %s (%s:%s)", __FUNCTION__, PeripheralTypeTranslator::TypeToString(peripheral->Type()), PeripheralTypeTranslator::BusTypeToString(m_type), peripheral->Location().c_str(), peripheral->DeviceName().c_str(), peripheral->VendorIdAsString(), peripheral->ProductIdAsString());
     lock.Leave();
 
-    m_manager->OnDeviceAdded(*this, *peripheral);
+    m_manager->OnDeviceAdded(*this, peripheral->FileLocation());
   }
 }
 
@@ -338,9 +338,4 @@ CPeripheral *CPeripheralBus::GetByPath(const CStdString &strPath) const
   }
 
   return NULL;
-}
-
-size_t CPeripheralBus::GetNumberOfPeripherals() const
-{
-  return m_peripherals.size();
 }

@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2011 Team XBMC
  *      http://xbmc.org
@@ -19,15 +20,17 @@
  *
  */
 
-#include "PeripheralNIC.h"
-#include "utils/log.h"
-#include "guilib/LocalizeStrings.h"
+#include <map>
+#include "utils/StdString.h"
 
-using namespace PERIPHERALS;
-using namespace std;
-
-CPeripheralNIC::CPeripheralNIC(const PeripheralType type, const PeripheralBusType busType, const CStdString &strLocation, const CStdString &strDeviceName, int iVendorId, int iProductId) :
-  CPeripheral(type, busType, strLocation, strDeviceName.IsEmpty() ? g_localizeStrings.Get(35002) : strDeviceName, iVendorId, iProductId)
+class CKeymapLoader
 {
-  m_features.push_back(FEATURE_NIC);
-}
+  public:
+    static void DeviceRemoved(const CStdString& deviceID);
+    static void DeviceAdded(const CStdString& deviceID);
+    static CStdString ParseWin32HIDName(const CStdString& deviceLongName);
+  private:
+    static void ParseDeviceMappings();
+    static bool FindMappedDevice(const CStdString& deviceId, CStdString& keymapName);
+    static bool parsedMappings;
+};

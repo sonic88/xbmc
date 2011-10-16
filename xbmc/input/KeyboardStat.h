@@ -55,8 +55,6 @@ public:
   CStdString GetKeyName(int KeyID);
 
 private:
-  bool LookupSymAndUnicodePeripherals(XBMC_keysym &keysym, uint8_t *key, char *unicode);
-
   XBMC_keysym m_lastKeysym;
   unsigned int m_lastKeyTime;
 };

@@ -45,7 +45,9 @@
 #include "settings/Settings.h"
 #include "GUIInfoManager.h"
 #include "dialogs/GUIDialogSelect.h"
+#include "GUIWindowAddonBrowser.h"
 #include "utils/log.h"
+#include "system.h"
 
 using namespace std;
 using namespace ADDON;
@@ -301,7 +303,29 @@ bool CGUIDialogAddonSettings::ShowVirtualKeyboard(int iControl)
             // get any options
             bool bWriteOnly = false;
             if (option)
-              bWriteOnly = (strcmpi(option, "writeable") == 0);
+            {
+              std::string options = option;
+
+              bWriteOnly = (options.find("writeable") != string::npos);
+
+              if (options.find("smb") != string::npos)
+              {
+                CMediaSource smbshare;
+                smbshare.strPath = "smb://";
+                smbshare.strName = g_localizeStrings.Get(20171);
+                localShares.push_back(smbshare);
+              }
+
+#ifdef HAS_FILESYSTEM_NFS
+              if (options.find("nfs") != string::npos)
+              {
+                CMediaSource nfsshare;
+                nfsshare.strPath = "nfs://";
+                nfsshare.strName = g_localizeStrings.Get(20259);
+                localShares.push_back(nfsshare);
+              }
+#endif// HAS_FILESYSTEM_NFS
+            }
 
             if (CGUIDialogFileBrowser::ShowAndGetDirectory(localShares, label, value, bWriteOnly))
               ((CGUIButtonControl*) control)->SetLabel2(value);
@@ -353,7 +377,7 @@ bool CGUIDialogAddonSettings::ShowVirtualKeyboard(int iControl)
               bUseFileDirectories = find(options.begin(), options.end(), "treatasfolder") != options.end();
             }
 
-            if (CGUIDialogFileBrowser::ShowAndGetFile(localShares, strMask, label, value))
+            if (CGUIDialogFileBrowser::ShowAndGetFile(localShares, strMask, label, value, bUseThumbs, bUseFileDirectories))
               ((CGUIButtonControl*) control)->SetLabel2(value);
           }
         }
@@ -397,6 +421,41 @@ bool CGUIDialogAddonSettings::ShowVirtualKeyboard(int iControl)
           {
             value.Format("%02d:%02d", timedate.wHour, timedate.wMinute);
             ((CGUIButtonControl*) control)->SetLabel2(value);
+          }
+        }
+        else if (strcmp(type, "addon") == 0)
+        {
+          const char *strType = setting->Attribute("addontype");
+          if (strType)
+          {
+            CStdStringArray addonTypes;
+            StringUtils::SplitString(strType, ",", addonTypes);
+            vector<ADDON::TYPE> types;
+            for (unsigned int i = 0 ; i < addonTypes.size() ; i++)
+            {
+              ADDON::TYPE type = TranslateType(addonTypes[i].Trim());
+              if (type != ADDON_UNKNOWN)
+                types.push_back(type);
+            }
+            if (types.size() > 0)
+            {
+              const char *strMultiselect = setting->Attribute("multiselect");
+              bool multiSelect = strMultiselect && strcmpi(strMultiselect, "true") == 0;
+              if (multiSelect)
+              {
+                // construct vector of addon IDs (IDs are comma seperated in single string)
+                CStdStringArray addonIDs;
+                StringUtils::SplitString(value, ",", addonIDs);
+                if (CGUIWindowAddonBrowser::SelectAddonID(types, addonIDs, false) == 1)
+                {
+                  StringUtils::JoinString(addonIDs, ",", value);
+                  ((CGUIButtonControl*) control)->SetLabel2(GetAddonNames(value));
+                }
+              }
+              else // no need of string splitting/joining if we select only 1 addon
+                if (CGUIWindowAddonBrowser::SelectAddonID(types, value, false) == 1)
+                  ((CGUIButtonControl*) control)->SetLabel2(GetAddonNames(value));
+            }
           }
         }
         m_buttonValues[id] = value;
@@ -593,13 +652,14 @@ void CGUIDialogAddonSettings::CreateControls()
 
     if (type)
     {
+      bool isAddonSetting = false;
       if (strcmpi(type, "text") == 0 || strcmpi(type, "ipaddress") == 0 ||
         strcmpi(type, "number") == 0 ||strcmpi(type, "video") == 0 ||
         strcmpi(type, "audio") == 0 || strcmpi(type, "image") == 0 ||
         strcmpi(type, "folder") == 0 || strcmpi(type, "executable") == 0 ||
         strcmpi(type, "file") == 0 || strcmpi(type, "action") == 0 ||
         strcmpi(type, "date") == 0 || strcmpi(type, "time") == 0 ||
-        strcmpi(type, "select") == 0)
+        strcmpi(type, "select") == 0 || (isAddonSetting = strcmpi(type, "addon") == 0))
       {
         pControl = new CGUIButtonControl(*pOriginalButton);
         if (!pControl) return;
@@ -620,7 +680,12 @@ void CGUIDialogAddonSettings::CreateControls()
             ((CGUIButtonControl *)pControl)->SetLabel2(hiddenText);
           }
           else
-            ((CGUIButtonControl *)pControl)->SetLabel2(value);
+          {
+            if (isAddonSetting)
+              ((CGUIButtonControl *)pControl)->SetLabel2(GetAddonNames(value));
+            else
+              ((CGUIButtonControl *)pControl)->SetLabel2(value);
+          }
         }
         else
           ((CGUIButtonControl *)pControl)->SetLabel2(defaultValue);
@@ -800,6 +865,24 @@ void CGUIDialogAddonSettings::CreateControls()
     }
   }
   EnableControls();
+}
+
+CStdString CGUIDialogAddonSettings::GetAddonNames(const CStdString& addonIDslist) const
+{
+  CStdString retVal;
+  CStdStringArray addons;
+  StringUtils::SplitString(addonIDslist, ",", addons);
+  for (CStdStringArray::const_iterator it = addons.begin(); it != addons.end() ; it ++)
+  {
+    if (!retVal.IsEmpty())
+      retVal += ", ";
+    AddonPtr addon;
+    if (CAddonMgr::Get().GetAddon(*it ,addon))
+      retVal += addon->Name();
+    else
+      retVal += *it;
+  }
+  return retVal;
 }
 
 vector<CStdString> CGUIDialogAddonSettings::GetFileEnumValues(const CStdString &path, const CStdString &mask, const CStdString &options) const

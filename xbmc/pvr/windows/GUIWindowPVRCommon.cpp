@@ -42,6 +42,7 @@
 #include "settings/Settings.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "GUIUserMessages.h"
 
 using namespace std;
 using namespace PVR;
@@ -58,6 +59,11 @@ CGUIWindowPVRCommon::CGUIWindowPVRCommon(CGUIWindowPVR *parent, PVRWindow window
   m_iSelected       = 0;
   m_iSortOrder      = SORT_ORDER_ASC;
   m_iSortMethod     = SORT_METHOD_DATE;
+  if( m_parent->GetViewState() )
+  {
+    m_iSortOrder      = m_parent->GetViewState()->GetSortOrder();
+    m_iSortMethod     = m_parent->GetViewState()->GetSortMethod();
+  }
   m_bIsFocusing     = false;
 }
 
@@ -218,12 +224,15 @@ bool CGUIWindowPVRCommon::OnContextButtonSortByDate(CFileItem *item, CONTEXT_BUT
     {
       m_iSortMethod = SORT_METHOD_DATE;
       m_iSortOrder  = SORT_ORDER_ASC;
+      CGUIMessage message(GUI_MSG_CHANGE_SORT_METHOD, m_parent->GetID(), 0, m_iSortMethod, 0); 
+      m_parent->OnMessage(message);
     }
     else
     {
       m_iSortOrder = m_iSortOrder == SORT_ORDER_ASC ? SORT_ORDER_DESC : SORT_ORDER_ASC;
     }
-
+    CGUIMessage message(GUI_MSG_CHANGE_SORT_DIRECTION, m_parent->GetID(), 0, m_iSortOrder, 0); 
+    m_parent->OnMessage(message);
     UpdateData();
   }
 
@@ -242,12 +251,15 @@ bool CGUIWindowPVRCommon::OnContextButtonSortByName(CFileItem *item, CONTEXT_BUT
     {
       m_iSortMethod = SORT_METHOD_LABEL;
       m_iSortOrder  = SORT_ORDER_ASC;
+      CGUIMessage message(GUI_MSG_CHANGE_SORT_METHOD, m_parent->GetID(), 0, m_iSortMethod, 0); 
+      m_parent->OnMessage(message);
     }
     else
     {
       m_iSortOrder = m_iSortOrder == SORT_ORDER_ASC ? SORT_ORDER_DESC : SORT_ORDER_ASC;
     }
-
+    CGUIMessage message(GUI_MSG_CHANGE_SORT_DIRECTION, m_parent->GetID(), 0, m_iSortOrder, 0); 
+    m_parent->OnMessage(message);
     UpdateData();
   }
 
@@ -656,8 +668,13 @@ bool CGUIWindowPVRCommon::PlayFile(CFileItem *item, bool bPlayMinimized /* = fal
     bool bSwitchSuccessful(false);
 
     /* try a fast switch */
-    if (item->IsPVRChannel() && (g_PVRManager.IsPlayingTV() || g_PVRManager.IsPlayingRadio()))
-      bSwitchSuccessful = g_application.m_pPlayer->SwitchChannel(*item->GetPVRChannelInfoTag());
+    if (item->IsPVRChannel() && (g_PVRManager.IsPlayingTV() || g_PVRManager.IsPlayingRadio()) &&
+        (item->GetPVRChannelInfoTag()->IsRadio() == g_PVRManager.IsPlayingRadio()) && g_application.m_pPlayer)
+    {
+      CPVRChannel* channel = item->GetPVRChannelInfoTag();
+      if (channel->StreamURL().IsEmpty())
+        bSwitchSuccessful = g_application.m_pPlayer->SwitchChannel(*channel);
+    }
 
     if (!bSwitchSuccessful)
     {

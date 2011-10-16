@@ -161,6 +161,7 @@ public:
    */
   static int ShowAndGetChoice(const CContextButtons &choices);
 
+protected:
   void SetupButtons();
 
   /*! \brief Position the context menu in the middle of the focused control.
@@ -168,9 +169,8 @@ public:
    */
   void PositionAtCurrentFocus();
 
-  float GetWidth();
-  float GetHeight();
-protected:
+  virtual float GetWidth() const;
+  virtual float GetHeight() const;
   virtual void OnInitWindow();
   virtual void OnWindowLoaded();
   virtual void OnWindowUnload();

@@ -382,20 +382,29 @@ bool CPeripheralCecAdapter::HasConnectedAudioSystem(void)
 
 void CPeripheralCecAdapter::ScheduleVolumeUp(void)
 {
-  CSingleLock lock(m_critSection);
-  m_volumeChangeQueue.push(VOLUME_CHANGE_UP);
+  {
+    CSingleLock lock(m_critSection);
+    m_volumeChangeQueue.push(VOLUME_CHANGE_UP);
+  }
+  Sleep(5);
 }
 
 void CPeripheralCecAdapter::ScheduleVolumeDown(void)
 {
-  CSingleLock lock(m_critSection);
-  m_volumeChangeQueue.push(VOLUME_CHANGE_DOWN);
+  {
+    CSingleLock lock(m_critSection);
+    m_volumeChangeQueue.push(VOLUME_CHANGE_DOWN);
+  }
+  Sleep(5);
 }
 
 void CPeripheralCecAdapter::ScheduleMute(void)
 {
-  CSingleLock lock(m_critSection);
-  m_volumeChangeQueue.push(VOLUME_CHANGE_MUTE);
+  {
+    CSingleLock lock(m_critSection);
+    m_volumeChangeQueue.push(VOLUME_CHANGE_MUTE);
+  }
+  Sleep(5);
 }
 
 void CPeripheralCecAdapter::ProcessVolumeChange(void)
@@ -407,20 +416,19 @@ void CPeripheralCecAdapter::ProcessVolumeChange(void)
     if (m_volumeChangeQueue.size() > 0)
     {
       /* get the first change from the queue */
-      if (pendingVolumeChange == VOLUME_CHANGE_NONE)
-      {
-        pendingVolumeChange = m_volumeChangeQueue.front();
-        m_volumeChangeQueue.pop();
-      }
+      pendingVolumeChange = m_volumeChangeQueue.front();
+      m_volumeChangeQueue.pop();
 
       /* remove all dupe entries */
       while (m_volumeChangeQueue.size() > 0 && m_volumeChangeQueue.front() == pendingVolumeChange)
         m_volumeChangeQueue.pop();
 
+      /* send another keypress after CEC_BUTTON_TIMEOUT ms */
+      bool bRefresh(m_lastKeypress + CEC_BUTTON_TIMEOUT < XbmcThreads::SystemClockMillis());
       m_lastKeypress = XbmcThreads::SystemClockMillis();
 
       /* only send the keypress when it hasn't been sent yet */
-      if (pendingVolumeChange != m_lastChange)
+      if (pendingVolumeChange != m_lastChange || bRefresh)
         m_lastChange = pendingVolumeChange;
       else
         pendingVolumeChange = VOLUME_CHANGE_NONE;
@@ -429,7 +437,6 @@ void CPeripheralCecAdapter::ProcessVolumeChange(void)
     {
       /* send a key release */
       bSendRelease = true;
-      m_lastKeypress = 0;
       m_lastChange = VOLUME_CHANGE_NONE;
     }
   }

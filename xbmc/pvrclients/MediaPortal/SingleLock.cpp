@@ -16,19 +16,18 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AutoLock.h"
+#include "SingleLock.h"
 
 /*
- * \brief CAutoLock constructor
- * \param pCritSec
+ * \brief CSingleLock constructor
+ * \param cs
  */
-CAutoLock::CAutoLock(CCriticalSection* pCritSec)
+CSingleLock::CSingleLock(CCriticalSection& cs): m_CriticalSection(cs)
 {
-  m_pAutoLock = pCritSec;
-  m_pAutoLock->Lock();
+  m_CriticalSection.lock();
 }
 
-CAutoLock::~CAutoLock()
+CSingleLock::~CSingleLock()
 {
-  m_pAutoLock->Unlock();
+  m_CriticalSection.unlock();
 }

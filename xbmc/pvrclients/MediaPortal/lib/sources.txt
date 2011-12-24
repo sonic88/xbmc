@@ -1,0 +1,3 @@
+tinyxml:
+http://www.grinninglizard.com/tinyxml/
+Used version 2.6.2

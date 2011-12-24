@@ -16,7 +16,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef TARGET_WINDOWS
 #pragma warning(disable:4244) //wchar to char = loss of data
 #endif
 
@@ -45,6 +45,7 @@ void Tokenize(const string& str, vector<string>& tokens, const string& delimiter
     // Find next "non-delimiter"
   }
 }
+
 
 std::string WStringToString(const std::wstring& s)
 {

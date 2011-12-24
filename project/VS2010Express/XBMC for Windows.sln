@@ -103,6 +103,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pvrclient_tvheadend", "..\.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libPlatform", "..\..\lib\libPlatform\project\libProcess_2010.vcxproj", "{E2DF1AC8-E9BF-43B8-B5D9-7EC3B513EEF1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "pvrclient_mptv_tsreader", "..\..\xbmc\pvrclients\MediaPortal\project\VS2010Express\XBMC_MPTV_tsreader.vcxproj", "{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug (DirectX)|Win32 = Debug (DirectX)|Win32
@@ -459,6 +461,14 @@ Global
 		{E2DF1AC8-E9BF-43B8-B5D9-7EC3B513EEF1}.Release (DirectX)|Win32.Build.0 = Release|Win32
 		{E2DF1AC8-E9BF-43B8-B5D9-7EC3B513EEF1}.Release (OpenGL)|Win32.ActiveCfg = Release|Win32
 		{E2DF1AC8-E9BF-43B8-B5D9-7EC3B513EEF1}.Release (OpenGL)|Win32.Build.0 = Release|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Debug (DirectX)|Win32.ActiveCfg = Debug|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Debug (DirectX)|Win32.Build.0 = Debug|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Debug (OpenGL)|Win32.ActiveCfg = Debug|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Debug (OpenGL)|Win32.Build.0 = Debug|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Release (DirectX)|Win32.ActiveCfg = Release|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Release (DirectX)|Win32.Build.0 = Release|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Release (OpenGL)|Win32.ActiveCfg = Release|Win32
+		{2C2D2B7F-EC8F-4614-86D9-C0FDA61678CA}.Release (OpenGL)|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

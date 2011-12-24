@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2005-2010 Team XBMC
  *      http://www.xbmc.org
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -17,13 +17,21 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "CriticalSection.h"
+#ifdef TSREADER
 
-class CAutoLock
+#include "os-dependent.h"
+
+class CWaitEvent
 {
   public:
-    CAutoLock(CCriticalSection* pCritSec);
-    ~CAutoLock();
+    CWaitEvent(LPSECURITY_ATTRIBUTES lpEventAttributes, int bManualReset, int bInitialState, const char* lpName);
+    virtual ~CWaitEvent(void);
+    bool Wait();
+    void SetEvent();
+    void ResetEvent();
+
   protected:
-    CCriticalSection* m_pAutoLock;
+    wait_event_t m_waitevent;
 };
+
+#endif //TSREADER

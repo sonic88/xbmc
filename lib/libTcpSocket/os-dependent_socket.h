@@ -41,6 +41,10 @@
 #include <sys/types.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*!
  * @brief Establish a TCP connection to the specified host and portnumber.
  * @param szHostname The name or ip address of the host to connect to.
@@ -93,3 +97,7 @@ void tcp_shutdown(socket_t fdSock);
  * @return The number of bytes written.
  */
 int tcp_send(socket_t fdSock, void *buf, int len, int flags);
+
+#ifdef __cplusplus
+} //extern C
+#endif

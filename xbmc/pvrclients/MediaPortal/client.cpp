@@ -40,6 +40,7 @@ bool        g_bResolveRTSPHostname = DEFAULT_RESOLVE_RTSP_HOSTNAME; ///< Resolve
 bool        g_bReadGenre           = DEFAULT_READ_GENRE;            ///< Read the genre strings from MediaPortal and translate them into XBMC DVB genre id's (only English)
 bool        g_bUseRecordingsDir    = DEFAULT_USE_REC_DIR;           ///< Use a normal directory if true for recordings
 std::string g_szRecordingsDir      = DEFAULT_REC_DIR;               ///< The path to the recordings directory
+std::string g_szTimeshiftDir       = DEFAULT_TIMESHIFT_DIR;         ///< The path to the recordings directory
 std::string g_szTVGroup            = DEFAULT_TVGROUP;               ///< Import only TV channels from this TV Server TV group
 std::string g_szRadioGroup         = DEFAULT_RADIOGROUP;            ///< Import only radio channels from this TV Server radio group
 bool        g_bDirectTSFileRead    = DEFAULT_DIRECT_TS_FR;          ///< Open the Live-TV timeshift buffer directly (skip RTSP streaming)
@@ -88,7 +89,11 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     return ADDON_STATUS_UNKNOWN;
   }
 
+#ifdef TSREADER
+  XBMC->Log(LOG_DEBUG, "Creating MediaPortal PVR-Client (TSReader version)");
+#else
   XBMC->Log(LOG_DEBUG, "Creating MediaPortal PVR-Client (ffmpeg rtsp version)");
+#endif
 
   m_CurStatus    = ADDON_STATUS_UNKNOWN;
   g_iClientID    = pvrprops->iClientId;
@@ -236,6 +241,7 @@ void ADDON_ReadSettings(void)
     g_szRadioGroup = buffer;
   }
 
+#ifndef TSREADER
   /* Read setting "resolvertsphostname" from settings.xml */
   if (!XBMC->GetSetting("resolvertsphostname", &g_bResolveRTSPHostname))
   {
@@ -243,6 +249,7 @@ void ADDON_ReadSettings(void)
     XBMC->Log(LOG_ERROR, "Couldn't get 'resolvertsphostname' setting, falling back to 'true' as default");
     g_bResolveRTSPHostname = DEFAULT_RESOLVE_RTSP_HOSTNAME;
   }
+#endif
 
   /* Read setting "readgenre" from settings.xml */
   if (!XBMC->GetSetting("readgenre", &g_bReadGenre))
@@ -275,14 +282,44 @@ void ADDON_ReadSettings(void)
   } else {
     g_szRecordingsDir = buffer;
   }
+#ifdef TSREADER
+  /* TSReader settings */
+  /*********************/
+#ifdef TARGET_WINDOWS
+  /* Read setting "directtsfileread" from settings.xml */
+  if (!XBMC->GetSetting("directtsfileread", &g_bDirectTSFileRead))
+  {
+    /* If setting is unknown fallback to defaults */
+    XBMC->Log(LOG_ERROR, "Couldn't get 'directtsfileread' setting, falling back to 'false' as default");
+    g_bDirectTSFileRead = DEFAULT_DIRECT_TS_FR;
+  }
+#else
+  /* "directtsfileread" is not yet supported on non-Windows targets */
+   XBMC->Log(LOG_INFO, "Setting 'directtsfileread' to 'false' for non-Windows targets");
   g_bDirectTSFileRead = false;
+#endif
+
+  if (!XBMC->GetSetting("timeshiftdir", &buffer))
+  {
+    /* If setting is unknown fallback to defaults */
+    XBMC->Log(LOG_ERROR, "Couldn't get 'timeshiftdir' setting, falling back to '%s' as default", DEFAULT_TIMESHIFT_DIR);
+  } else {
+   g_szTimeshiftDir = buffer;
+  }
+#else
+  g_bDirectTSFileRead = false;
+#endif
 
   /* Log the current settings for debugging purposes */
   XBMC->Log(LOG_DEBUG, "settings: host='%s', port=%i, timeout=%i", g_szHostname.c_str(), g_iPort, g_iConnectTimeout);
   XBMC->Log(LOG_DEBUG, "settings: ftaonly=%i, useradio=%i, tvgroup='%s', radiogroup='%s'", (int) g_bOnlyFTA, (int) g_bRadioEnabled, g_szTVGroup.c_str(), g_szRadioGroup.c_str());
   XBMC->Log(LOG_DEBUG, "settings: readgenre=%i, sleeponrtspurl=%i", (int) g_bReadGenre, g_iSleepOnRTSPurl);
   XBMC->Log(LOG_DEBUG, "settings: userecordingsdir=%i, recordingsdir='%s'", (int) g_bUseRecordingsDir, g_szRecordingsDir.c_str());
+#ifndef TSREADER
   XBMC->Log(LOG_DEBUG, "settings: resolvertsphostname=%i", (int) g_bResolveRTSPHostname);
+#else
+  XBMC->Log(LOG_DEBUG, "settings: directsfileread=%i, timeshiftdir='%s'", (int) g_bDirectTSFileRead, g_szTimeshiftDir.c_str());
+#endif
 }
 
 //-- SetSetting ---------------------------------------------------------------
@@ -342,11 +379,13 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
     XBMC->Log(LOG_INFO, "Changed setting 'radiogroup' from %s to %s", g_szRadioGroup.c_str(), (const char*) settingValue);
     g_szRadioGroup = (const char*) settingValue;
   }
+#ifndef TSREADER
   else if (str == "resolvertsphostname")
   {
     XBMC->Log(LOG_INFO, "Changed setting 'resolvertsphostname' from %u to %u", g_bResolveRTSPHostname, *(bool*) settingValue);
     g_bResolveRTSPHostname = *(bool*) settingValue;
   }
+#endif
   else if (str == "readgenre")
   {
     XBMC->Log(LOG_INFO, "Changed setting 'readgenre' from %u to %u", g_bReadGenre, *(bool*) settingValue);
@@ -367,6 +406,18 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
     XBMC->Log(LOG_INFO, "Changed setting 'recordingsdir' from %s to %s", g_szRecordingsDir.c_str(), (const char*) settingValue);
     g_szRecordingsDir = (const char*) settingValue;
   }
+#ifdef TSREADER
+  else if (str == "directtsfileread")
+  {
+    XBMC->Log(LOG_INFO, "Changed setting 'directtsfileread' from %u to %u", g_bDirectTSFileRead, *(bool*) settingValue);
+    g_bDirectTSFileRead = *(bool*) settingValue;
+  }
+  else if (str == "timeshiftdir")
+  {
+    XBMC->Log(LOG_INFO, "Changed setting 'timeshiftdir' from %u to %u", g_szTimeshiftDir.c_str(), *(bool*) settingValue);
+    g_szTimeshiftDir = *(bool*) settingValue;
+  }
+#endif
   return ADDON_STATUS_OK;
 }
 

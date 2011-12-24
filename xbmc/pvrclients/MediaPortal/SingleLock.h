@@ -17,22 +17,15 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "os-dependent.h"
+#include "CriticalSection.h"
+#include "NonCopyable.h"
 
-class CCriticalSection
+class CSingleLock : public NonCopyable
 {
   public:
-    CCriticalSection();
-    virtual ~CCriticalSection();
-
-    void Initialize(void);
-    void lock(void);
-    void unlock(void);
-    bool try_lock(void);
-
+   CSingleLock(CCriticalSection& cs);
+   CSingleLock(const CCriticalSection& cs);
+    ~CSingleLock();
   protected:
-     criticalsection_t m_CriticalSection;
-
-  private:
-     int locked;
+    CCriticalSection& m_CriticalSection;
 };

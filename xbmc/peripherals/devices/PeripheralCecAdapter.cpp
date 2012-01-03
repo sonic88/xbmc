@@ -235,7 +235,7 @@ void CPeripheralCecAdapter::Process(void)
   // set correct physical address from peripheral settings
   int iDevice = GetSettingInt("connected_device");
   int iHdmiPort = GetSettingInt("cec_hdmi_port");
-  SetHdmiPort(iDevice, iHdmiPort);
+  m_cecAdapter->SetHDMIPort((cec_logical_address)iDevice, iHdmiPort);
   FlushLog();
 
   // open the CEC adapter

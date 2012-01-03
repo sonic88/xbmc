@@ -44,6 +44,8 @@ using namespace CEC;
 
 /* time in seconds to ignore standby commands from devices after the screensaver has been activated */
 #define SCREENSAVER_TIMEOUT       10
+#define VOLUME_CHANGE_TIMEOUT     250
+#define VOLUME_REFRESH_TIMEOUT    100
 
 class DllLibCECInterface
 {
@@ -408,19 +410,27 @@ void CPeripheralCecAdapter::ProcessVolumeChange(void)
       while (m_volumeChangeQueue.size() > 0 && m_volumeChangeQueue.front() == pendingVolumeChange)
         m_volumeChangeQueue.pop();
 
-      /* send another keypress after CEC_BUTTON_TIMEOUT ms */
-      bool bRefresh(m_lastKeypress + CEC_BUTTON_TIMEOUT < XbmcThreads::SystemClockMillis());
-      m_lastKeypress = XbmcThreads::SystemClockMillis();
+      /* send another keypress after VOLUME_REFRESH_TIMEOUT ms */
+      bool bRefresh(m_lastKeypress + VOLUME_REFRESH_TIMEOUT < XbmcThreads::SystemClockMillis());
 
       /* only send the keypress when it hasn't been sent yet */
-      if (pendingVolumeChange != m_lastChange || bRefresh)
+      if (pendingVolumeChange != m_lastChange)
+      {
+        m_lastKeypress = XbmcThreads::SystemClockMillis();
         m_lastChange = pendingVolumeChange;
+      }
+      else if (bRefresh)
+      {
+        m_lastKeypress = XbmcThreads::SystemClockMillis();
+        pendingVolumeChange = m_lastChange;
+      }
       else
         pendingVolumeChange = VOLUME_CHANGE_NONE;
     }
-    else if (m_lastKeypress > 0 && m_lastKeypress + CEC_BUTTON_TIMEOUT < XbmcThreads::SystemClockMillis())
+    else if (m_lastKeypress > 0 && m_lastKeypress + VOLUME_CHANGE_TIMEOUT < XbmcThreads::SystemClockMillis())
     {
       /* send a key release */
+      m_lastKeypress = 0;
       bSendRelease = true;
       m_lastChange = VOLUME_CHANGE_NONE;
     }

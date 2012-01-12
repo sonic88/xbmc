@@ -2827,6 +2827,7 @@
   <string id="35006">Device removed</string>
   <string id="35007">Keymap to use for this device</string>
   <string id="35008">Keymap enabled</string>
+  <string id="35009">Do not use the custom keymap for this device</string>
 
   <string id="35500">Location</string>
   <string id="35501">Class</string>
@@ -2853,4 +2854,5 @@
   <string id="36016">Connected</string> <!-- max. 13 characters -->
   <string id="36017">Adapter found, but libcec is not available</string>
   <string id="36018">Use the TV's language setting</string>
+  <string id="36019">Connected to HDMI device</string>
 </strings>

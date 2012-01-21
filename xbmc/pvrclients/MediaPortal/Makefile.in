@@ -20,7 +20,6 @@ SRCS   = channels.cpp \
 	uri.cpp \
 	utils.cpp \
 	posix/CriticalSection.cpp \
-	SingleLock.cpp \
 	Cards.cpp
 
 include ../Makefile.include

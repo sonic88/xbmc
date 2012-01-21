@@ -255,7 +255,7 @@ void ADDON_ReadSettings(void)
   if (!XBMC->GetSetting("readgenre", &g_bReadGenre))
   {
     /* If setting is unknown fallback to defaults */
-    XBMC->Log(LOG_ERROR, "Couldn't get 'resolvertsphostname' setting, falling back to 'true' as default");
+    XBMC->Log(LOG_ERROR, "Couldn't get 'readgenre' setting, falling back to 'true' as default");
     g_bReadGenre = DEFAULT_READ_GENRE;
   }
 
@@ -303,11 +303,15 @@ void ADDON_ReadSettings(void)
   {
     /* If setting is unknown fallback to defaults */
     XBMC->Log(LOG_ERROR, "Couldn't get 'timeshiftdir' setting, falling back to '%s' as default", DEFAULT_TIMESHIFT_DIR);
+    g_szTimeshiftDir =  DEFAULT_TIMESHIFT_DIR;
   } else {
-   g_szTimeshiftDir = buffer;
+    g_szTimeshiftDir = buffer;
   }
 #else
+  /* "directtsfileread" is not yet supported on non-Windows targets */
+  XBMC->Log(LOG_INFO, "Setting 'directtsfileread' to 'false' for non-Windows targets");
   g_bDirectTSFileRead = false;
+  g_szTimeshiftDir = DEFAULT_TIMESHIFT_DIR;
 #endif
 
   /* Log the current settings for debugging purposes */

@@ -135,9 +135,10 @@ void CPeripheralCecAdapter::Announce(EAnnouncementFlag flag, const char *sender,
 {
   if (flag == System && !strcmp(sender, "xbmc") && !strcmp(message, "OnQuit") && m_bIsReady)
   {
-    m_cecAdapter->SetInactiveView();
     if (GetSettingBool("cec_power_off_shutdown"))
       m_cecAdapter->StandbyDevices();
+    else
+      m_cecAdapter->SetInactiveView();
   }
   else if (flag == GUI && !strcmp(sender, "xbmc") && !strcmp(message, "OnScreensaverDeactivated") && GetSettingBool("cec_standby_screensaver") && m_bIsReady)
   {
@@ -886,8 +887,7 @@ int CPeripheralCecAdapter::CecLogMessage(void *cbParam, const cec_log_message &m
     break;
   case CEC_LOG_TRAFFIC:
   case CEC_LOG_DEBUG:
-    if (adapter->GetSettingBool("cec_debug_logging"))
-      iLevel = LOGDEBUG;
+    iLevel = LOGDEBUG;
     break;
   default:
     break;

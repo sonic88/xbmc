@@ -22,8 +22,17 @@
 
 #define WIN32_LEAN_AND_MEAN           // Enable LEAN_AND_MEAN support
 #include <windows.h>
+#include <process.h>
 
+typedef HANDLE wait_event_t;
 typedef CRITICAL_SECTION criticalsection_t;
+typedef unsigned __int32 uint;
+typedef DWORD tThreadId;
+
+#ifndef va_copy
+#define va_copy(x, y) x = y
+#endif
+
 
 /* Platform dependent path separator */
 #define PATH_SEPARATOR_CHAR '\\'

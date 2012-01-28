@@ -16,14 +16,12 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-extern "C" {
-#include "libTcpSocket/os-dependent_socket.h"
-}
 #include "libXBMC_addon.h"
 #include "utils.h"
+#include <string>
+#include "libTcpSocket/os-dependent_socket.h"
 #include "client.h"
 #include "Socket.h"
-#include <string>
 
 using namespace std;
 using namespace ADDON;
@@ -493,7 +491,7 @@ bool Socket::is_valid() const
   return (_sd != INVALID_SOCKET);
 }
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(TARGET_WINDOWS)
 bool Socket::set_non_blocking ( const bool b )
 {
   u_long iMode;
@@ -635,7 +633,7 @@ void Socket::osCleanup()
   }
 }
 
-#elif defined _LINUX
+#elif defined TARGET_LINUX
 bool Socket::set_non_blocking ( const bool b )
 {
   int opts;
@@ -747,6 +745,6 @@ void Socket::osCleanup()
 {
   // Not needed for Linux
 }
-#endif //_WINDOWS || _LINUX
+#endif //TARGET_WINDOWS || TARGET_LINUX
 
 } //namespace MPTV

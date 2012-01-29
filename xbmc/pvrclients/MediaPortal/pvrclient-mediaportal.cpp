@@ -44,7 +44,7 @@ using namespace ADDON;
 int g_iTVServerXBMCBuild = 0;
 
 /* PVR client version (don't forget to update also the addon.xml and the Changelog.txt files) */
-#define PVRCLIENT_MEDIAPORTAL_VERSION_STRING    "1.2.1.109"
+#define PVRCLIENT_MEDIAPORTAL_VERSION_STRING    "1.2.2.110"
 
 /* TVServerXBMC plugin supported versions */
 #define TVSERVERXBMC_MIN_VERSION_STRING         "1.1.0.70"
@@ -1450,14 +1450,23 @@ bool cPVRClientMediaPortal::SwitchChannel(const PVR_CHANNEL &channel)
 #ifdef TSREADER
   XBMC->Log(LOG_DEBUG, "SwitchChannel(uid=%i) tsreader: open a new live stream", channel.iUniqueId);
 
-  if ((g_iTVServerXBMCBuild < 90))
+  if (g_bFastChannelSwitch)
   {
-    if (m_tsreader)
+    if ((g_iTVServerXBMCBuild < 90))
     {
-      //Only remove the TSReader for TVServerXBMC older than v1.1.0.90
-      m_tsreader->Close();
-      SAFE_DELETE(m_tsreader);
+      if (m_tsreader)
+      {
+        //Only remove the TSReader for TVServerXBMC older than v1.1.0.90
+        m_tsreader->Close();
+        SAFE_DELETE(m_tsreader);
+      }
     }
+  }
+  else
+  {
+    // Close existing live stream before opening a new one.
+    // This is slower, but it helps XBMC playback when the streams change types (e.g. SD->HD)
+    CloseLiveStream();
   }
 
   return OpenLiveStream(channel);

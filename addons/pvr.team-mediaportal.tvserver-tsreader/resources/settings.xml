@@ -24,5 +24,6 @@
     <setting id="recordingsdir" type="folder" option="smb" label="30012" default="" />
     <setting id="directtsfileread" type="bool" label="30013" default="true" />
     <setting id="timeshiftdir" type="folder" option="smb" label="30014" default="" />
+    <setting id="fastchannelswitch" type="bool" label="30004" default="true" />
   </category>
 </settings>

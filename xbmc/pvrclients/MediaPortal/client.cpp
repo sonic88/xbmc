@@ -313,8 +313,8 @@ void ADDON_ReadSettings(void)
   if (!XBMC->GetSetting("fastchannelswitch", &g_bFastChannelSwitch))
   {
     /* If setting is unknown fallback to defaults */
-    XBMC->Log(LOG_ERROR, "Couldn't get 'fastchannelswitch' setting, falling back to 'true' as default");
-    g_bFastChannelSwitch = true;
+    XBMC->Log(LOG_ERROR, "Couldn't get 'fastchannelswitch' setting, falling back to 'false' as default");
+    g_bFastChannelSwitch = false;
   }
 
 #else //! TSREADER

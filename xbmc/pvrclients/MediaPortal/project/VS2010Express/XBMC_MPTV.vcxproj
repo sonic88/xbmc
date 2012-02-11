@@ -134,6 +134,7 @@
     <ClCompile Include="..\..\utils.cpp" />
     <ClCompile Include="..\..\windows\CriticalSection.cpp" />
     <ClCompile Include="..\..\windows\FileUtils.cpp" />
+    <ClCompile Include="..\..\windows\WindowsUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Cards.h" />
@@ -155,6 +156,7 @@
     <ClInclude Include="..\..\uri.h" />
     <ClInclude Include="..\..\utils.h" />
     <ClInclude Include="..\..\windows\os_windows.h" />
+    <ClInclude Include="..\..\windows\WindowsUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\README" />

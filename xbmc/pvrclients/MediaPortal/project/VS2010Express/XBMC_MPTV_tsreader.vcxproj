@@ -142,6 +142,8 @@
     <ClCompile Include="..\..\uri.cpp" />
     <ClCompile Include="..\..\utils.cpp" />
     <ClCompile Include="..\..\windows\CriticalSection.cpp" />
+    <ClCompile Include="..\..\windows\FileUtils.cpp" />
+    <ClCompile Include="..\..\windows\WindowsUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Cards.h" />
@@ -149,6 +151,7 @@
     <ClInclude Include="..\..\client.h" />
     <ClInclude Include="..\..\CriticalSection.h" />
     <ClInclude Include="..\..\epg.h" />
+    <ClInclude Include="..\..\FileUtils.h" />
     <ClInclude Include="..\..\lib\tinyxml\tinystr.h" />
     <ClInclude Include="..\..\lib\tinyxml\tinyxml.h" />
     <ClInclude Include="..\..\lib\tsreader\FileReader.h" />
@@ -170,6 +173,7 @@
     <ClInclude Include="..\..\Socket.h" />
     <ClInclude Include="..\..\timers.h" />
     <ClInclude Include="..\..\utils.h" />
+    <ClInclude Include="..\..\windows\WindowsUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\README" />

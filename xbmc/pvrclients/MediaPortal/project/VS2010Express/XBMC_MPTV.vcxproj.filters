@@ -77,6 +77,9 @@
     <ClCompile Include="..\..\windows\CriticalSection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\windows\WindowsUtils.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\channels.h">
@@ -135,6 +138,9 @@
     </ClInclude>
     <ClInclude Include="..\..\FileUtils.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\windows\WindowsUtils.h">
+      <Filter>Header Files\windows</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

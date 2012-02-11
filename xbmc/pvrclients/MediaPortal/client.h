@@ -31,7 +31,7 @@
 #define DEFAULT_PORT                  9596
 #define DEFAULT_FTA_ONLY              false
 #define DEFAULT_RADIO                 true
-#define DEFAULT_TIMEOUT               6
+#define DEFAULT_TIMEOUT               10
 #define DEFAULT_HANDLE_MSG            false
 #ifdef TSREADER
 #define DEFAULT_RESOLVE_RTSP_HOSTNAME false

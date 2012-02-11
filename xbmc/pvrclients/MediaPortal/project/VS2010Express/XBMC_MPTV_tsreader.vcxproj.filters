@@ -98,9 +98,6 @@
     <ClCompile Include="..\..\lib\tinyxml\tinyxmlparser.cpp">
       <Filter>Source Files\tinyXML</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\SingleLock.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\tsreader\Thread.cpp">
       <Filter>Source Files\tsreader</Filter>
     </ClCompile>

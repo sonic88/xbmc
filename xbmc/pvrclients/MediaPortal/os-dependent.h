@@ -20,6 +20,7 @@
 
 #if defined(TARGET_WINDOWS)
 #define NOMINMAX                      // don't define min() and max() to prevent a clash with std::min() and std::max
+#define NOMINMAX                      // don't define min() and max() to prevent a clash with std::min() and std::max
 #endif
 
 #include "platform/os.h"

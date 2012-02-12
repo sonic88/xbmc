@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 #include "os-dependent.h"
+#include "platform/util/timeutils.h"
 
 #include "client.h"
 #include "timers.h"
@@ -36,6 +37,9 @@
 #ifdef TSREADER
 #include "lib/tsreader/TSReader.h"
 #endif
+#ifdef TARGET_WINDOWS
+#include "FileUtils.h"
+#endif
 
 using namespace std;
 using namespace ADDON;
@@ -44,13 +48,13 @@ using namespace ADDON;
 int g_iTVServerXBMCBuild = 0;
 
 /* PVR client version (don't forget to update also the addon.xml and the Changelog.txt files) */
-#define PVRCLIENT_MEDIAPORTAL_VERSION_STRING    "1.2.1.109"
+#define PVRCLIENT_MEDIAPORTAL_VERSION_STRING    "1.2.2.110"
 
 /* TVServerXBMC plugin supported versions */
 #define TVSERVERXBMC_MIN_VERSION_STRING         "1.1.0.70"
 #define TVSERVERXBMC_MIN_VERSION_BUILD          70
-#define TVSERVERXBMC_RECOMMENDED_VERSION_STRING "1.1.x.109 or 1.2.1.109"
-#define TVSERVERXBMC_RECOMMENDED_VERSION_BUILD  109
+#define TVSERVERXBMC_RECOMMENDED_VERSION_STRING "1.1.x.110 or 1.2.2.110"
+#define TVSERVERXBMC_RECOMMENDED_VERSION_BUILD  110
 
 /************************************************************/
 /** Class interface */
@@ -579,6 +583,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannels(PVR_HANDLE handle, bool bRadio)
   int             code;
   PVR_CHANNEL     tag;
   CStdString      stream;
+  bool            bCheckForThumbs = false;
 
   if (!IsUp())
     return PVR_ERROR_SERVER_ERROR;
@@ -619,6 +624,39 @@ PVR_ERROR cPVRClientMediaPortal::GetChannels(PVR_HANDLE handle, bool bRadio)
   if( !SendCommand2(command.c_str(), code, lines) )
     return PVR_ERROR_SERVER_ERROR;
 
+#ifdef TARGET_WINDOWS
+  /* Check if we can find the MediaPortal channel logo folders on this machine */
+  std::string strIconName;
+  std::string strThumbPath;
+  std::string strProgramData;
+
+  if (OS::GetEnvironmentVariable("PROGRAMDATA", strProgramData) == true)
+    strThumbPath = strProgramData + "\\Team MediaPortal\\MediaPortal\\Thumbs\\";
+  else
+  {
+    if (OS::Version() >= OS::WindowsVista)
+    {
+      /* Windows Vista/7/Server 2008 */
+      strThumbPath = "C:\\ProgramData\\Team MediaPortal\\MediaPortal\\Thumbs\\";
+    }
+    else
+    {
+      /* Windows XP */
+      if (OS::GetEnvironmentVariable("ALLUSERSPROFILE", strProgramData) == true)
+        strThumbPath = strProgramData + "\\Application Data\\Team MediaPortal\\MediaPortal\\thumbs\\";
+      else
+        strThumbPath = "C:\\Documents and Settings\\All Users\\Application Data\\Team MediaPortal\\MediaPortal\\thumbs\\";
+    }
+  }
+
+  if (bRadio)
+    strThumbPath += "Radio\\";
+  else
+    strThumbPath += "TV\\logos\\";
+
+  bCheckForThumbs = OS::CFile::Exists(strThumbPath);
+#endif
+
   memset(&tag, 0, sizeof(PVR_CHANNEL));
 
   for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
@@ -642,7 +680,22 @@ PVR_ERROR cPVRClientMediaPortal::GetChannels(PVR_HANDLE handle, bool bRadio)
       tag.iUniqueId = channel.UID();
       tag.iChannelNumber = g_iTVServerXBMCBuild >= 102 ? channel.ExternalID() : channel.UID();
       tag.strChannelName = channel.Name();
+#ifdef TARGET_WINDOWS
+      if (bCheckForThumbs)
+      {
+        strIconName = strThumbPath + ToThumbFileName(channel.Name()) + ".png";
+        if ( OS::CFile::Exists(strIconName) )
+        {
+          tag.strIconPath = strIconName.c_str();
+        }
+        else
+        {
+          tag.strIconPath = "";
+        }
+      }
+#else
       tag.strIconPath = "";
+#endif
       tag.iEncryptionSystem = channel.Encrypted();
       tag.bIsRadio = bRadio; //TODO:(channel.Vpid() == 0) && (channel.Apid(0) != 0) ? true : false;
       tag.bIsHidden = false;
@@ -1272,6 +1325,8 @@ bool cPVRClientMediaPortal::OpenLiveStream(const PVR_CHANNEL &channelinfo)
     //[1] = original (unresolved) rtsp url
     //[2] = timeshift buffer filename
     //[3] = card id (TVServerXBMC build >= 106)
+    //[4] = tsbuffer pos (TVServerXBMC build >= 110)
+    //[5] = tsbuffer file nr (TVServerXBMC build >= 110)
 
     m_PlaybackURL = timeshiftfields[0];
     XBMC->Log(LOG_INFO, "Channel stream URL: %s, timeshift buffer: %s", m_PlaybackURL.c_str(), timeshiftfields[2].c_str());
@@ -1301,7 +1356,11 @@ bool cPVRClientMediaPortal::OpenLiveStream(const PVR_CHANNEL &channelinfo)
         if(g_bDirectTSFileRead)
         {
           // Timeshift buffer
-          return m_tsreader->OnZap(timeshiftfields[2].c_str());
+          if (g_iTVServerXBMCBuild >=110 )
+            return m_tsreader->OnZap(timeshiftfields[2].c_str(), atoll(timeshiftfields[4].c_str()), atol(timeshiftfields[5].c_str()));
+          else
+            return m_tsreader->OnZap(timeshiftfields[2].c_str(), -1, -1);
+
         }
         else
 #endif //TARGET_WINDOWS
@@ -1387,9 +1446,9 @@ int cPVRClientMediaPortal::ReadLiveStream(unsigned char *pBuffer, unsigned int i
 
     if ( read_done < (unsigned long) iBufferSize )
     {
-      if (read_timeouts > 25)
+      if (read_timeouts > 50)
       {
-        XBMC->Log(LOG_INFO, "No data in 1 second");
+        XBMC->Log(LOG_INFO, "No data in 2 seconds");
         read_timeouts = 0;
         m_bPlayingNoSignal = true;
         return read_done; //writeNoSignalStream(bufptr, read_wanted);
@@ -1444,14 +1503,23 @@ bool cPVRClientMediaPortal::SwitchChannel(const PVR_CHANNEL &channel)
 #ifdef TSREADER
   XBMC->Log(LOG_DEBUG, "SwitchChannel(uid=%i) tsreader: open a new live stream", channel.iUniqueId);
 
-  if ((g_iTVServerXBMCBuild < 90))
+  if (g_bFastChannelSwitch)
   {
-    if (m_tsreader)
+    if ((g_iTVServerXBMCBuild < 90))
     {
-      //Only remove the TSReader for TVServerXBMC older than v1.1.0.90
-      m_tsreader->Close();
-      SAFE_DELETE(m_tsreader);
+      if (m_tsreader)
+      {
+        //Only remove the TSReader for TVServerXBMC older than v1.1.0.90
+        m_tsreader->Close();
+        SAFE_DELETE(m_tsreader);
+      }
     }
+  }
+  else
+  {
+    // Close existing live stream before opening a new one.
+    // This is slower, but it helps XBMC playback when the streams change types (e.g. SD->HD)
+    CloseLiveStream();
   }
 
   return OpenLiveStream(channel);
@@ -1470,9 +1538,9 @@ int cPVRClientMediaPortal::GetCurrentClientChannel()
 
 PVR_ERROR cPVRClientMediaPortal::SignalStatus(PVR_SIGNAL_STATUS &signalStatus)
 {
-  if (g_iTVServerXBMCBuild < 108)
+  if (g_iTVServerXBMCBuild < 108 || (m_iCurrentChannel == -1))
   {
-    // Not yet supported
+    // Not yet supported or playing webstream
     return PVR_ERROR_NO_ERROR;
   }
 

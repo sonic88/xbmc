@@ -33,7 +33,7 @@ public:
   long Open(const char* pszFileName);
   long Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes);
   void Close();
-  bool OnZap(const char* pszFileName);
+  bool OnZap(const char* pszFileName, int64_t timeShiftBufferPos, long timeshiftBufferID);
 
   /**
    * \brief Pass a pointer to the MediaPortal card settings to this class

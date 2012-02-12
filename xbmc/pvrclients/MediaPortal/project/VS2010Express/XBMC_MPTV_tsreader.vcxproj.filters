@@ -98,13 +98,16 @@
     <ClCompile Include="..\..\lib\tinyxml\tinyxmlparser.cpp">
       <Filter>Source Files\tinyXML</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\SingleLock.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\lib\tsreader\Thread.cpp">
       <Filter>Source Files\tsreader</Filter>
     </ClCompile>
     <ClCompile Include="..\..\windows\CriticalSection.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\windows\WindowsUtils.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\windows\FileUtils.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
   </ItemGroup>
@@ -186,6 +189,12 @@
     </ClInclude>
     <ClInclude Include="..\..\windows\os_windows.h">
       <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\windows\WindowsUtils.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\FileUtils.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

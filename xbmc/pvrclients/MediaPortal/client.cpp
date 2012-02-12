@@ -44,6 +44,7 @@ std::string g_szTimeshiftDir       = DEFAULT_TIMESHIFT_DIR;         ///< The pat
 std::string g_szTVGroup            = DEFAULT_TVGROUP;               ///< Import only TV channels from this TV Server TV group
 std::string g_szRadioGroup         = DEFAULT_RADIOGROUP;            ///< Import only radio channels from this TV Server radio group
 bool        g_bDirectTSFileRead    = DEFAULT_DIRECT_TS_FR;          ///< Open the Live-TV timeshift buffer directly (skip RTSP streaming)
+bool        g_bFastChannelSwitch   = true;                          ///< Don't stop an existing timeshift on a channel switch
 
 /* Client member variables */
 ADDON_STATUS           m_CurStatus    = ADDON_STATUS_UNKNOWN;
@@ -297,7 +298,7 @@ void ADDON_ReadSettings(void)
   /* "directtsfileread" is not yet supported on non-Windows targets */
    XBMC->Log(LOG_INFO, "Setting 'directtsfileread' to 'false' for non-Windows targets");
   g_bDirectTSFileRead = false;
-#endif
+#endif //TARGET_WINDOWS
 
   if (!XBMC->GetSetting("timeshiftdir", &buffer))
   {
@@ -307,12 +308,21 @@ void ADDON_ReadSettings(void)
   } else {
     g_szTimeshiftDir = buffer;
   }
-#else
+
+  /* Read setting "fastchannelswitch" from settings.xml */
+  if (!XBMC->GetSetting("fastchannelswitch", &g_bFastChannelSwitch))
+  {
+    /* If setting is unknown fallback to defaults */
+    XBMC->Log(LOG_ERROR, "Couldn't get 'fastchannelswitch' setting, falling back to 'false' as default");
+    g_bFastChannelSwitch = false;
+  }
+
+#else //! TSREADER
   /* "directtsfileread" is not yet supported on non-Windows targets */
   XBMC->Log(LOG_INFO, "Setting 'directtsfileread' to 'false' for non-Windows targets");
   g_bDirectTSFileRead = false;
   g_szTimeshiftDir = DEFAULT_TIMESHIFT_DIR;
-#endif
+#endif //TSREADER
 
   /* Log the current settings for debugging purposes */
   XBMC->Log(LOG_DEBUG, "settings: host='%s', port=%i, timeout=%i", g_szHostname.c_str(), g_iPort, g_iConnectTimeout);
@@ -322,7 +332,7 @@ void ADDON_ReadSettings(void)
 #ifndef TSREADER
   XBMC->Log(LOG_DEBUG, "settings: resolvertsphostname=%i", (int) g_bResolveRTSPHostname);
 #else
-  XBMC->Log(LOG_DEBUG, "settings: directsfileread=%i, timeshiftdir='%s'", (int) g_bDirectTSFileRead, g_szTimeshiftDir.c_str());
+  XBMC->Log(LOG_DEBUG, "settings: directsfileread=%i, timeshiftdir='%s' fastchannelswitch=%i", (int) g_bDirectTSFileRead, g_szTimeshiftDir.c_str(), (int) g_bFastChannelSwitch);
 #endif
 }
 
@@ -420,6 +430,11 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
   {
     XBMC->Log(LOG_INFO, "Changed setting 'timeshiftdir' from %u to %u", g_szTimeshiftDir.c_str(), *(bool*) settingValue);
     g_szTimeshiftDir = *(bool*) settingValue;
+  }
+  else if (str == "fastchannelswitch")
+  {
+    XBMC->Log(LOG_INFO, "Changed setting 'fastchannelswitch' from %u to %u", g_bFastChannelSwitch, *(bool*) settingValue);
+    g_bFastChannelSwitch = *(bool*) settingValue;
   }
 #endif
   return ADDON_STATUS_OK;

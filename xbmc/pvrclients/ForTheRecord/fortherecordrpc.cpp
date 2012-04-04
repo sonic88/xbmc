@@ -111,6 +111,7 @@ namespace ForTheRecord
   void Initialize(void)
   {
     // due to lack of static constructors...
+    curl_global_init(CURL_GLOBAL_ALL);
   }
 
 

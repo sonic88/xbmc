@@ -44,16 +44,14 @@ FileReader::FileReader() :
 #if defined(TARGET_WINDOWS)
   m_hFile(INVALID_HANDLE_VALUE),
 #elif defined(TARGET_LINUX) || defined(TARGET_OSX)
-m_hFile(),
+  m_hFile(),
 #else
 #error Implement initialisation of file for your OS
 #endif
   m_pFileName(0),
   m_bReadOnly(false),
-  m_bDelay(false),
   m_fileSize(0),
   m_fileStartPos(0),
-  m_llBufferPointer(0),
   m_bDebugOutput(false)
 {
 }
@@ -64,7 +62,6 @@ FileReader::~FileReader()
   if (m_pFileName)
     delete m_pFileName;
 }
-
 
 long FileReader::GetFileName(char* *lpszFileName)
 {
@@ -192,11 +189,9 @@ long FileReader::OpenFile()
 #error FIXME: Add an debug log implementation for your OS
 #endif
 
-  SetFilePointer(0, FILE_BEGIN);
-  m_llBufferPointer = 0;
+  //SetFilePointer(0, FILE_BEGIN);
 
   return S_OK;
-
 } // Open
 
 //
@@ -228,7 +223,6 @@ long FileReader::CloseFile()
 #error FIXME: Add a CloseFile() implementation for your OS
 #endif
 
-  m_llBufferPointer = 0;
   return NOERROR;
 } // CloseFile
 

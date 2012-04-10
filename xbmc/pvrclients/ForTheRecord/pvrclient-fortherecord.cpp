@@ -28,6 +28,7 @@
 #include "utils.h"
 #include "pvrclient-fortherecord.h"
 #include "fortherecordrpc.h"
+#include "platform/util/timeutils.h"
 
 #ifdef TSREADER
 #include "lib/tsreader/TSReader.h"
@@ -118,7 +119,7 @@ bool cPVRClientForTheRecord::Connect()
   // Check the accessibility status of all the shares used by ForTheRecord tuners
   if (ShareErrorsFound())
   {
-    XBMC->QueueNotification(QUEUE_ERROR, "4TR share errors: see xbmc.log");
+    XBMC->QueueNotification(QUEUE_ERROR, "Share errors: see xbmc.log");
   }
 
   m_bConnected = true;
@@ -397,6 +398,7 @@ PVR_ERROR cPVRClientForTheRecord::GetEpg(PVR_HANDLE handle, const PVR_CHANNEL &c
   else
   {
     XBMC->Log(LOG_ERROR, "Channel (%i) did not return a channel class.", channel.iUniqueId);
+    XBMC->QueueNotification(QUEUE_ERROR, "GUID to XBMC Channel");
   }
 
   return PVR_ERROR_NO_ERROR;
@@ -478,7 +480,7 @@ PVR_ERROR cPVRClientForTheRecord::GetChannels(PVR_HANDLE handle, bool bRadio)
         //Hack: assumes that the order of the channel list is fixed.
         //      We can't use the ForTheRecord channel id's. They are GUID strings (128 bit int).       
         //      But only if it isn't cached yet!
-        if (FetchChannel(channel.Guid()) == NULL)
+        if (FetchChannel(channel.Guid(), false) == NULL)
         {
           tag.iChannelNumber =  m_channel_id_offset + 1;
           m_channel_id_offset++;
@@ -516,7 +518,7 @@ PVR_ERROR cPVRClientForTheRecord::GetChannels(PVR_HANDLE handle, bool bRadio)
           XBMC->Log(LOG_DEBUG, "Found Radio channel: %s\n", channel.Name());
         }
         channel.SetID(tag.iUniqueId);
-        if (FetchChannel(channel.Guid()) == NULL)
+        if (FetchChannel(channel.Guid(), false) == NULL)
         {
           m_Channels.push_back(channel); //Local cache...
         }
@@ -637,7 +639,15 @@ PVR_ERROR cPVRClientForTheRecord::GetChannelGroupMembers(PVR_HANDLE handle, cons
   for (int index = 0; index < size; index++)
   {
     std::string channelId = response[index]["ChannelId"].asString();
+    std::string channelName = response[index]["DisplayName"].asString();
     cChannel* pChannel    = FetchChannel(channelId);
+    if (pChannel == NULL)
+    {
+      XBMC->Log(LOG_ERROR, "Unable to translate channel \"%s\" (\"%s\") to XBMC channel number, channel group member skipped.",
+        channelId.c_str(), channelName.c_str());
+      XBMC->QueueNotification(QUEUE_ERROR, "GUID to XBMC Channel");
+      continue;
+    }
 
     PVR_CHANNEL_GROUP_MEMBER tag;
     memset(&tag,0 , sizeof(PVR_CHANNEL_GROUP_MEMBER));
@@ -710,13 +720,14 @@ PVR_ERROR cPVRClientForTheRecord::GetRecordings(PVR_HANDLE handle)
             cRecording recording;
             CStdString strRecordingId;
 
-            if (FetchRecordingDetails(recordingsbytitleresponse[recordingindex], recording))
+            cRecordingSummary recordingsummary;
+            if (recordingsummary.Parse(recordingsbytitleresponse[recordingindex]) && FetchRecordingDetails(recordingsummary.RecordingId(), recording))
             {
               PVR_RECORDING tag;
               memset(&tag, 0 , sizeof(tag));
 
               strRecordingId.Format("%i", iNumRecordings);
-              tag.strRecordingId = strRecordingId.c_str(); //TODO: check if we can use recording.RecordingId() directly. XBMC uses the id internally as path name
+              tag.strRecordingId = recording.RecordingId();
               tag.strChannelName = recording.ChannelDisplayName();
               tag.iLifetime      = MAXLIFETIME; //TODO: recording.Lifetime();
               tag.iPriority      = 0; //TODO? recording.Priority();
@@ -736,7 +747,11 @@ PVR_ERROR cPVRClientForTheRecord::GetRecordings(PVR_HANDLE handle)
               tag.strTitle       = recording.Title();
               tag.strPlotOutline = recording.SubTitle();
 #ifdef _WIN32
-              tag.strStreamURL   = recording.RecordingFileName();
+
+              std::string emptystring;
+              emptystring.clear();
+              tag.strStreamURL   = emptystring.c_str();
+              //tag.strStreamURL   = recording.RecordingFileName();
 #else
               tag.strStreamURL   = recording.CIFSRecordingFileName();
 #endif
@@ -751,15 +766,13 @@ PVR_ERROR cPVRClientForTheRecord::GetRecordings(PVR_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-bool cPVRClientForTheRecord::FetchRecordingDetails(const Json::Value& data, cRecording& recording)
+bool cPVRClientForTheRecord::FetchRecordingDetails(std::string recordingid, cRecording& recording)
 { 
   bool fRc = false;
   Json::Value recordingresponse;
 
   cRecordingSummary recordingsummary;
-  if (recordingsummary.Parse(data))
-  {
-    int retval = ForTheRecord::GetRecordingById(recordingsummary.RecordingId(), recordingresponse);
+    int retval = ForTheRecord::GetRecordingById(recordingid, recordingresponse);
     if (retval >= 0)
     {
       if (recordingresponse.type() == Json::objectValue)
@@ -767,7 +780,6 @@ bool cPVRClientForTheRecord::FetchRecordingDetails(const Json::Value& data, cRec
         fRc = recording.Parse(recordingresponse);
       }
     }
-  }
   return fRc;
 }
 
@@ -849,6 +861,13 @@ PVR_ERROR cPVRClientForTheRecord::GetTimers(PVR_HANDLE handle)
     {
       tag.iClientIndex      = iNumberOfTimers;
       cChannel* pChannel    = FetchChannel(upcomingrecording.ChannelId());
+      if (pChannel == NULL)
+      {
+        XBMC->Log(LOG_ERROR, "Unable to translate channel \"%s\" (\"%s\") to XBMC channel number, timer skipped.",
+          upcomingrecording.ChannelId().c_str(), upcomingrecording.ChannelDisplayname().c_str());
+        XBMC->QueueNotification(QUEUE_ERROR, "GUID to XBMC Channel");
+        continue;
+      }
       tag.iClientChannelUid = pChannel->ID();
       tag.startTime         = upcomingrecording.StartTime();
       tag.endTime           = upcomingrecording.StopTime();
@@ -911,6 +930,13 @@ PVR_ERROR cPVRClientForTheRecord::AddTimer(const PVR_TIMER &timerinfo)
 
   // re-synthesize the FTR channel GUID
   cChannel* pChannel = FetchChannel(timerinfo.iClientChannelUid);
+  if (pChannel == NULL)
+  {
+    XBMC->Log(LOG_ERROR, "Unable to translate XBMC channel %d to ForTheRecord channel GUID, timer not added.",
+      timerinfo.iClientChannelUid);
+    XBMC->QueueNotification(QUEUE_ERROR, "XBMC Channel to GUID");
+    return PVR_ERROR_NOT_POSSIBLE;
+  }
 
   Json::Value addScheduleResponse;
   time_t starttime = timerinfo.startTime;
@@ -960,6 +986,13 @@ PVR_ERROR cPVRClientForTheRecord::DeleteTimer(const PVR_TIMER &timerinfo, bool f
   time_t starttime = timerinfo.startTime;
   time_t stoptime = timerinfo.endTime;
   cChannel* pChannel = FetchChannel(timerinfo.iClientChannelUid);
+  if (pChannel == NULL)
+  {
+    XBMC->Log(LOG_ERROR, "Unable to translate XBMC channel %d to ForTheRecord channel GUID, timer not deleted.",
+      timerinfo.iClientChannelUid);
+    XBMC->QueueNotification(QUEUE_ERROR, "XBMC Channel to GUID");
+    return PVR_ERROR_NOT_POSSIBLE;
+  }
 
   // retrieve the currently active recordings
   int retval = ForTheRecord::GetActiveRecordings(activeRecordingsResponse);
@@ -1050,7 +1083,7 @@ PVR_ERROR cPVRClientForTheRecord::UpdateTimer(const PVR_TIMER &timerinfo)
 
 /************************************************************/
 /** Live stream handling */
-cChannel* cPVRClientForTheRecord::FetchChannel(int channel_uid)
+cChannel* cPVRClientForTheRecord::FetchChannel(int channel_uid, bool LogError)
 {
   // Search for this channel in our local channel list to find the original ChannelID back:
   vector<cChannel>::iterator it;
@@ -1060,14 +1093,14 @@ cChannel* cPVRClientForTheRecord::FetchChannel(int channel_uid)
     if (it->ID() == channel_uid)
     {
       return &*it;
-      break;
     }
   }
 
+  if (LogError) XBMC->Log(LOG_ERROR, "XBMC channel with id %d not found in the channel cache!.", channel_uid);
   return NULL;
 }
 
-cChannel* cPVRClientForTheRecord::FetchChannel(std::string channelid)
+cChannel* cPVRClientForTheRecord::FetchChannel(std::string channelid, bool LogError)
 {
   // Search for this channel in our local channel list to find the original ChannelID back:
   vector<cChannel>::iterator it;
@@ -1077,10 +1110,10 @@ cChannel* cPVRClientForTheRecord::FetchChannel(std::string channelid)
     if (it->Guid() == channelid)
     {
       return &*it;
-      break;
     }
   }
-
+  
+  if (LogError) XBMC->Log(LOG_ERROR, "ForTheRecord channel with GUID \"%s\" not found in the channel cache!.", channelid.c_str());
   return NULL;
 }
 
@@ -1096,7 +1129,7 @@ bool cPVRClientForTheRecord::_OpenLiveStream(const PVR_CHANNEL &channelinfo)
     XBMC->Log(LOG_INFO, "Tune XBMC channel: %i", channelinfo.iUniqueId);
     XBMC->Log(LOG_INFO, "Corresponding ForTheRecord channel: %s", channel->Guid().c_str());
 
-    if (m_keepalive.IsThreadRunning())
+    if (m_keepalive.IsRunning())
     {
       long hr = m_keepalive.StopThread();
       if (hr != 0)
@@ -1145,7 +1178,7 @@ bool cPVRClientForTheRecord::_OpenLiveStream(const PVR_CHANNEL &channelinfo)
     XBMC->Log(LOG_INFO, "Live stream file: %s", filename.c_str());
     m_bTimeShiftStarted = true;
     m_iCurrentChannel = channelinfo.iUniqueId;
-    if (m_keepalive.StartThread() != 0)
+    if (m_keepalive.CreateThread() != 0)
     {
       XBMC->Log(LOG_ERROR, "Start keepalive thread failed.");
     }
@@ -1171,6 +1204,7 @@ bool cPVRClientForTheRecord::_OpenLiveStream(const PVR_CHANNEL &channelinfo)
       //m_tsreader->OnZap();
       XBMC->Log(LOG_DEBUG, "Close existing and open new TsReader...");
       m_tsreader->Close();
+      SAFE_DELETE(m_tsreader);
       m_tsreader = new CTsReader();
       m_tsreader->Open(filename.c_str());
       m_tsreader->OnZap();
@@ -1189,6 +1223,7 @@ bool cPVRClientForTheRecord::_OpenLiveStream(const PVR_CHANNEL &channelinfo)
   else
   {
     XBMC->Log(LOG_ERROR, "Could not get ForTheRecord channel guid for channel %i.", channelinfo.iUniqueId);
+    XBMC->QueueNotification(QUEUE_ERROR, "XBMC Channel to GUID");
     return false;
   }
 
@@ -1258,12 +1293,31 @@ int cPVRClientForTheRecord::ReadLiveStream(unsigned char* pBuffer, unsigned int 
 #endif //TSREADER
 }
 
+long long cPVRClientForTheRecord::PositionLiveStream(void)
+{
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  return m_tsreader->GetFilePointer();
+}
+
+long long cPVRClientForTheRecord::LengthLiveStream(void)
+{
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  return m_tsreader->GetFileSize();
+}
+
+
 void cPVRClientForTheRecord::CloseLiveStream()
 {
   string result;
   XBMC->Log(LOG_INFO, "CloseLiveStream");
 
-  if (m_keepalive.IsThreadRunning())
+  if (m_keepalive.IsRunning())
   {
     long hr = m_keepalive.StopThread();
     if (hr != 0)
@@ -1290,6 +1344,9 @@ void cPVRClientForTheRecord::CloseLiveStream()
     {
       XBMC->Log(LOG_DEBUG, "Close TsReader");
       m_tsreader->Close();
+#if defined(TARGET_WINDOWS)
+      XBMC->Log(LOG_DEBUG, "ReadLiveStream: %I64d calls took %I64d nanoseconds.", m_tsreader->sigmaCount(), m_tsreader->sigmaTime());
+#endif
       SAFE_DELETE(m_tsreader);
     }
 #endif
@@ -1382,18 +1439,96 @@ PVR_ERROR cPVRClientForTheRecord::SignalStatus(PVR_SIGNAL_STATUS &signalStatus)
 bool cPVRClientForTheRecord::OpenRecordedStream(const PVR_RECORDING &recinfo)
 {
   XBMC->Log(LOG_DEBUG, "->OpenRecordedStream(index=%s)", recinfo.strRecordingId);
+  cRecording recording;
+  if (!FetchRecordingDetails(recinfo.strRecordingId, recording))
+  {
+    XBMC->Log(LOG_ERROR, "Unable to fetch recording details for %s", recinfo.strRecordingId);
+    return false;
+  }
 
-  return false;
+  if (m_tsreader != NULL)
+  {
+    XBMC->Log(LOG_DEBUG, "Close existing TsReader...");
+    m_tsreader->Close();
+    SAFE_DELETE(m_tsreader);
+  }
+  m_tsreader = new CTsReader();
+  if (m_tsreader->Open(recording.RecordingFileName()) != S_OK)
+  {
+    SAFE_DELETE(m_tsreader);
+    return false;
+  }
+
+  // JSONify the stream_url
+  Json::Value recordingname (recording.RecordingFileName());
+  Json::StyledWriter writer;
+  std::string jsonval = writer.write(recordingname);
+  int retval = ForTheRecord::SetRecordingLastWatched(jsonval);
+  if (retval < 0)
+  {
+    XBMC->Log(LOG_INFO, "Failed to set recording last watched");
+  }
+
+  return true;
 }
 
 
 void cPVRClientForTheRecord::CloseRecordedStream(void)
 {
+  XBMC->Log(LOG_DEBUG, "->CloseRecordedStream()");
+  if (m_tsreader)
+  {
+    XBMC->Log(LOG_DEBUG, "Close TsReader");
+    m_tsreader->Close();
+    SAFE_DELETE(m_tsreader);
+  }
 }
 
 int cPVRClientForTheRecord::ReadRecordedStream(unsigned char* pBuffer, unsigned int iBuffersize)
 {
-  return -1;
+  unsigned long read_done   = 0;
+
+  // XBMC->Log(LOG_DEBUG, "->ReadRecordedStream(buf_size=%i)", iBufferSize);
+  if (!m_tsreader)
+    return -1;
+
+  long lRc = 0;
+  if ((lRc = m_tsreader->Read(pBuffer, iBuffersize, &read_done)) > 0)
+  {
+    XBMC->Log(LOG_NOTICE, "ReadRecordedStream requested %d but only read %d bytes.", iBuffersize, read_done);
+  }
+  return read_done;
+}
+
+long long cPVRClientForTheRecord::SeekRecordedStream(long long iPosition, int iWhence)
+{
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  if (iPosition == 0 && iWhence == SEEK_CUR)
+  {
+    return m_tsreader->GetFilePointer();
+  }
+  return m_tsreader->SetFilePointer(iPosition, iWhence);
+}
+
+long long cPVRClientForTheRecord::PositionRecordedStream(void)
+{ 
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  return m_tsreader->GetFilePointer();
+}
+
+long long cPVRClientForTheRecord::LengthRecordedStream(void)
+{
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  return m_tsreader->GetFileSize();
 }
 
 /*

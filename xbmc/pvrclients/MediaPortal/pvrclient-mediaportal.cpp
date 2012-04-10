@@ -75,6 +75,7 @@ cPVRClientMediaPortal::cPVRClientMediaPortal()
   m_tsreader               = NULL;
 #endif
   m_genretable             = NULL;
+  m_iLastRecordingUpdate   = 0;
 }
 
 cPVRClientMediaPortal::~cPVRClientMediaPortal()
@@ -777,8 +778,8 @@ PVR_ERROR cPVRClientMediaPortal::GetChannelGroups(PVR_HANDLE handle, bool bRadio
   }
   else
   {
-    XBMC->Log(LOG_DEBUG, "RequestChannelList for TV group:%s", g_szTVGroup.c_str());
-    if (!SendCommand2("ListRadioGroups\n", code, lines))
+    XBMC->Log(LOG_DEBUG, "GetChannelGroups for TV");
+    if (!SendCommand2("ListGroups\n", code, lines))
       return PVR_ERROR_SERVER_ERROR;
   }
 
@@ -790,19 +791,23 @@ PVR_ERROR cPVRClientMediaPortal::GetChannelGroups(PVR_HANDLE handle, bool bRadio
 
     if (data.length() == 0)
     {
-      if(bRadio)
-        XBMC->Log(LOG_DEBUG, "TVServer returned no data. No radio groups found?");
-      else
-        XBMC->Log(LOG_DEBUG, "TVServer returned no data. No TVo groups found?");
+      XBMC->Log(LOG_DEBUG, "TVServer returned no data. No %s groups found?", ((bRadio) ? "radio" : "tv"));
       break;
     }
 
     uri::decode(data);
 
-    tag.bIsRadio = bRadio;
-    tag.strGroupName = data.c_str();
-
-    PVR->TransferChannelGroup(handle, &tag);
+    if (data.compare("All Channels") == 0)
+    {
+      XBMC->Log(LOG_DEBUG, "Skipping All Channels (%s) group", ((bRadio) ? "radio" : "tv"), tag.strGroupName);
+    }
+    else
+    {
+      tag.bIsRadio = bRadio;
+      tag.strGroupName = data.c_str();
+      XBMC->Log(LOG_DEBUG, "Adding %s group: %s", ((bRadio) ? "radio" : "tv"), tag.strGroupName);
+      PVR->TransferChannelGroup(handle, &tag);
+    }
   }
 
   return PVR_ERROR_NO_ERROR;
@@ -982,6 +987,8 @@ PVR_ERROR cPVRClientMediaPortal::GetRecordings(PVR_HANDLE handle)
     }
   }
 
+  m_iLastRecordingUpdate = PLATFORM::GetTimeMs();
+
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1087,6 +1094,11 @@ PVR_ERROR cPVRClientMediaPortal::GetTimers(PVR_HANDLE handle)
     }
   }
 
+  if ( PLATFORM::GetTimeMs() >  m_iLastRecordingUpdate + 15000)
+  {
+    PVR->TriggerRecordingUpdate();
+  }
+
   return PVR_ERROR_NO_ERROR;
 }
 
@@ -1172,8 +1184,6 @@ PVR_ERROR cPVRClientMediaPortal::DeleteTimer(const PVR_TIMER &timer, bool bForce
   // Although XBMC deletes this timer, we still have to trigger XBMC to update its timer list to
   // remove the timer from the XBMC list
   PVR->TriggerTimerUpdate();
-  // When deleting a currently active (recording) timer, we need to refresh also the recording list
-  PVR->TriggerRecordingUpdate();
 
   return PVR_ERROR_NO_ERROR;
 }
@@ -1204,7 +1214,6 @@ PVR_ERROR cPVRClientMediaPortal::UpdateTimer(const PVR_TIMER &timerinfo)
   // Although XBMC changes this timer, we still have to trigger XBMC to update its timer list to
   // see the timer changes at the XBMC side
   PVR->TriggerTimerUpdate();
-  PVR->TriggerRecordingUpdate();
 
   return PVR_ERROR_NO_ERROR;
 }

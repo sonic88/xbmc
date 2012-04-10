@@ -97,10 +97,10 @@ cTimer::~cTimer()
 void cTimer::GetPVRtimerinfo(PVR_TIMER &tag)
 {
   tag.iClientIndex      = m_index;
-  if (m_active)
-    tag.state           = PVR_TIMER_STATE_SCHEDULED;
-  else if (IsRecording())
+  if (IsRecording())
     tag.state           = PVR_TIMER_STATE_RECORDING;
+  else if (m_active)
+    tag.state           = PVR_TIMER_STATE_SCHEDULED;
   else
     tag.state           = PVR_TIMER_STATE_CANCELLED;
   tag.iClientChannelUid = m_channel;
@@ -265,11 +265,11 @@ int cTimer::SchedRecType2RepeatFlags(ScheduleRecordingType schedtype)
         int weekday = timeinfo.tm_wday; //days since Sunday [0-6]
         // bit 0 = monday, need to convert weekday value to bitnumber:
         if (weekday == 0)
-          weekday = 6; //sunday
+          weekday = 6; // sunday 0100 0000
         else
           weekday--;
 
-        weekdays = 2 << weekday;
+        weekdays = 1 << weekday;
         break;
       }
     case EveryTimeOnThisChannel:

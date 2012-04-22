@@ -16,8 +16,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef TSREADER
-
 // Code below is work in progress and not yet finished
 //
 // DONE:
@@ -385,4 +383,4 @@ unsigned long CTsReader::SetFilePointer(int64_t llDistanceToMove, unsigned long 
 {
   return m_fileReader->SetFilePointer(llDistanceToMove, dwMoveMethod);
 }
-#endif //TSREADER 
+

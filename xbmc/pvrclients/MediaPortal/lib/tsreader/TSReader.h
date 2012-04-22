@@ -16,7 +16,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifdef TSREADER
 
 #include "client.h"
 #include "FileReader.h"
@@ -89,4 +88,3 @@ private:
   unsigned long   m_lastPause;        ///< Last time instance at which the playback was paused
   int             m_WaitForSeekToEof;
 };
-#endif //TSREADER

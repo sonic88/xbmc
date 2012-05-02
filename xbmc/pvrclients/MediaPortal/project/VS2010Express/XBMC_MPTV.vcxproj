@@ -124,10 +124,7 @@
     <ClCompile Include="..\..\..\..\..\lib\platform\windows\os-threads.cpp" />
     <ClCompile Include="..\..\epg.cpp" />
     <ClCompile Include="..\..\GenreTable.cpp" />
-    <ClCompile Include="..\..\lib\tinyxml\tinystr.cpp" />
-    <ClCompile Include="..\..\lib\tinyxml\tinyxml.cpp" />
-    <ClCompile Include="..\..\lib\tinyxml\tinyxmlerror.cpp" />
-    <ClCompile Include="..\..\lib\tinyxml\tinyxmlparser.cpp" />
+    <ClCompile Include="..\..\lib\tinyxml2\tinyxml2.cpp" />
     <ClCompile Include="..\..\pvrclient-mediaportal.cpp" />
     <ClCompile Include="..\..\recordings.cpp" />
     <ClCompile Include="..\..\Socket.cpp" />
@@ -145,8 +142,7 @@
     <ClInclude Include="..\..\epg.h" />
     <ClInclude Include="..\..\FileUtils.h" />
     <ClInclude Include="..\..\GenreTable.h" />
-    <ClInclude Include="..\..\lib\tinyxml\tinystr.h" />
-    <ClInclude Include="..\..\lib\tinyxml\tinyxml.h" />
+    <ClInclude Include="..\..\lib\tinyxml2\tinyxml2.h" />
     <ClInclude Include="..\..\NonCopyable.h" />
     <ClInclude Include="..\..\os-dependent.h" />
     <ClInclude Include="..\..\pvrclient-mediaportal.h" />

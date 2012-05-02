@@ -15,17 +15,17 @@
     <Filter Include="Header Files\tsreader">
       <UniqueIdentifier>{73044b03-a94f-415e-9888-a080452a1acd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\tinyXML">
-      <UniqueIdentifier>{c98b23a1-77f7-4fea-8576-e5af47cda96e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\tinyXML">
-      <UniqueIdentifier>{9aa73fd1-5e76-497d-9be2-6b82da88c1d4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\windows">
       <UniqueIdentifier>{5bb0a189-a4dd-4ad1-ba2e-2409d61a7f12}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\windows">
       <UniqueIdentifier>{f3f3cf6f-25e9-4f71-a40a-e5635b8d0d13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\tinyXML2">
+      <UniqueIdentifier>{c98b23a1-77f7-4fea-8576-e5af47cda96e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\tinyXML2">
+      <UniqueIdentifier>{9aa73fd1-5e76-497d-9be2-6b82da88c1d4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -83,18 +83,6 @@
     <ClCompile Include="..\..\Cards.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\lib\tinyxml\tinystr.cpp">
-      <Filter>Source Files\tinyXML</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\tinyxml\tinyxml.cpp">
-      <Filter>Source Files\tinyXML</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\tinyxml\tinyxmlerror.cpp">
-      <Filter>Source Files\tinyXML</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\lib\tinyxml\tinyxmlparser.cpp">
-      <Filter>Source Files\tinyXML</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\windows\WindowsUtils.cpp">
       <Filter>Source Files\windows</Filter>
     </ClCompile>
@@ -106,6 +94,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\lib\platform\windows\os-threads.cpp">
       <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\tinyxml2\tinyxml2.cpp">
+      <Filter>Source Files\tinyXML2</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -163,12 +154,6 @@
     <ClInclude Include="..\..\Cards.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\tinyxml\tinystr.h">
-      <Filter>Header Files\tinyXML</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\lib\tinyxml\tinyxml.h">
-      <Filter>Header Files\tinyXML</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\windows\os_windows.h">
       <Filter>Header Files\windows</Filter>
     </ClInclude>
@@ -180,6 +165,9 @@
     </ClInclude>
     <ClInclude Include="..\..\GenreTable.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\tinyxml2\tinyxml2.h">
+      <Filter>Header Files\tinyXML2</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

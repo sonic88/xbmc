@@ -1502,6 +1502,20 @@ void cPVRClientMediaPortal::CloseLiveStream(void)
   }
 }
 
+long long cPVRClientMediaPortal::SeekLiveStream(long long iPosition, int iWhence)
+{
+  return -1;
+}
+
+long long cPVRClientMediaPortal::LengthLiveStream(void)
+{
+  return -1;
+}
+
+long long cPVRClientMediaPortal::PositionLiveStream(void)
+{
+  return -1;
+}
 
 bool cPVRClientMediaPortal::SwitchChannel(const PVR_CHANNEL &channel)
 {
@@ -1748,6 +1762,50 @@ int cPVRClientMediaPortal::ReadRecordedStream(unsigned char *pBuffer, unsigned i
 #else
   return -1;
 #endif
+}
+
+long long cPVRClientMediaPortal::SeekRecordedStream(long long iPosition, int iWhence)
+{
+#ifndef TSREADER
+  return -1;
+#else
+  if ( !m_tsreader)
+  {
+    return -1;
+  }
+
+  if (iPosition == 0 && iWhence == SEEK_CUR)
+  {
+    return m_tsreader->GetFilePointer();
+  }
+  return m_tsreader->SetFilePointer(iPosition, iWhence);
+#endif //TSREADER
+}
+
+long long cPVRClientMediaPortal::PositionRecordedStream(void)
+{
+#ifndef TSREADER
+  return -1;
+#else
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  return m_tsreader->GetFilePointer();
+#endif //TSREADER
+}
+
+long long  cPVRClientMediaPortal::LengthRecordedStream(void)
+{
+#ifndef TSREADER
+  return -1;
+#else
+  if (!m_tsreader)
+  {
+    return -1;
+  }
+  return m_tsreader->GetFileSize();
+#endif //TSREADER
 }
 
 /*

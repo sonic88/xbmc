@@ -126,7 +126,7 @@ class cTimer
     bool        m_ismanual;
     bool        m_isrecording;
 
-    int         m_progid; //Media Portal Program ID
+    int         m_progid;              ///> MediaPortal Program ID
 };
 
 const time_t cUndefinedDate = 946681200;   ///> 01-01-2000 00:00:00 in time_t

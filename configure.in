@@ -1915,7 +1915,6 @@ OUTPUT_FILES="Makefile \
     xbmc/pvrclients/Makefile.include \
     xbmc/pvrclients/MediaPortal/Makefile \
     xbmc/pvrclients/ForTheRecord/Makefile \
-    xbmc/pvrclients/mythtv/Makefile \
     xbmc/pvrclients/pvr-demo/Makefile \
     xbmc/pvrclients/vuplus/Makefile \
     xbmc/pvrclients/xvdr/Makefile \

@@ -95,6 +95,9 @@
     <ClCompile Include="..\..\lib\tinyxml2\tinyxml2.cpp">
       <Filter>Source Files\tinyXML2</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\lib\tsreader\windows\File.cpp">
+      <Filter>Source Files\tsreader\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\channels.h">
@@ -168,6 +171,9 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\tinyxml2\tinyxml2.h">
       <Filter>Header Files\tinyXML2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\tsreader\File.h">
+      <Filter>Header Files\tsreader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

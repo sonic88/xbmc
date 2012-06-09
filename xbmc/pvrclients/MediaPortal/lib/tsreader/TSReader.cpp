@@ -34,7 +34,7 @@
 #include "utils.h"
 #include "MemoryReader.h"
 #include "platform/util/timeutils.h"
-#include "RTSPClient.h"
+#include "MepoRTSPClient.h"
 #include "MemoryBuffer.h"
 #include "FileUtils.h"
 
@@ -420,4 +420,3 @@ int64_t CTsReader::SetFilePointer(int64_t llDistanceToMove, unsigned long dwMove
 {
   return m_fileReader->SetFilePointer(llDistanceToMove, dwMoveMethod);
 }
-

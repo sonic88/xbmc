@@ -264,8 +264,6 @@ IF %comp%==vs2010 (
     rem try with space delim instead of tab
     FOR /F "tokens=3* delims= " %%A IN ('REG QUERY "HKLM\Software\Wow6432Node\NSIS" /ve') DO SET NSISExePath=%%B
   )
-  rem Compress the executable if we can find upx
-  upx -V 2> NUL && upx "%CD%\BUILD_WIN32\Xbmc\xbmc.exe"
   echo Just before creating setup. You can check BUILD_WIN32 for unnecessary files and remove them now. Press enter to continue
   pause
   SET NSISExe=%NSISExePath%\makensis.exe

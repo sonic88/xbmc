@@ -440,12 +440,8 @@ void cXVDRData::ReadTimerPacket(cXVDRResponsePacket* resp, PVR_TIMER &tag) {
   tag.iMarginStart      = 0;
   tag.iMarginEnd        = 0;
 
-#ifdef TARGET_WINDOWS
   char* p = (char*)strrchr(title, '~');
-#else
-  char* p = (char*)rindex(title, '~');
-#endif
-  if(p == NULL) {
+  if(p == NULL || *p == 0) {
 	  tag.strTitle = title;
 	  tag.strDirectory = "";
   }
@@ -648,11 +644,11 @@ PVR_ERROR cXVDRData::UpdateTimer(const PVR_TIMER &timerinfo)
   uint32_t starttime = timerinfo.startTime - timerinfo.iMarginStart*60;
   uint32_t endtime = timerinfo.endTime + timerinfo.iMarginEnd*60;
 
-  std::string dir = timerinfo.strDirectory;
+  std::string dir = (timerinfo.strDirectory == NULL ? "" : timerinfo.strDirectory);
   while(dir[dir.size()-1] == '/' && dir.size() > 1)
     dir = dir.substr(0, dir.size()-1);
 
-  std::string name = timerinfo.strTitle;
+  std::string name = (timerinfo.strTitle == NULL ? "" : timerinfo.strTitle);
   std::string title;
 
   if(!dir.empty() && dir != "/")
@@ -750,6 +746,7 @@ PVR_ERROR cXVDRData::GetRecordingsList(PVR_HANDLE handle)
     tag.strStreamURL    = "";
     tag.iGenreType      = 0;
     tag.iGenreSubType   = 0;
+    tag.iPlayCount      = 0;
 
     PVR->TransferRecordingEntry(handle, &tag);
   }

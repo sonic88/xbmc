@@ -163,6 +163,7 @@ bool CPVRChannel::Delete(void)
   CEpg *epg = GetEPG();
   if (epg)
   {
+    epg->SetChannel(NULL);
     g_EpgContainer.DeleteEpg(*epg, true);
     CSingleLock lock(m_critSection);
     m_bEPGCreated = false;
@@ -174,13 +175,14 @@ bool CPVRChannel::Delete(void)
 
 CEpg *CPVRChannel::GetEPG(void) const
 {
-  CEpg *epg(NULL);
+  int iEpgId(-1);
   {
     CSingleLock lock(m_critSection);
     if (!m_bIsHidden && m_bEPGEnabled && m_iEpgId > 0)
-      epg = g_EpgContainer.GetById(m_iEpgId);
+      iEpgId = m_iEpgId;
   }
-  return epg;
+
+  return iEpgId > 0 ? g_EpgContainer.GetById(iEpgId) : NULL;
 }
 
 bool CPVRChannel::UpdateFromClient(const CPVRChannel &channel)

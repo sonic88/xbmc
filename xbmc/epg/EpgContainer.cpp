@@ -97,7 +97,10 @@ void CEpgContainer::Clear(bool bClearDb /* = false */)
     CSingleLock lock(m_critSection);
     /* clear all epg tables and remove pointers to epg tables on channels */
     for (map<unsigned int, CEpg *>::iterator it = m_epgs.begin(); it != m_epgs.end(); it++)
+    {
+      it->second->UnregisterObserver(this);
       delete it->second;
+    }
     m_epgs.clear();
     m_iNextEpgUpdate  = 0;
     m_bIsInitialising = true;
@@ -143,8 +146,13 @@ bool CEpgContainer::Stop(void)
 void CEpgContainer::Notify(const Observable &obs, const CStdString& msg)
 {
   /* settings were updated */
-  if (msg == "settings")
+  if (msg.Equals("settings"))
     LoadSettings();
+  else if (msg.Equals("epg"))
+  {
+    SetChanged();
+    NotifyObservers(msg);
+  }
 }
 
 void CEpgContainer::LoadFromDB(void)
@@ -206,7 +214,6 @@ void CEpgContainer::Process(void)
 
   if (!m_bLoaded)
   {
-    CSingleLock lock(m_critSection);
     LoadFromDB();
     CheckPlayingEvents();
   }
@@ -281,11 +288,15 @@ bool CEpgContainer::UpdateEntry(const CEpg &entry, bool bUpdateDatabase /* = fal
   {
     /* table does not exist yet, create a new one */
     unsigned int iEpgId = m_bIgnoreDbForClient || entry.EpgID() <= 0 ? NextEpgId() : entry.EpgID();
+    if (m_iNextEpgId < iEpgId)
+      m_iNextEpgId = iEpgId + 1;
     epg = CreateEpg(iEpgId);
     if (epg)
     {
       bReturn = epg->UpdateMetadata(entry, bUpdateDatabase);
       m_epgs.insert(make_pair((unsigned int)epg->EpgID(), epg));
+      SetChanged();
+      epg->RegisterObserver(this);
     }
   }
   else
@@ -293,8 +304,21 @@ bool CEpgContainer::UpdateEntry(const CEpg &entry, bool bUpdateDatabase /* = fal
     bReturn = epg->UpdateMetadata(entry, bUpdateDatabase);
   }
 
+  if (g_PVRManager.IsStarted())
+  {
+    CPVRChannel *channel = g_PVRChannelGroups->GetChannelByEpgId(epg->EpgID());
+    if (epg->EpgID() > 0 && !channel)
+    {
+      DeleteEpg(*epg);
+      bReturn = false;
+      SetChanged();
+    }
+  }
+
   m_bPreventUpdates = false;
   CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(m_iNextEpgUpdate);
+
+  NotifyObservers("epg");
 
   return bReturn;
 }
@@ -361,6 +385,7 @@ bool CEpgContainer::DeleteEpg(const CEpg &epg, bool bDeleteFromDatabase /* = fal
   if (bDeleteFromDatabase && !m_bIgnoreDbForClient && m_database.IsOpen())
     m_database.Delete(*it->second);
 
+  it->second->UnregisterObserver(this);
   delete it->second;
   m_epgs.erase(it);
 
@@ -595,15 +620,16 @@ bool CEpgContainer::CheckPlayingEvents(void)
     CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(m_iNextEpgActiveTagCheck);
     m_iNextEpgActiveTagCheck += g_advancedSettings.m_iEpgActiveTagCheckInterval;
 
-    if (bFoundChanges)
-    {
-      SetChanged();
-      NotifyObservers("epg-now", true);
-    }
-
     /* pvr tags always start on the full minute */
     if (g_PVRManager.IsStarted())
       m_iNextEpgActiveTagCheck -= m_iNextEpgActiveTagCheck % 60;
+
+    if (bFoundChanges)
+    {
+      SetChanged();
+      lock.Leave();
+      NotifyObservers("epg-now", true);
+    }
 
     bReturn = true;
   }

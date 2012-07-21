@@ -66,6 +66,7 @@ cPVRClientMediaPortal::cPVRClientMediaPortal()
   m_BackendTime            = 0;
   m_bStop                  = true;
   m_noSignalStreamSize     = 0;
+  m_noSignalStreamData[0]  = '\0';
   m_noSignalStreamReadPos  = 0;
   m_bPlayingNoSignal       = false;
   m_tsreader               = NULL;

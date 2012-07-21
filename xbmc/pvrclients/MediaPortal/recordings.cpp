@@ -40,6 +40,8 @@ cRecording::cRecording()
   m_genre_type      = 0;
   m_genre_subtype   = 0;
   m_genretable      = NULL;
+  m_scheduleID      = 0;
+  m_keepUntil       = 0;
 }
 
 

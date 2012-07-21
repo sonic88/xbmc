@@ -166,8 +166,6 @@ int64_t MultiFileReader::GetFilePointer()
 
 long MultiFileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes)
 {
-  long hr;
-
   // If the file has already been closed, don't continue
   if (m_TSBufferFile.IsFileInvalid())
     return S_FALSE;
@@ -230,6 +228,7 @@ long MultiFileReader::Read(unsigned char* pbData, unsigned long lDataLength, uns
     }
 
     unsigned long bytesRead = 0;
+    long hr;
 
     int64_t bytesToRead = file->length - seekPosition;
     if ((int64_t)lDataLength > bytesToRead)

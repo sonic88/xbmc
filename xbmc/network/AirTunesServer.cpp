@@ -336,7 +336,11 @@ ao_device* CAirTunesServer::AudioOutputFunctions::ao_open_live(int driver_id, ao
   header.durationMs = 0;
 
   if (device->pipe->Write(&header, sizeof(header)) == 0)
+  {
+    delete device->pipe;
+    delete device;
     return 0;
+  }
 
   ThreadMessage tMsg = { TMSG_MEDIA_STOP };
   g_application.getApplicationMessenger().SendMessage(tMsg, true);

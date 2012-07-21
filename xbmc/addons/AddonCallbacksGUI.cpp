@@ -598,6 +598,7 @@ void CAddonCallbacksGUI::Window_SetPropertyDouble(void *addonData, GUIHANDLE han
   Unlock();
 }
 
+static string Window_GetProperty_retval;
 const char* CAddonCallbacksGUI::Window_GetProperty(void *addonData, GUIHANDLE handle, const char *key)
 {
   CAddonCallbacks* helper = (CAddonCallbacks*) addonData;
@@ -619,10 +620,10 @@ const char* CAddonCallbacksGUI::Window_GetProperty(void *addonData, GUIHANDLE ha
 
   Lock();
   CStdString lowerKey = key;
-  string value = pWindow->GetProperty(lowerKey.ToLower()).asString();
+  Window_GetProperty_retval = pWindow->GetProperty(lowerKey.ToLower()).asString();
   Unlock();
 
-  return value.c_str();
+  return Window_GetProperty_retval.c_str();
 }
 
 int CAddonCallbacksGUI::Window_GetPropertyInt(void *addonData, GUIHANDLE handle, const char *key)
@@ -646,7 +647,7 @@ int CAddonCallbacksGUI::Window_GetPropertyInt(void *addonData, GUIHANDLE handle,
 
   Lock();
   CStdString lowerKey = key;
-  int value = pWindow->GetProperty(lowerKey.ToLower()).asInteger();
+  int value = (int) pWindow->GetProperty(lowerKey.ToLower()).asInteger();
   Unlock();
 
   return value;

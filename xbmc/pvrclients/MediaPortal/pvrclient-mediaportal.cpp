@@ -496,7 +496,7 @@ PVR_ERROR cPVRClientMediaPortal::GetEpg(PVR_HANDLE handle, const PVR_CHANNEL &ch
 
       XBMC->Log(LOG_DEBUG, "Found %i EPG items for channel %i\n", lines.size(), channel.iUniqueId);
 
-      for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
+      for (vector<string>::iterator it = lines.begin(); it < lines.end(); ++it)
       {
         string& data(*it);
 
@@ -651,7 +651,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannels(PVR_HANDLE handle, bool bRadio)
 
   memset(&tag, 0, sizeof(PVR_CHANNEL));
 
-  for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
+  for (vector<string>::iterator it = lines.begin(); it < lines.end(); ++it)
   {
     string& data(*it);
 
@@ -777,7 +777,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannelGroups(PVR_HANDLE handle, bool bRadio
 
   memset(&tag, 0, sizeof(PVR_CHANNEL_GROUP));
 
-  for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
+  for (vector<string>::iterator it = lines.begin(); it < lines.end(); ++it)
   {
     string& data(*it);
 
@@ -840,7 +840,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannelGroupMembers(PVR_HANDLE handle, const
 
   memset(&tag, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
 
-  for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
+  for (vector<string>::iterator it = lines.begin(); it < lines.end(); ++it)
   {
     string& data(*it);
 
@@ -919,7 +919,7 @@ PVR_ERROR cPVRClientMediaPortal::GetRecordings(PVR_HANDLE handle)
 
   memset(&tag, 0, sizeof(PVR_RECORDING));
 
-  for (vector<string>::iterator it = lines.begin(); it != lines.end(); it++)
+  for (vector<string>::iterator it = lines.begin(); it != lines.end(); ++it)
   {
     string& data(*it);
     uri::decode(data);
@@ -1087,7 +1087,7 @@ PVR_ERROR cPVRClientMediaPortal::GetTimers(PVR_HANDLE handle)
 
     memset(&tag, 0, sizeof(PVR_TIMER));
 
-    for (vector<string>::iterator it = lines.begin(); it != lines.end(); it++)
+    for (vector<string>::iterator it = lines.begin(); it != lines.end(); ++it)
     {
       string& data(*it);
       uri::decode(data);

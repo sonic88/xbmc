@@ -27,7 +27,7 @@ bool CCards::ParseLines(vector<string>& lines)
   if (lines.empty())
     return false;
 
-  for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
+  for (vector<string>::iterator it = lines.begin(); it < lines.end(); ++it)
   {
     string& data(*it);
 

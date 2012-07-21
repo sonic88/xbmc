@@ -50,7 +50,7 @@ void CMemoryBuffer::Clear()
   //XBMC->Log(LOG_DEBUG, "memorybuffer: Clear() %d",m_Array.size());
   PLATFORM::CLockObject BufferLock(m_BufferLock);
   std::vector<BUFFERITEM *>::iterator it = m_Array.begin();
-  for ( ; it != m_Array.end(); it++ )
+  for ( ; it != m_Array.end(); ++it )
   {
     BUFFERITEM *item = *it;
     delete[] item->data;

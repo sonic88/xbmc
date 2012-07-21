@@ -101,7 +101,7 @@ std::string CTsReader::TranslatePath(const char*  pszFileName)
 
     if ((m_cardSettings) && (m_cardSettings->size() > 0))
     {
-      for (CCards::iterator it = m_cardSettings->begin(); it < m_cardSettings->end(); it++)
+      for (CCards::iterator it = m_cardSettings->begin(); it < m_cardSettings->end(); ++it)
       {
         // Determine whether the first part of the recording filename is shared with this card
         found = sFileName.find(it->RecordingFolder);

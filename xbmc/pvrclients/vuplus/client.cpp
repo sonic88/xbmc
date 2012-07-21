@@ -357,9 +357,10 @@ const char *GetBackendVersion(void)
   return strBackendVersion;
 }
 
+static CStdString strConnectionString;
+
 const char *GetConnectionString(void)
 {
-  CStdString strConnectionString;
   if (VuData)
     strConnectionString.Format("%s%s", g_strHostname.c_str(), VuData->IsConnected() ? "" : " (Not connected!)");
   else

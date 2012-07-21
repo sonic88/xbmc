@@ -402,7 +402,7 @@ long MultiFileReader::RefreshTSBufferFile()
     }
 
     // Removed files that aren't present anymore.
-    while ((filesToRemove > 0) && (m_tsFiles.size() > 0))
+    while ((filesToRemove > 0) && (!m_tsFiles.empty()))
     {
       MultiFileReaderFile *file = m_tsFiles.at(0);
 
@@ -419,7 +419,7 @@ long MultiFileReader::RefreshTSBufferFile()
 
 
     // Figure out what the start position of the next new file will be
-    if (m_tsFiles.size() > 0)
+    if (!m_tsFiles.empty())
     {
       file = m_tsFiles.back();
 
@@ -538,7 +538,7 @@ long MultiFileReader::RefreshTSBufferFile()
     delete[] pBuffer;
   }
 
-  if (m_tsFiles.size() > 0)
+  if (!m_tsFiles.empty())
   {
     file = m_tsFiles.front();
     m_startPosition = file->startPosition;

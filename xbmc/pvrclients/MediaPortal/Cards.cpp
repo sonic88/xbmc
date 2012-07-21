@@ -24,14 +24,14 @@
 
 bool CCards::ParseLines(vector<string>& lines)
 {
-  if (lines.size() == 0)
+  if (lines.empty())
     return false;
 
   for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
   {
     string& data(*it);
 
-    if (data.length() > 0)
+    if (!data.empty())
     {
       vector<string> fields;
       Card card;

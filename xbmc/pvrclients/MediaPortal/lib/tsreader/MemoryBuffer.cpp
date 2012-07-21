@@ -97,7 +97,7 @@ unsigned long CMemoryBuffer::ReadFromBuffer(unsigned char *pbData, long lDataLen
   PLATFORM::CLockObject BufferLock(m_BufferLock);
   while (bytesWritten < lDataLength)
   {
-    if(!m_Array.size() || m_Array.size() <= 0)
+    if(m_Array.empty())
     {
       XBMC->Log(LOG_DEBUG, "memorybuffer: read:empty buffer\n");
       return 0;

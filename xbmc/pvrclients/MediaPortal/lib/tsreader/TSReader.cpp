@@ -170,7 +170,8 @@ long CTsReader::Open(const char* pszFileName)
 
   m_fileName = pszFileName;
   char url[MAX_PATH];
-  strncpy(url, m_fileName.c_str(), MAX_PATH);
+  strncpy(url, m_fileName.c_str(), MAX_PATH-1);
+  url[MAX_PATH-1]='\0'; // make sure that we always have a 0-terminated string
 
   // check file type
   int length = strlen(url);

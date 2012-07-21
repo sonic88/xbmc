@@ -207,7 +207,7 @@ namespace UTF8Util
     // Consider CHAR's count corresponding to total input string length,
     // including end-of-string (\0) character
     //
-    const size_t cchUTF8Max = INT_MAX - 1;
+    //const size_t cchUTF8Max = INT_MAX - 1;
     size_t cchUTF8 = strlen(pszTextUTF8);
 
     // Consider also terminating \0
@@ -290,7 +290,7 @@ namespace UTF8Util
     // Consider WCHAR's count corresponding to total input string length,
     // including end-of-string (L'\0') character.
     //
-    const size_t cchUTF16Max = INT_MAX - 1;
+    //const size_t cchUTF16Max = INT_MAX - 1;
     size_t cchUTF16 = wcslen(pszTextUTF16);
 
     // Consider also terminating \0

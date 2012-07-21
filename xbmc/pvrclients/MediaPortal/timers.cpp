@@ -329,6 +329,7 @@ int cTimer::SchedRecType2RepeatFlags(ScheduleRecordingType schedtype)
       break;
     case WorkingDays:
       weekdays = 31; // 0001 1111
+      break;
     default:
       weekdays=0;
   }

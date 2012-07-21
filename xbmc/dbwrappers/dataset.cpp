@@ -77,18 +77,12 @@ string Database::prepare(const char *format, ...)
 
 string Database::vprepare(const char *format, va_list args)
 {
-  char *p = NULL;
-  string result = "";
+  char p[1024];
+  p[1023] = '\0';
 
-  vsprintf(p, format, args);
+  vsnprintf(p, 1023, format, args);
 
-  if ( p )
-  {
-    result = p;
-    free(p);
-  }
-
-  return result;
+  return p;
 }
 
 

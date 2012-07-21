@@ -746,7 +746,6 @@ PVR_ERROR cXVDRData::GetRecordingsList(PVR_HANDLE handle)
     tag.strStreamURL    = "";
     tag.iGenreType      = 0;
     tag.iGenreSubType   = 0;
-    tag.iPlayCount      = 0;
 
     PVR->TransferRecordingEntry(handle, &tag);
   }

@@ -107,7 +107,7 @@ void CGenreTable::GenreToTypes(string& strGenre, int& genreType, int& genreSubTy
   // plugin) translate it into XBMC compatible (numbered) genre types
   string m_genre = strGenre;
 
-  if(m_genremap.size() > 0 && m_genre.length() > 0)
+  if(!m_genremap.empty() && !m_genre.empty())
   {
     GenreMap::iterator it;
 

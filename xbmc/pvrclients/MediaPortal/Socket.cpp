@@ -750,6 +750,6 @@ void Socket::osCleanup()
 {
   // Not needed for Linux
 }
-#endif //TARGET_WINDOWS || TARGET_LINUX
+#endif //TARGET_WINDOWS || TARGET_LINUX || TARGET_DARWIN
 
 } //namespace MPTV

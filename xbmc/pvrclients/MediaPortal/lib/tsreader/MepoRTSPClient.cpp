@@ -149,11 +149,10 @@ bool CRTSPClient::clientStartPlayingSession(Medium* client, MediaSession* sessio
 
   long dur = m_duration/1000;
   double fStart = m_fStart;
-  double fStartToEnd;
 
   if (m_fDuration > 0.0)
   {
-    fStartToEnd = m_fDuration-m_fStart;
+    double fStartToEnd = m_fDuration-m_fStart;
     if (fStartToEnd<0)
       fStartToEnd = 0;
     fStart = dur - fStartToEnd;

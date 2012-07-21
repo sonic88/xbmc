@@ -188,12 +188,13 @@ bool cPVRClientMediaPortal::Connect()
   {
     vector<string> fields;
     int major = 0, minor = 0, revision = 0;
-    int count = 0;
 
     // Check the version of the TVServerXBMC plugin:
     Tokenize(result, fields, "|");
     if(fields.size() == 2)
     {
+      int count = 0;
+
       // Ok, this TVServerXBMC version answers with a version string
       count = sscanf(fields[1].c_str(), "%5d.%5d.%5d.%5d", &major, &minor, &revision, &g_iTVServerXBMCBuild);
       if( count < 4 )
@@ -386,7 +387,6 @@ PVR_ERROR cPVRClientMediaPortal::GetBackendTime(time_t *localTime, int *gmtOffse
   vector<string> fields;
   int year = 0, month = 0, day = 0;
   int hour = 0, minute = 0, second = 0;
-  int count = 0;
   struct tm timeinfo;
 
   if (!IsUp())
@@ -401,6 +401,8 @@ PVR_ERROR cPVRClientMediaPortal::GetBackendTime(time_t *localTime, int *gmtOffse
 
   if(fields.size() >= 3)
   {
+    int count = 0;
+
     //[0] date + time TV Server
     //[1] UTC offset hours
     //[2] UTC offset minutes
@@ -1274,8 +1276,6 @@ bool cPVRClientMediaPortal::OpenLiveStream(const PVR_CHANNEL &channelinfo)
     XBMC->Log(LOG_ERROR, "Could not start the timeshift for channel uid=%i. %s", channelinfo.iUniqueId, result.c_str());
     if (g_iTVServerXBMCBuild>=109)
     {
-      int tvresult;
-
       Tokenize(result, timeshiftfields, "|");
       //[0] = string error message
       //[1] = TvResult (optional field. SendCommand can also return a timeout)
@@ -1304,9 +1304,9 @@ bool cPVRClientMediaPortal::OpenLiveStream(const PVR_CHANNEL &channelinfo)
         //  NoPmtFound = 16,
         //};
 
-        tvresult = atoi(timeshiftfields[1].c_str());
+        int tvresult = atoi(timeshiftfields[1].c_str());
         // Display one of the localized error messages 30060-30075
-        XBMC->QueueNotification(QUEUE_ERROR, XBMC->GetLocalizedString(30059 + (int) tvresult));
+        XBMC->QueueNotification(QUEUE_ERROR, XBMC->GetLocalizedString(30059 + tvresult));
       }
       else
       {

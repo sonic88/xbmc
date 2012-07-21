@@ -831,6 +831,12 @@ bool CFileItem::IsPVRTimer() const
 
 bool CFileItem::IsDiscStub() const
 {
+  if (IsVideoDb() && HasVideoInfoTag())
+  {
+    CFileItem dbItem(m_bIsFolder ? GetVideoInfoTag()->m_strPath : GetVideoInfoTag()->m_strFileNameAndPath, m_bIsFolder);
+    return dbItem.IsDiscStub();
+  }
+
   CStdString strExtension;
   URIUtils::GetExtension(m_strPath, strExtension);
 

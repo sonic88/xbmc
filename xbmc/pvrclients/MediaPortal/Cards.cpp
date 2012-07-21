@@ -63,7 +63,7 @@ bool CCards::ParseLines(vector<string>& lines)
       card.Name = fields[2];
       card.Priority = atoi(fields[3].c_str());
       card.GrabEPG = stringtobool(fields[4]);
-      card.LastEpgGrab = DateTimeToTimeT(fields[5].c_str());
+      card.LastEpgGrab = DateTimeToTimeT(fields[5]);
       card.RecordingFolder = fields[6];
       card.IdServer = atoi(fields[7].c_str());
       card.Enabled = stringtobool(fields[8]);

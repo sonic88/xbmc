@@ -611,7 +611,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannels(PVR_HANDLE handle, bool bRadio)
     }
   }
 
-  if( !SendCommand2(command.c_str(), code, lines) )
+  if( !SendCommand2(command, code, lines) )
     return PVR_ERROR_SERVER_ERROR;
 
 #ifdef TARGET_WINDOWS
@@ -835,7 +835,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannelGroupMembers(PVR_HANDLE handle, const
     command.Format("ListTVChannels:%s\n", uri::encode(uri::PATH_TRAITS, group.strGroupName).c_str());
   }
 
-  if (!SendCommand2(command.c_str(), code, lines))
+  if (!SendCommand2(command, code, lines))
     return PVR_ERROR_SERVER_ERROR;
 
   memset(&tag, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));

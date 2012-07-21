@@ -45,6 +45,11 @@ cTimer::cTimer()
   m_postrecordinterval = -1; // Use MediaPortal setting instead
   m_canceled           = cUndefinedDate;
   m_series             = false;
+  m_done               = false;
+  m_ismanual           = false;
+  m_isrecording        = false;
+  m_progid             = -1;
+  m_series             = false;
 }
 
 
@@ -58,6 +63,7 @@ cTimer::cTimer(const PVR_TIMER& timerinfo)
   else
     m_index = timerinfo.iClientIndex;
 
+  m_done = (timerinfo.state == PVR_TIMER_STATE_COMPLETED);
   m_active = (timerinfo.state == PVR_TIMER_STATE_SCHEDULED || timerinfo.state == PVR_TIMER_STATE_RECORDING);
 
   if (!m_active)
@@ -80,23 +86,31 @@ cTimer::cTimer(const PVR_TIMER& timerinfo)
   {
     // Instant timer has starttime = 0, so set current time as starttime.
     m_starttime = Now();
+    m_ismanual = true;
   }
   else
   {
     m_starttime = timerinfo.startTime;
+    m_ismanual = false;
   }
 
   m_endtime = timerinfo.endTime;
   //m_firstday = timerinfo.firstday;
-  m_isrecording = timerinfo.state == PVR_TIMER_STATE_RECORDING;
+  m_isrecording = (timerinfo.state == PVR_TIMER_STATE_RECORDING);
   m_priority = XBMC2MepoPriority(timerinfo.iPriority);
 
   SetKeepMethod(timerinfo.iLifetime);
 
   if(timerinfo.bIsRepeating)
+  {
     m_schedtype = RepeatFlags2SchedRecType(timerinfo.iWeekdays);
+    m_series = true;
+  }
   else
+  {
     m_schedtype = Once;
+    m_series = false;
+  }
 
   m_prerecordinterval = timerinfo.iMarginStart;
   m_postrecordinterval = timerinfo.iMarginEnd;

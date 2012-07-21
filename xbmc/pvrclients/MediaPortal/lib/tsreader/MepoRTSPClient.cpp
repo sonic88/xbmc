@@ -51,6 +51,10 @@ CRTSPClient::CRTSPClient()
   m_bPaused = false;
   m_outFileName[0] = '\0';
   m_buffer = NULL;
+  m_env = NULL;
+  m_fDuration = 0.0f;
+  m_url[0] = '\0';
+  m_bRunning = false;
 }
 
 CRTSPClient::~CRTSPClient()

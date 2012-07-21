@@ -52,6 +52,7 @@ CTsReader::CTsReader()
   m_State           = State_Stopped;
   m_lastPause       = 0;
   m_WaitForSeekToEof = 0;
+  m_bRecording      = false;
 
 #ifdef LIVE555
   m_rtspClient      = NULL;

@@ -930,6 +930,7 @@ void CGUISettings::Initialize()
   AddInt(pvre, "epg.epgupdate", 19071, 120, 15, 15, 480, SPIN_CONTROL_INT_PLUS, MASK_MINS);
   AddBool(pvre, "epg.preventupdateswhileplayingtv", 19230, false);
   AddBool(pvre, "epg.ignoredbforclient", 19072, false);
+  AddBool(pvre, "epg.hidenoinfoavailable", 19268, true);
   AddString(pvre, "epg.resetepg", 19187, "", BUTTON_CONTROL_STANDARD);
 
   CSettingsCategory* pvrp = AddCategory(8, "pvrplayback", 19177);
@@ -948,7 +949,7 @@ void CGUISettings::Initialize()
   AddInt(pvrr, "pvrrecord.marginstart", 19175, 2, 0, 1, 60, SPIN_CONTROL_INT_PLUS, MASK_MINS);
   AddInt(pvrr, "pvrrecord.marginend", 19176, 10, 0, 1, 60, SPIN_CONTROL_INT_PLUS, MASK_MINS);
   AddSeparator(pvrr, "pvrrecord.sep1");
-  AddBool(pvr, "pvrrecord.timernotifications", 19233, true);
+  AddBool(pvrr, "pvrrecord.timernotifications", 19233, true);
 
   CSettingsCategory* pvrpwr = AddCategory(8, "pvrpowermanagement", 14095);
   AddBool(pvrpwr, "pvrpowermanagement.enabled", 305, false);

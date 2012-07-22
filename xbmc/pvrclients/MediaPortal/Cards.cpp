@@ -24,14 +24,14 @@
 
 bool CCards::ParseLines(vector<string>& lines)
 {
-  if (lines.size() == 0)
+  if (lines.empty())
     return false;
 
-  for (vector<string>::iterator it = lines.begin(); it < lines.end(); it++)
+  for (vector<string>::iterator it = lines.begin(); it < lines.end(); ++it)
   {
     string& data(*it);
 
-    if (data.length() > 0)
+    if (!data.empty())
     {
       vector<string> fields;
       Card card;
@@ -63,7 +63,7 @@ bool CCards::ParseLines(vector<string>& lines)
       card.Name = fields[2];
       card.Priority = atoi(fields[3].c_str());
       card.GrabEPG = stringtobool(fields[4]);
-      card.LastEpgGrab = DateTimeToTimeT(fields[5].c_str());
+      card.LastEpgGrab = DateTimeToTimeT(fields[5]);
       card.RecordingFolder = fields[6];
       card.IdServer = atoi(fields[7].c_str());
       card.Enabled = stringtobool(fields[8]);

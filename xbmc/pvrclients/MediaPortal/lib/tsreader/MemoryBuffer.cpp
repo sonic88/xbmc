@@ -50,7 +50,7 @@ void CMemoryBuffer::Clear()
   //XBMC->Log(LOG_DEBUG, "memorybuffer: Clear() %d",m_Array.size());
   PLATFORM::CLockObject BufferLock(m_BufferLock);
   std::vector<BUFFERITEM *>::iterator it = m_Array.begin();
-  for ( ; it != m_Array.end(); it++ )
+  for ( ; it != m_Array.end(); ++it )
   {
     BUFFERITEM *item = *it;
     delete[] item->data;
@@ -97,7 +97,7 @@ unsigned long CMemoryBuffer::ReadFromBuffer(unsigned char *pbData, long lDataLen
   PLATFORM::CLockObject BufferLock(m_BufferLock);
   while (bytesWritten < lDataLength)
   {
-    if(!m_Array.size() || m_Array.size() <= 0)
+    if(m_Array.empty())
     {
       XBMC->Log(LOG_DEBUG, "memorybuffer: read:empty buffer\n");
       return 0;

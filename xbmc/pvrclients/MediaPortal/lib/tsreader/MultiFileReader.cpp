@@ -112,7 +112,7 @@ long MultiFileReader::CloseFile()
   hr = m_TSBufferFile.CloseFile();
   hr = m_TSFile.CloseFile();
 
-  for (it = m_tsFiles.begin(); it < m_tsFiles.end(); it++)
+  for (it = m_tsFiles.begin(); it < m_tsFiles.end(); ++it)
   {
     delete (*it);
   }
@@ -166,8 +166,6 @@ int64_t MultiFileReader::GetFilePointer()
 
 long MultiFileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes)
 {
-  long hr;
-
   // If the file has already been closed, don't continue
   if (m_TSBufferFile.IsFileInvalid())
     return S_FALSE;
@@ -184,7 +182,7 @@ long MultiFileReader::Read(unsigned char* pbData, unsigned long lDataLength, uns
   // Find out which file the currentPosition is in.
   MultiFileReaderFile *file = NULL;
   std::vector<MultiFileReaderFile *>::iterator it = m_tsFiles.begin();
-  for ( ; it < m_tsFiles.end(); it++ )
+  for ( ; it < m_tsFiles.end(); ++it )
   {
     file = *it;
     if (m_currentPosition < (file->startPosition + file->length))
@@ -230,6 +228,7 @@ long MultiFileReader::Read(unsigned char* pbData, unsigned long lDataLength, uns
     }
 
     unsigned long bytesRead = 0;
+    long hr;
 
     int64_t bytesToRead = file->length - seekPosition;
     if ((int64_t)lDataLength > bytesToRead)
@@ -402,7 +401,7 @@ long MultiFileReader::RefreshTSBufferFile()
     }
 
     // Removed files that aren't present anymore.
-    while ((filesToRemove > 0) && (m_tsFiles.size() > 0))
+    while ((filesToRemove > 0) && (!m_tsFiles.empty()))
     {
       MultiFileReaderFile *file = m_tsFiles.at(0);
 
@@ -419,7 +418,7 @@ long MultiFileReader::RefreshTSBufferFile()
 
 
     // Figure out what the start position of the next new file will be
-    if (m_tsFiles.size() > 0)
+    if (!m_tsFiles.empty())
     {
       file = m_tsFiles.back();
 
@@ -427,10 +426,7 @@ long MultiFileReader::RefreshTSBufferFile()
       {
         // If we're adding files the changes are the one at the back has a partial length
         // so we need update it.
-        if (m_bDebugOutput)
-          GetFileLength(file->filename.c_str(), file->length);
-        else
-          GetFileLength(file->filename.c_str(), file->length);
+        GetFileLength(file->filename.c_str(), file->length);
       }
 
       nextStartPosition = file->startPosition + file->length;
@@ -492,13 +488,13 @@ long MultiFileReader::RefreshTSBufferFile()
     {
       file = *itFiles;
 
-      itFiles++;
+      ++itFiles;
       fileID++;
 
       if (itFilenames < filenames.end())
       {
         // TODO: Check that the filenames match. ( Ambass : With buffer integrity check, probably no need to do this !)
-        itFilenames++;
+        ++itFilenames;
       }
       else
       {
@@ -529,7 +525,7 @@ long MultiFileReader::RefreshTSBufferFile()
 
       nextStartPosition = file->startPosition + file->length;
 
-      itFilenames++;
+      ++itFilenames;
     }
 
     m_filesAdded = filesAdded;
@@ -538,7 +534,7 @@ long MultiFileReader::RefreshTSBufferFile()
     delete[] pBuffer;
   }
 
-  if (m_tsFiles.size() > 0)
+  if (!m_tsFiles.empty())
   {
     file = m_tsFiles.front();
     m_startPosition = file->startPosition;
@@ -643,7 +639,7 @@ void MultiFileReader::RefreshFileSize()
 {
   int64_t fileLength = 0;
   std::vector<MultiFileReaderFile *>::iterator it = m_tsFiles.begin();
-  for ( ; it < m_tsFiles.end(); it++ )
+  for ( ; it < m_tsFiles.end(); ++it )
   {
     MultiFileReaderFile *file = *it;
     fileLength+=file->length;

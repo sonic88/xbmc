@@ -52,6 +52,7 @@ CTsReader::CTsReader()
   m_State           = State_Stopped;
   m_lastPause       = 0;
   m_WaitForSeekToEof = 0;
+  m_bRecording      = false;
 
 #ifdef LIVE555
   m_rtspClient      = NULL;
@@ -100,7 +101,7 @@ std::string CTsReader::TranslatePath(const char*  pszFileName)
 
     if ((m_cardSettings) && (m_cardSettings->size() > 0))
     {
-      for (CCards::iterator it = m_cardSettings->begin(); it < m_cardSettings->end(); it++)
+      for (CCards::iterator it = m_cardSettings->begin(); it < m_cardSettings->end(); ++it)
       {
         // Determine whether the first part of the recording filename is shared with this card
         found = sFileName.find(it->RecordingFolder);
@@ -170,7 +171,8 @@ long CTsReader::Open(const char* pszFileName)
 
   m_fileName = pszFileName;
   char url[MAX_PATH];
-  strncpy(url, m_fileName.c_str(), MAX_PATH);
+  strncpy(url, m_fileName.c_str(), MAX_PATH-1);
+  url[MAX_PATH-1]='\0'; // make sure that we always have a 0-terminated string
 
   // check file type
   int length = strlen(url);

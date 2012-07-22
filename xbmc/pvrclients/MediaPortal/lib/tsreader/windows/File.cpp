@@ -123,27 +123,7 @@ bool CFile::Exists(const CStdString& strFileName, bool bUseCache /* = true */)
 
   if (dwAttr == 0xffffffff)
   {
-    DWORD dwError = GetLastError();
-    if (dwError == ERROR_FILE_NOT_FOUND)
-    {
-      // file not found
-      return false;
-    }
-    else if (dwError == ERROR_PATH_NOT_FOUND)
-    {
-      // path not found
-      return false;
-    }
-    else if (dwError == ERROR_ACCESS_DENIED)
-    {
-      // file or directory exists, but access is denied
-      return false;
-    }
-    else
-    {
-      // some other error has occured
-      return false;
-    }
+    return false;
   }
 
   return true;

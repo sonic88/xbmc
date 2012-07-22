@@ -99,7 +99,7 @@ time_t DateTimeToTimeT(const std::string& datetime)
   int count;
   time_t retval;
 
-  count = sscanf(datetime.c_str(), "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+  count = sscanf(datetime.c_str(), "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &minute, &second);
 
   if(count != 6)
     return -1;
@@ -207,7 +207,7 @@ namespace UTF8Util
     // Consider CHAR's count corresponding to total input string length,
     // including end-of-string (\0) character
     //
-    const size_t cchUTF8Max = INT_MAX - 1;
+    //const size_t cchUTF8Max = INT_MAX - 1;
     size_t cchUTF8 = strlen(pszTextUTF8);
 
     // Consider also terminating \0
@@ -290,7 +290,7 @@ namespace UTF8Util
     // Consider WCHAR's count corresponding to total input string length,
     // including end-of-string (L'\0') character.
     //
-    const size_t cchUTF16Max = INT_MAX - 1;
+    //const size_t cchUTF16Max = INT_MAX - 1;
     size_t cchUTF16 = wcslen(pszTextUTF16);
 
     // Consider also terminating \0

@@ -2391,7 +2391,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       if (m_currentFile->HasPVRChannelInfoTag())
       {
         CEpgInfoTag epgTag;
-        bReturn = g_PVRManager.GetPlayingTag(epgTag);
+        bReturn = m_currentFile->GetPVRChannelInfoTag()->GetEPGNow(epgTag);
       }
     break;
     default: // default, use integer value different from 0 as true
@@ -3521,7 +3521,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
     if (m_currentFile->HasPVRChannelInfoTag())
     {
       CEpgInfoTag tag;
-      return g_PVRManager.GetPlayingTag(tag) ? tag.Title() : g_localizeStrings.Get(19055);
+      return m_currentFile->GetPVRChannelInfoTag()->GetEPGNow(tag) ? tag.Title() : g_localizeStrings.Get(19055);
     }
     if (m_currentFile->HasVideoInfoTag() && !m_currentFile->GetVideoInfoTag()->m_strTitle.IsEmpty())
       return m_currentFile->GetVideoInfoTag()->m_strTitle;
@@ -3544,52 +3544,50 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
   }
   else if (m_currentFile->HasPVRChannelInfoTag())
   {
+    CPVRChannel* tag = m_currentFile->GetPVRChannelInfoTag();
     CEpgInfoTag epgTag;
-    const CEpgInfoTag *epgNextTag = NULL;
-    bool validTag = g_PVRManager.GetPlayingTag(epgTag);
-    if  (validTag)
-      epgNextTag = epgTag.GetNextEvent();
+
     switch (item)
     {
     /* Now playing infos */
     case VIDEOPLAYER_ORIGINALTITLE:
-      return validTag ? epgTag.Title() : g_localizeStrings.Get(19055);
+      return tag->GetEPGNow(epgTag) ? epgTag.Title() : g_localizeStrings.Get(19055);
     case VIDEOPLAYER_GENRE:
-      return validTag ? StringUtils::Join(epgTag.Genre(), g_advancedSettings.m_videoItemSeparator) : StringUtils::EmptyString;
+      return tag->GetEPGNow(epgTag) ? StringUtils::Join(epgTag.Genre(), g_advancedSettings.m_videoItemSeparator) : StringUtils::EmptyString;
     case VIDEOPLAYER_PLOT:
-      return validTag ? epgTag.Plot() : StringUtils::EmptyString;
+      return tag->GetEPGNow(epgTag) ? epgTag.Plot() : StringUtils::EmptyString;
     case VIDEOPLAYER_PLOT_OUTLINE:
-      return validTag ? epgTag.PlotOutline() : StringUtils::EmptyString;
+      return tag->GetEPGNow(epgTag) ? epgTag.PlotOutline() : StringUtils::EmptyString;
     case VIDEOPLAYER_STARTTIME:
-      return validTag ? epgTag.StartAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
+      return tag->GetEPGNow(epgTag) ? epgTag.StartAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
     case VIDEOPLAYER_ENDTIME:
-      return validTag ? epgTag.EndAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
+      return tag->GetEPGNow(epgTag) ? epgTag.EndAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
 
     /* Next playing infos */
     case VIDEOPLAYER_NEXT_TITLE:
-      return epgNextTag ? epgNextTag->Title() : g_localizeStrings.Get(19055);
+      return tag->GetEPGNext(epgTag) ? epgTag.Title() : g_localizeStrings.Get(19055);
     case VIDEOPLAYER_NEXT_GENRE:
-      return epgNextTag ? StringUtils::Join(epgNextTag->Genre(), g_advancedSettings.m_videoItemSeparator) : StringUtils::EmptyString;
+      return tag->GetEPGNext(epgTag) ? StringUtils::Join(epgTag.Genre(), g_advancedSettings.m_videoItemSeparator) : StringUtils::EmptyString;
     case VIDEOPLAYER_NEXT_PLOT:
-      return epgNextTag ? epgNextTag->Plot() : StringUtils::EmptyString;
+      return tag->GetEPGNext(epgTag) ? epgTag.Plot() : StringUtils::EmptyString;
     case VIDEOPLAYER_NEXT_PLOT_OUTLINE:
-      return epgNextTag ? epgNextTag->PlotOutline() : StringUtils::EmptyString;
+      return tag->GetEPGNext(epgTag) ? epgTag.PlotOutline() : StringUtils::EmptyString;
     case VIDEOPLAYER_NEXT_STARTTIME:
-      return epgNextTag ? epgNextTag->StartAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
+      return tag->GetEPGNext(epgTag) ? epgTag.StartAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
     case VIDEOPLAYER_NEXT_ENDTIME:
-      return epgNextTag ? epgNextTag->EndAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
+      return tag->GetEPGNext(epgTag) ? epgTag.EndAsLocalTime().GetAsLocalizedTime("", false) : CDateTime::GetCurrentDateTime().GetAsLocalizedTime("", false);
     case VIDEOPLAYER_NEXT_DURATION:
       {
         CStdString duration;
-        if (epgNextTag && epgNextTag->GetDuration() > 0)
-          duration = StringUtils::SecondsToTimeString(epgNextTag->GetDuration());
+        if (tag->GetEPGNext(epgTag) && epgTag.GetDuration() > 0)
+          duration = StringUtils::SecondsToTimeString(epgTag.GetDuration());
         return duration;
       }
 
     case VIDEOPLAYER_PARENTAL_RATING:
       {
         CStdString rating;
-        if (validTag && epgTag.ParentalRating() > 0)
+        if (tag->GetEPGNow(epgTag) && epgTag.ParentalRating() > 0)
           rating.Format("%i", epgTag.ParentalRating());
         return rating;
       }
@@ -3597,16 +3595,16 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
 
     /* General channel infos */
     case VIDEOPLAYER_CHANNEL_NAME:
-      return m_currentFile->GetPVRChannelInfoTag()->ChannelName();
+      return tag->ChannelName();
     case VIDEOPLAYER_CHANNEL_NUMBER:
       {
         CStdString strNumber;
-        strNumber.Format("%i", m_currentFile->GetPVRChannelInfoTag()->ChannelNumber());
+        strNumber.Format("%i", tag->ChannelNumber());
         return strNumber;
       }
     case VIDEOPLAYER_CHANNEL_GROUP:
       {
-        if (m_currentFile->GetPVRChannelInfoTag() && !m_currentFile->GetPVRChannelInfoTag()->IsRadio())
+        if (tag && !tag->IsRadio())
           return g_PVRManager.GetPlayingGroup(false)->GroupName();
       }
     }

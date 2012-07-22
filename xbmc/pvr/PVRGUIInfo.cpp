@@ -86,7 +86,6 @@ void CPVRGUIInfo::ResetProperties(void)
   m_bIsPlayingRadio             = false;
   m_bIsPlayingRecording         = false;
   m_bIsPlayingEncryptedStream   = false;
-  m_fPlayerPostion              = 0.0; 
 
   ResetPlayingTag();
   ClearQualityInfo(m_qualityInfo);
@@ -794,8 +793,8 @@ int CPVRGUIInfo::GetStartTime(void) const
     /* Calculate here the position we have of the running live TV event.
      * "position in ms" = ("current local time" - "event start local time") * 1000
      */
-    CDateTime current = m_playingStarted + CDateTimeSpan(0,0,0,(int) (m_fPlayerPostion/1000.0));
-    CDateTime start = m_playingEpgTag->StartAsUTC(); 
+    CDateTime current = CDateTime::GetCurrentDateTime();
+    CDateTime start = m_playingEpgTag->StartAsLocalTime();
     CDateTimeSpan time = current > start ? current - start : CDateTimeSpan(0, 0, 0, 0);
     return (time.GetDays()   * 60 * 60 * 24
          + time.GetHours()   * 60 * 60
@@ -808,11 +807,6 @@ int CPVRGUIInfo::GetStartTime(void) const
   }
 }
 
-void CPVRGUIInfo::UpdatePlayerPosition(double pos)
-{
-  m_fPlayerPostion = pos;
-}
-
 void CPVRGUIInfo::ResetPlayingTag(void)
 {
   CSingleLock lock(m_critSection);
@@ -822,11 +816,10 @@ void CPVRGUIInfo::ResetPlayingTag(void)
   m_iDuration     = 0;
 }
 
-bool CPVRGUIInfo::GetPlayingTag(CEpgInfoTag &tag) 
+bool CPVRGUIInfo::GetPlayingTag(CEpgInfoTag &tag) const
 {
-  bool bReturn(false);  
-  if (!m_playingEpgTag)
-    UpdatePlayingTag();
+  bool bReturn(false);
+
   CSingleLock lock(m_critSection);
   if (m_playingEpgTag)
   {
@@ -844,29 +837,17 @@ void CPVRGUIInfo::UpdatePlayingTag(void)
   if (g_PVRManager.GetCurrentChannel(currentChannel))
   {
     CEpgInfoTag epgTag;
-    bool bHasEpgTag(false);
-    {
-      CSingleLock lock(m_critSection);
-      bHasEpgTag  = m_playingEpgTag != NULL;//GetPlayingTag(epgTag);
-      if (m_playingEpgTag)
-        epgTag = *m_playingEpgTag;
-    }
+    bool bHasEpgTag  = GetPlayingTag(epgTag);
     const CPVRChannel *channel = bHasEpgTag ? epgTag.ChannelTag() : NULL;
-    CDateTime currentPlayTime = m_playingStarted + CDateTimeSpan(0,0,0, (int) (m_fPlayerPostion/1000.0));
-    if (!bHasEpgTag || !epgTag.IsActive(currentPlayTime) ||
+
+    if (!bHasEpgTag || !epgTag.IsActive() ||
         !channel || *channel != currentChannel)
     {
       CEpgInfoTag newTag;
-      CLog::Log(LOGDEBUG,"time: %f",g_application.GetTime());
-      if(g_application.GetTime() == 0.0)
-      {
-        m_playingStarted = CDateTime::GetCurrentDateTime().GetAsUTCDateTime();
-        currentPlayTime = m_playingStarted;
-      }
       {
         CSingleLock lock(m_critSection);
         ResetPlayingTag();
-        if (currentChannel.GetEPGTag(newTag,currentPlayTime))
+        if (currentChannel.GetEPGNow(newTag))
         {
           m_playingEpgTag = new CEpgInfoTag(newTag);
           m_iDuration     = m_playingEpgTag->GetDuration() * 1000;

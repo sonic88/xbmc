@@ -63,7 +63,6 @@ namespace PVR
      */
     int GetStartTime(void) const;
 
-    void UpdatePlayerPosition(double pos);
     /*!
      * @brief Show the player info.
      * @param iTimeout Hide the player info after iTimeout seconds.
@@ -76,7 +75,7 @@ namespace PVR
      */
     void ResetPlayingTag(void);
 
-    bool GetPlayingTag(EPG::CEpgInfoTag &tag);
+    bool GetPlayingTag(EPG::CEpgInfoTag &tag) const;
 
   private:
     void ResetProperties(void);
@@ -167,8 +166,6 @@ namespace PVR
     unsigned int                    m_iTimerInfoToggleCurrent;
     unsigned int                    m_iToggleShowInfo;
     EPG::CEpgInfoTag *              m_playingEpgTag;
-    CDateTime                       m_playingStarted;
-    double                          m_fPlayerPostion;
 
     CCriticalSection                m_critSection;
   };

@@ -41,10 +41,8 @@
 
 #if !defined(TARGET_WINDOWS)
 #include <sys/time.h>
-#include "PlatformInclude.h"
-#include "File.h"
+#include "os-dependent.h"
 #define SUCCEEDED(hr) (((HRESULT)(hr)) >= 0)
-using namespace XFILE;
 #endif
 
 using namespace ADDON;
@@ -354,7 +352,7 @@ long MultiFileReader::RefreshTSBufferFile()
   
     pBuffer = (wchar_t*) new char[(unsigned int)remainingLength];
 
-    result=m_TSBufferFile.Read((unsigned char*)pBuffer, (ULONG)remainingLength, &bytesRead);
+    result = m_TSBufferFile.Read((unsigned char*) pBuffer, (uint32_t)remainingLength, &bytesRead);
     if (!SUCCEEDED(result)||  (int64_t)bytesRead != remainingLength) Error=0x20;
 
     //unsigned char* pb = (unsigned char*) pBuffer;
@@ -373,10 +371,10 @@ long MultiFileReader::RefreshTSBufferFile()
       Error |= 0x40;
 
     if(Error == 0)
-	  {
-		  filesAdded2 = *((TSBUFFERLONG*)(readBuffer + 0));
-		  filesRemoved2 = *((TSBUFFERLONG*)(readBuffer + sizeof(filesAdded2)));
-	  }
+    {
+      filesAdded2 = *((TSBUFFERLONG*)(readBuffer + 0));
+      filesRemoved2 = *((TSBUFFERLONG*)(readBuffer + sizeof(filesAdded2)));
+    }
 
     delete[] readBuffer;
 
@@ -390,13 +388,14 @@ long MultiFileReader::RefreshTSBufferFile()
       // try to clear local / remote SMB file cache. This should happen when we close the filehandle
       m_TSBufferFile.CloseFile();
       m_TSBufferFile.OpenFile();
-      Sleep(5);
+      usleep(5000);
     }
 
-    if (Error) delete[] pBuffer;
+    if (Error)
+      delete[] pBuffer;
 
-    Loop-- ;
-  } while ( Error && Loop ) ; // If Error is set, try again...until Loop reaches 0.
+    Loop--;
+  } while ( Error && Loop ); // If Error is set, try again...until Loop reaches 0.
  
   if (Loop < 8)
   {
@@ -657,11 +656,14 @@ long MultiFileReader::GetFileLength(const char* pFilename, int64_t &length)
 
   length = 0;
 
-  // Pickup filesize
-  struct stat64 filestatus;
-  if (CFile::Stat(pFilename, &filestatus) >= 0)
+  length = 0;
+
+  // Try to open the file
+  PLATFORM::CFile hFile;
+  if (hFile.Open(pFilename))
   {
-    length = filestatus.st_size;
+    length = hFile.GetLength();
+    hFile.Close();
   }
   else
   {

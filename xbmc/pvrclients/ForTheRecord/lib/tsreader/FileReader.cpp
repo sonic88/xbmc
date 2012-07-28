@@ -33,14 +33,10 @@
 #include "os-dependent.h"
 #include <algorithm> //std::min, std::max
 #include "utils.h"
-
-#if defined(TARGET_WINDOWS)
-#else
-#include "PlatformInclude.h"
-using namespace XFILE;
-#endif
+#include "platform/util/timeutils.h" // for usleep
 
 using namespace ADDON;
+using namespace PLATFORM;
 
 FileReader::FileReader() :
 #if defined(TARGET_WINDOWS)
@@ -65,27 +61,26 @@ FileReader::~FileReader()
     delete m_pFileName;
 }
 
+
 long FileReader::GetFileName(char* *lpszFileName)
 {
   *lpszFileName = m_pFileName;
   return S_OK;
 }
 
+
 long FileReader::SetFileName(const char *pszFileName)
 {
-  // Is this a valid filename supplied
-  //CheckPointer(pszFileName,E_POINTER);
-
   if(strlen(pszFileName) > MAX_PATH)
     return ERROR_FILENAME_EXCED_RANGE;
 
   // Take a copy of the filename
-
   if (m_pFileName)
   {
     delete[] m_pFileName;
     m_pFileName = NULL;
   }
+
   m_pFileName = new char[1 + strlen(pszFileName)];
   if (m_pFileName == NULL)
     return E_OUTOFMEMORY;
@@ -102,14 +97,13 @@ long FileReader::SetFileName(const char *pszFileName)
 //
 long FileReader::OpenFile()
 {
-  //char *pFileName = NULL;
-  int Tmo=25 ; //5 in MediaPortal
+  int Tmo = 25; //5 in MediaPortal
+
   // Is the file already opened
   if (!IsFileInvalid())
-
   {
     XBMC->Log(LOG_NOTICE, "FileReader::OpenFile() file already open");
-    return NOERROR;
+    return S_OK;
   }
 
   // Has a filename been set yet
@@ -161,12 +155,13 @@ long FileReader::OpenFile()
 #else
 #error FIXME: Add an OpenFile() implementation for your OS
 #endif
-    m_bReadOnly = TRUE;
+    m_bReadOnly = true;
     if (!IsFileInvalid()) break;
 
-    Sleep(20) ;
+    usleep(20000) ;
   }
-  while(--Tmo) ;
+  while(--Tmo);
+
   if (Tmo)
   {
     if (Tmo<4) // 1 failed + 1 succeded is quasi-normal, more is a bit suspicious ( disk drive too slow or problem ? )
@@ -187,7 +182,7 @@ long FileReader::OpenFile()
 #if defined(TARGET_WINDOWS)
   XBMC->Log(LOG_DEBUG, "FileReader::OpenFile() %s handle %i %s", m_bReadOnly ? "read-only" : "read/write", m_hFile, m_pFileName );
 #elif defined(TARGET_LINUX) || defined(TARGET_OSX)
-  XBMC->Log(LOG_DEBUG, "FileReader::OpenFile() %s handle %p %s", m_bReadOnly ? "read-only" : "read/write", m_hFile.GetImplemenation(), m_pFileName );
+  XBMC->Log(LOG_DEBUG, "FileReader::OpenFile() %s %s", m_bReadOnly ? "read-only" : "read/write", m_pFileName );
 #else
 #error FIXME: Add an debug log implementation for your OS
 #endif
@@ -195,6 +190,7 @@ long FileReader::OpenFile()
   //SetFilePointer(0, FILE_BEGIN);
 
   return S_OK;
+
 } // Open
 
 //
@@ -204,12 +200,8 @@ long FileReader::OpenFile()
 //
 long FileReader::CloseFile()
 {
-  // Must lock this section to prevent problems related to
-  // closing the file while still receiving data in Receive()
-
   if (IsFileInvalid())
   {
-    //XBMC->Log(LOG_DEBUG, "FileReader::CloseFile() no open file");
     return S_OK;
   }
 
@@ -226,15 +218,16 @@ long FileReader::CloseFile()
 #error FIXME: Add a CloseFile() implementation for your OS
 #endif
 
-  return NOERROR;
+  return S_OK;
 } // CloseFile
 
-bool FileReader::IsFileInvalid()
+
+inline bool FileReader::IsFileInvalid()
 {
 #if defined(TARGET_WINDOWS)
   return (m_hFile == INVALID_HANDLE_VALUE);
 #elif defined(TARGET_LINUX) || defined(TARGET_OSX)
-  return (m_hFile.GetImplemenation() == NULL);
+  return (m_hFile.IsInvalid());
 #else
 #error FIXME: Add an IsFileInvalid implementation for your OS
 #endif
@@ -263,8 +256,8 @@ unsigned long FileReader::SetFilePointer(int64_t llDistanceToMove, unsigned long
   else if (dwMoveMethod == FILE_END) dwMoveMethod = SEEK_END;
   else
   {
-      XBMC->Log(LOG_ERROR, "%s: SetFilePointer invalid MoveMethod(%d)", __FUNCTION__, dwMoveMethod);
-	  dwMoveMethod = SEEK_SET;
+    XBMC->Log(LOG_ERROR, "%s: SetFilePointer invalid MoveMethod(%d)", __FUNCTION__, dwMoveMethod);
+    dwMoveMethod = SEEK_SET;
   }
   int64_t rc = m_hFile.Seek(llDistanceToMove, dwMoveMethod);
   //XBMC->Log(LOG_DEBUG, "%s: distance %d method %d returns %d.", __FUNCTION__, llDistanceToMove, dwMoveMethod, rc);
@@ -275,6 +268,7 @@ unsigned long FileReader::SetFilePointer(int64_t llDistanceToMove, unsigned long
   return 0;
 #endif
 }
+
 
 int64_t FileReader::GetFilePointer()
 {
@@ -327,12 +321,12 @@ long FileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned
   }
   return S_OK;
 #elif defined(TARGET_LINUX) || defined(TARGET_OSX)
-  *dwReadBytes = m_hFile.Read((void*)pbData, (DWORD)lDataLength);//Read file data into buffer
+  *dwReadBytes = m_hFile.Read((void*)pbData, lDataLength);//Read file data into buffer
   //XBMC->Log(LOG_DEBUG, "%s: requested read length %d actually read %d.", __FUNCTION__, lDataLength, *dwReadBytes);
 
   if (*dwReadBytes < (unsigned long)lDataLength)
   {
-    XBMC->Log(LOG_DEBUG, "FileReader::Read() read to less bytes");
+    XBMC->Log(LOG_DEBUG, "FileReader::Read() read too less bytes");
     return S_FALSE;
   }
   return S_OK;
@@ -362,18 +356,7 @@ int64_t FileReader::GetFileSize()
     m_fileSize = li.QuadPart;
   }
 #elif defined(TARGET_LINUX) || defined(TARGET_OSX)
-  if (m_bReadOnly || !m_fileSize)
-  {
-    struct stat64 filestatus;
-
-    if(m_hFile.Stat(&filestatus) < 0)
-    {
-      XBMC->Log(LOG_ERROR, "%s: fstat64(File) failed. Error %d: %s", __FUNCTION__, errno, strerror(errno));
-      return E_FAIL;
-    }
-
-    m_fileSize = filestatus.st_size;
-  }
+  m_fileSize = m_hFile.GetLength();
 #else
 #error FIXME: Add a GetFileSize() implementation for your OS
 #endif

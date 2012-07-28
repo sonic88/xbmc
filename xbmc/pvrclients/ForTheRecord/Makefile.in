@@ -31,23 +31,25 @@ SRCS   = utils.cpp \
         tools.cpp \
         upcomingrecording.cpp \
         uri.cpp \
+        KeepAliveThread.cpp \
+        fortherecordrpc.cpp \
+        pvrclient-fortherecord.cpp \
+        client.cpp \
         lib/jsoncpp/src/lib_json/json_reader.cpp \
         lib/jsoncpp/src/lib_json/json_writer.cpp \
         lib/jsoncpp/src/lib_json/json_value.cpp \
         lib/tsreader/FileReader.cpp \
         lib/tsreader/MultiFileReader.cpp \
         lib/tsreader/TSReader.cpp \
-        KeepAliveThread.cpp \
-        fortherecordrpc.cpp \
-        pvrclient-fortherecord.cpp \
-        client.cpp
+        lib/filesystem/FileSMB.cpp \
+        lib/filesystem/DirectorySMB.cpp
 
 include ../Makefile.include
 
 INCLUDES += -Ilib/jsoncpp/include/
-INCLUDES += -I@abs_top_srcdir@/xbmc/filesystem
+INCLUDES += -Ilib/filesystem/
 
-CXXFLAGS += -DTSREADER
+CXXFLAGS += -DTSREADER -D__STDC_FORMAT_MACROS
 ifeq ($(findstring osx,@ARCH@),osx)
 CXXFLAGS += -DTARGET_OSX
 else

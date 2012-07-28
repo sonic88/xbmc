@@ -19,8 +19,8 @@
 #pragma warning(disable:4244) //wchar to char = loss of data
 #endif
 
-#include "os-dependent.h"
 #include "utils.h"
+#include "os-dependent.h"
 #include "client.h" //For XBMC->Log
 #include <string>
 #include <algorithm> // sort

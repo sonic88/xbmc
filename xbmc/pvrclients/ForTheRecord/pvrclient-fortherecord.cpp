@@ -39,9 +39,8 @@ using namespace std;
 using namespace ADDON;
 
 #if !defined(TARGET_WINDOWS)
-#include "URL.h"
-#include "SMBDirectory.h"
-using namespace XFILE;
+#include "DirectorySMB.h"
+using namespace PLATFORM;
 #endif
 
 #define SIGNALQUALITY_INTERVAL 10
@@ -146,7 +145,7 @@ bool cPVRClientForTheRecord::ShareErrorsFound(void)
   bool bShareErrors = false;
   Json::Value activeplugins;
   int rc = ForTheRecord::GetPluginServices(false, activeplugins);
-  if (rc != NOERROR)
+  if (rc < 0)
   {
     XBMC->Log(LOG_ERROR, "Unable to get the ForTheRecord plugin services to check share accessiblity.");
     return false;
@@ -160,7 +159,7 @@ bool cPVRClientForTheRecord::ShareErrorsFound(void)
     XBMC->Log(LOG_DEBUG, "Checking tuner \"%s\" for accessibility.", tunerName.c_str());
     Json::Value accesibleshares;
     rc = ForTheRecord::AreRecordingSharesAccessible(activeplugins[index], accesibleshares);
-    if (rc != NOERROR)
+    if (rc < 0)
     {
       XBMC->Log(LOG_ERROR, "Unable to get the share status for tuner \"%s\".", tunerName.c_str());
       continue;
@@ -229,8 +228,7 @@ bool cPVRClientForTheRecord::ShareErrorsFound(void)
       CIFSname.erase(0,2);
       CIFSname.insert(0, SMBPrefix);
       CSMBDirectory smbDir;
-      CURL curl(CIFSname);
-      int iRc = smbDir.Open(curl);
+      int iRc = smbDir.Open(CIFSname);
       isAccessibleByAddon = (iRc > 0);
 #else
 #error implement for your OS!

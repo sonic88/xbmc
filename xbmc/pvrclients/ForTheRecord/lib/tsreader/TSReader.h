@@ -20,7 +20,7 @@
 
 #include "client.h"
 #include "FileReader.h"
-#include "utils/StdString.h"
+#include "platform/util/StdString.h"
 
 class CTsReader
 {

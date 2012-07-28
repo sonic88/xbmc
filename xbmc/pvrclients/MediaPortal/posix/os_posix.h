@@ -25,9 +25,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#if defined(TARGET_DARWIN) || defined(__FreeBSD__)
-#include <stdio.h> // for fpos_t
-#endif
 typedef long        LONG;
 typedef LONG        HRESULT;
 
@@ -48,24 +45,18 @@ typedef LONG        HRESULT;
 #define E_OUTOFMEMORY                    0x8007000EL
 #define E_FAIL                           0x8004005EL
 
-#define THREAD_FUNC_PREFIX void *
-#define THREAD_PRIORITY_LOWEST          THREAD_BASE_PRIORITY_MIN
-#define THREAD_PRIORITY_BELOW_NORMAL    (THREAD_PRIORITY_LOWEST+1)
-#define THREAD_PRIORITY_NORMAL          0
-#define THREAD_PRIORITY_HIGHEST         THREAD_BASE_PRIORITY_MAX
-#define THREAD_PRIORITY_ABOVE_NORMAL    (THREAD_PRIORITY_HIGHEST-1)
-
-#define THREAD_PRIORITY_TIME_CRITICAL   THREAD_BASE_PRIORITY_LOWRT
-#define THREAD_PRIORITY_IDLE            THREAD_BASE_PRIORITY_IDLE
-
 #ifdef TARGET_LINUX
 #include <limits.h>
+#define MAX_PATH PATH_MAX
+#elif defined TARGET_DARWIN || defined __FreeBSD__
+#include <sys/syslimits.h>
 #define MAX_PATH PATH_MAX
 #else
 #define MAX_PATH 256
 #endif
 
 #if defined(__APPLE__)
+  #include <stdio.h> // for fpos_t
   #include <sched.h>
   #include <AvailabilityMacros.h>
   typedef int64_t   off64_t;
@@ -79,6 +70,7 @@ typedef LONG        HRESULT;
   #endif
   #define fstat64 fstat
 #elif defined(__FreeBSD__)
+  #include <stdio.h> // for fpos_t
   typedef int64_t   off64_t;
   typedef off_t     __off_t;
   typedef off64_t   __off64_t;
@@ -94,10 +86,7 @@ typedef LONG        HRESULT;
 #include <string.h>
 #define strnicmp(X,Y,N) strncasecmp(X,Y,N)
 
-typedef pthread_mutex_t criticalsection_t;
-typedef sem_t wait_event_t;
 typedef unsigned char byte;
-typedef pid_t tThreadId;
 
 /* Platform dependent path separator */
 #define PATH_SEPARATOR_CHAR '/'

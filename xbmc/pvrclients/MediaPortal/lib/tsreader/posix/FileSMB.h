@@ -19,7 +19,7 @@
 #pragma once
 
 #include <iostream>
-#include "IFile.h"
+#include "../IFile.h"
 #include "platform/threads/mutex.h"
 #include "os-dependent.h"
 

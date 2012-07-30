@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -44,9 +44,9 @@ typedef LONG        HRESULT;
 
 // Error codes
 #define ERROR_FILENAME_EXCED_RANGE       206L
+#define ERROR_INVALID_NAME               123L
 #define E_OUTOFMEMORY                    0x8007000EL
 #define E_FAIL                           0x8004005EL
-#define ERROR_INVALID_NAME               123L
 
 #define THREAD_FUNC_PREFIX void *
 #define THREAD_PRIORITY_LOWEST          THREAD_BASE_PRIORITY_MIN

@@ -30,9 +30,9 @@
 #include "os-dependent.h"
 
 #ifdef TARGET_WINDOWS
-#include "File.h"
+#include "windows/File.h"
 #else
-#include "FileSMB.h"
+#include "posix/FileSMB.h"
 #endif
 
 class FileReader
@@ -47,7 +47,6 @@ class FileReader
     virtual long OpenFile();
     virtual long CloseFile();
     virtual long Read(unsigned char* pbData, unsigned long lDataLength, unsigned long *dwReadBytes);
-    virtual long get_ReadOnly(bool *ReadOnly);
     long GetStartPosition(int64_t *lpllpos);
     virtual bool IsFileInvalid();
     virtual int64_t SetFilePointer(int64_t llDistanceToMove, unsigned long dwMoveMethod);
@@ -59,7 +58,6 @@ class FileReader
   protected:
     PLATFORM::CFile m_hFile;        // Handle to file for streaming
     char*    m_pFileName;           // The filename where we stream
-    bool     m_bReadOnly;
     int64_t  m_fileSize;
     int64_t  m_llBufferPointer;
 

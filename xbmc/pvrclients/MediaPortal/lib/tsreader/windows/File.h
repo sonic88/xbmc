@@ -19,7 +19,7 @@
 #pragma once
 
 #include <iostream>
-#include "IFile.h"
+#include "../IFile.h"
 
 namespace PLATFORM
 {

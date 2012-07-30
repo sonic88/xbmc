@@ -24,18 +24,30 @@
     <Filter Include="Source Files\tsreader\windows">
       <UniqueIdentifier>{b0c925ea-4335-4e2a-8f8a-b63d393f81fd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\platform">
+      <UniqueIdentifier>{3b0f4220-405a-4232-b2af-925b9eb978e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\platform\windows">
+      <UniqueIdentifier>{a7768126-479c-42dc-88c6-bf0b15720171}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\windows">
+      <UniqueIdentifier>{abb9123d-4255-443e-96bf-7b5b062841e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\platform">
+      <UniqueIdentifier>{a86d7cb7-1228-48ba-8f1a-47f90620754c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\platform\windows">
+      <UniqueIdentifier>{d72837c0-b66d-469c-869a-aec23614f686}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\windows">
+      <UniqueIdentifier>{1dbd62b0-5317-4063-adca-e469404f8a5b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\channels.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\client.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\addons\library.xbmc.addon\dlfcn-win32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\lib\platform\windows\os-threads.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\epg.cpp">
@@ -80,12 +92,6 @@
     <ClCompile Include="..\..\lib\tsreader\TSReader.cpp">
       <Filter>Source Files\tsreader</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\windows\FileUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\windows\WindowsUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\GenreTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -98,15 +104,24 @@
     <ClCompile Include="..\..\lib\tsreader\MepoRTSPClient.cpp">
       <Filter>Source Files\tsreader</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\lib\platform\windows\os-threads.cpp">
+      <Filter>Source Files\platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\lib\platform\windows\dlfcn-win32.cpp">
+      <Filter>Source Files\platform\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\windows\FileUtils.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\windows\WindowsUtils.cpp">
+      <Filter>Source Files\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\channels.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\client.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\addons\library.xbmc.addon\dlfcn-win32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\epg.h">
@@ -157,12 +172,6 @@
     <ClInclude Include="..\..\windows\os_windows.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\FileUtils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\windows\WindowsUtils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\GenreTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -174,6 +183,21 @@
     </ClInclude>
     <ClInclude Include="..\..\lib\tsreader\MepoRTSPClient.h">
       <Filter>Header Files\tsreader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\lib\tsreader\IFile.h">
+      <Filter>Header Files\tsreader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\platform\windows\dlfcn-win32.h">
+      <Filter>Header Files\platform\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\platform\windows\os-threads.h">
+      <Filter>Header Files\platform\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\windows\WindowsUtils.h">
+      <Filter>Header Files\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\FileUtils.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

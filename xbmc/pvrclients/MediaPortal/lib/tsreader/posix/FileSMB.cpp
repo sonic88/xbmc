@@ -352,7 +352,7 @@ unsigned long CFile::Read(void* lpBuf, int64_t uiBufSize)
   CLockObject lock(smb); // Init not called since it has to be "inited" by now
   smb.SetActivityTime();
   /* work around stupid bug in samba */
-  /* some samba servers hava a bug in it where the */
+  /* some samba servers have a bug in it where the */
   /* 17th bit will be ignored in a request of data */
   /* this can lead to a very small return of data */
   /* also worse, a request of exactly 64k will return */

@@ -16,7 +16,7 @@
  */
 
 #include "client.h" // For XBMC->Log
-#include "../File.h"
+#include "File.h"
 #include "utils.h"
 
 using namespace PLATFORM;

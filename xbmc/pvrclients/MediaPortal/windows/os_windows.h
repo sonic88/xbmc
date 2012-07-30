@@ -23,17 +23,7 @@
 #define WIN32_LEAN_AND_MEAN           // Enable LEAN_AND_MEAN support
 #define NOMINMAX                      // don't define min() and max() to prevent a clash with std::min() and std::max
 #include <windows.h>
-#include <process.h>
 #include <wchar.h>
-
-typedef HANDLE wait_event_t;
-typedef CRITICAL_SECTION criticalsection_t;
-typedef unsigned __int32 uint;
-typedef DWORD tThreadId;
-
-#ifndef va_copy
-#define va_copy(x, y) x = y
-#endif
 
 /* String to 64-bit int */
 #define atoll(S) _atoi64(S)

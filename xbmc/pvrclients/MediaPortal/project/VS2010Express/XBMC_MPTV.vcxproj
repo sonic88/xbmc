@@ -117,10 +117,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\..\..\lib\platform\windows\dlfcn-win32.cpp" />
     <ClCompile Include="..\..\Cards.cpp" />
     <ClCompile Include="..\..\channels.cpp" />
     <ClCompile Include="..\..\client.cpp" />
-    <ClCompile Include="..\..\..\..\..\addons\library.xbmc.addon\dlfcn-win32.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\platform\windows\os-threads.cpp" />
     <ClCompile Include="..\..\epg.cpp" />
     <ClCompile Include="..\..\GenreTable.cpp" />
@@ -143,16 +143,18 @@
     <ClCompile Include="..\..\windows\WindowsUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\..\lib\platform\windows\dlfcn-win32.h" />
+    <ClInclude Include="..\..\..\..\..\lib\platform\windows\os-threads.h" />
     <ClInclude Include="..\..\Cards.h" />
     <ClInclude Include="..\..\channels.h" />
     <ClInclude Include="..\..\client.h" />
-    <ClInclude Include="..\..\..\..\..\addons\library.xbmc.addon\dlfcn-win32.h" />
     <ClInclude Include="..\..\epg.h" />
     <ClInclude Include="..\..\FileUtils.h" />
     <ClInclude Include="..\..\GenreTable.h" />
     <ClInclude Include="..\..\lib\tinyxml2\tinyxml2.h" />
     <ClInclude Include="..\..\lib\tsreader\File.h" />
     <ClInclude Include="..\..\lib\tsreader\FileReader.h" />
+    <ClInclude Include="..\..\lib\tsreader\IFile.h" />
     <ClInclude Include="..\..\lib\tsreader\MemoryBuffer.h" />
     <ClInclude Include="..\..\lib\tsreader\MemoryReader.h" />
     <ClInclude Include="..\..\lib\tsreader\MemorySink.h" />

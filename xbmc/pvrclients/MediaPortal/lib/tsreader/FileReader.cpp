@@ -37,7 +37,6 @@ using namespace PLATFORM;
 FileReader::FileReader() :
   m_hFile(),
   m_pFileName(0),
-  m_bReadOnly(false),
   m_fileSize(0),
   m_llBufferPointer(0),
   m_bDebugOutput(false)
@@ -108,7 +107,6 @@ long FileReader::OpenFile()
   do
   {
     XBMC->Log(LOG_INFO, "FileReader::OpenFile() %s %s.", m_pFileName, CFile::Exists(m_pFileName) ? "exists" : "not found");
-    m_bReadOnly = true;
     // Open in readonly mode with this filename
     if ( m_hFile.Open(m_pFileName, READ_CHUNKED) )
       break;
@@ -128,7 +126,7 @@ long FileReader::OpenFile()
     return S_FALSE;
   }
 
-  XBMC->Log(LOG_DEBUG, "%s: OpenFile succeeded as %s", __FUNCTION__, m_bReadOnly ? "read-only" : "read/write", m_pFileName );
+  XBMC->Log(LOG_DEBUG, "%s: OpenFile(%s) succeeded.", __FUNCTION__, m_pFileName );
 
   SetFilePointer(0, SEEK_SET);
   m_llBufferPointer = 0;
@@ -194,13 +192,6 @@ long FileReader::Read(unsigned char* pbData, unsigned long lDataLength, unsigned
     XBMC->Log(LOG_DEBUG, "FileReader::Read() read too less bytes");
     return S_FALSE;
   }
-  return S_OK;
-}
-
-
-long FileReader::get_ReadOnly(bool *ReadOnly)
-{
-  *ReadOnly = m_bReadOnly;
   return S_OK;
 }
 

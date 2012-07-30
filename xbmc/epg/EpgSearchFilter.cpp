@@ -154,7 +154,7 @@ bool EpgSearchFilter::MatchChannelNumber(const CEpgInfoTag &tag) const
 
   if (m_iChannelNumber != EPG_SEARCH_UNSET && g_PVRManager.IsStarted())
   {
-    const CPVRChannelGroup *group = (m_iChannelGroup != EPG_SEARCH_UNSET) ? g_PVRChannelGroups->GetByIdFromAll(m_iChannelGroup) : g_PVRChannelGroups->GetGroupAllTV();
+    CPVRChannelGroupPtr group = (m_iChannelGroup != EPG_SEARCH_UNSET) ? g_PVRChannelGroups->GetByIdFromAll(m_iChannelGroup) : g_PVRChannelGroups->GetGroupAllTV();
     if (!group)
       group = CPVRManager::Get().ChannelGroups()->GetGroupAllTV();
 
@@ -170,7 +170,7 @@ bool EpgSearchFilter::MatchChannelGroup(const CEpgInfoTag &tag) const
 
   if (m_iChannelGroup != EPG_SEARCH_UNSET && g_PVRManager.IsStarted())
   {
-    const CPVRChannelGroup *group = g_PVRChannelGroups->GetByIdFromAll(m_iChannelGroup);
+    CPVRChannelGroupPtr group = g_PVRChannelGroups->GetByIdFromAll(m_iChannelGroup);
     bReturn = (group && group->IsGroupMember(*tag.ChannelTag()));
   }
 
@@ -183,12 +183,13 @@ int EpgSearchFilter::FilterRecordings(CFileItemList &results)
   if (!g_PVRManager.IsStarted())
     return iRemoved;
 
-  CPVRRecordings *recordings = CPVRManager::Get().Recordings();
+  CFileItemList recordings;
+  g_PVRRecordings->GetAll(recordings);
 
-  // TODO not thread safe and inefficient!
-  for (unsigned int iRecordingPtr = 0; iRecordingPtr < recordings->size(); iRecordingPtr++)
+  // TODO inefficient!
+  for (int iRecordingPtr = 0; iRecordingPtr < recordings.Size(); iRecordingPtr++)
   {
-    CPVRRecording *recording = recordings->at(iRecordingPtr);
+    CPVRRecording *recording = recordings.Get(iRecordingPtr)->GetPVRRecordingInfoTag();
     if (!recording)
       continue;
 

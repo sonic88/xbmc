@@ -460,7 +460,7 @@ bool CGUIDialogPVRChannelManager::OnClickButtonDeleteChannel(CGUIMessage &messag
   {
     if (pItem->GetProperty("Virtual").asBoolean())
     {
-      pItem->GetPVRChannelInfoTag()->SetVirtual(true, true);
+      pItem->GetPVRChannelInfoTag()->SetVirtual(true);
       m_channelItems->Remove(m_iSelected);
       m_viewControl.SetItems(*m_channelItems);
       Renumber();
@@ -512,8 +512,8 @@ bool CGUIDialogPVRChannelManager::OnClickButtonNewChannel(CGUIMessage &message)
           newchannel->SetVirtual(true);
           newchannel->SetStreamURL(strURL);
           newchannel->SetClientID(XBMC_VIRTUAL_CLIENTID);
-          g_PVRChannelGroups->GetGroupAll(m_bIsRadio)->AddToGroup(*newchannel);
-          newchannel->Persist();
+          if (g_PVRChannelGroups->CreateChannel(*newchannel))
+            g_PVRChannelGroups->GetGroupAll(m_bIsRadio)->Persist();
 
           CFileItemPtr channel(new CFileItem(*newchannel));
           if (channel)
@@ -712,16 +712,19 @@ void CGUIDialogPVRChannelManager::Update()
   // empty the lists ready for population
   Clear();
 
-  const CPVRChannelGroup *channels = g_PVRChannelGroups->GetGroupAll(m_bIsRadio);
+  CPVRChannelGroupPtr channels = g_PVRChannelGroups->GetGroupAll(m_bIsRadio);
 
   // No channels available, nothing to do.
-  if( !channels )
+  if(!channels)
     return;
 
   for (int iChannelPtr = 0; iChannelPtr < channels->Size(); iChannelPtr++)
   {
-    const CPVRChannel *channel = channels->GetByIndex(iChannelPtr);
-    CFileItemPtr channelFile(new CFileItem(*channel));
+    CFileItemPtr channelFile = channels->GetByIndex(iChannelPtr);
+    if (!channelFile || !channelFile->HasPVRChannelInfoTag())
+      continue;
+    const CPVRChannel *channel = channelFile->GetPVRChannelInfoTag();
+
     channelFile->SetProperty("ActiveChannel", !channel->IsHidden());
     channelFile->SetProperty("Name", channel->ChannelName());
     channelFile->SetProperty("UseEPG", channel->EPGEnabled());
@@ -768,14 +771,9 @@ void CGUIDialogPVRChannelManager::Clear(void)
   m_channelItems->Clear();
 }
 
-bool CGUIDialogPVRChannelManager::PersistChannel(CFileItemPtr pItem, CPVRChannelGroup *group, unsigned int *iChannelNumber)
+bool CGUIDialogPVRChannelManager::PersistChannel(CFileItemPtr pItem, CPVRChannelGroupPtr group, unsigned int *iChannelNumber)
 {
-  if (!pItem || !pItem->HasPVRChannelInfoTag())
-    return false;
-
-  /* get the real channel from the group */
-  CPVRChannel *channel = (CPVRChannel *) group->GetByUniqueID(pItem->GetPVRChannelInfoTag()->UniqueID());
-  if (!channel)
+  if (!pItem || !pItem->HasPVRChannelInfoTag() || !group)
     return false;
 
   /* get values from the form */
@@ -788,27 +786,7 @@ bool CGUIDialogPVRChannelManager::PersistChannel(CFileItemPtr pItem, CPVRChannel
   CStdString strIconPath    = pItem->GetProperty("Icon").asString();
   CStdString strStreamURL   = pItem->GetProperty("StreamURL").asString();
 
-  channel->SetChannelName(strChannelName);
-  channel->SetHidden(bHidden);
-  channel->SetLocked(bParentalLocked);
-  channel->SetIconPath(strIconPath);
-  if (bVirtual)
-    channel->SetStreamURL(strStreamURL);
-  if (iEPGSource == 0)
-    channel->SetEPGScraper("client");
-  // TODO add other scrapers
-  channel->SetEPGEnabled(bEPGEnabled);
-
-  /* set new values in the channel tag */
-  if (bHidden)
-  {
-    group->SortByChannelNumber(); // or previous changes will be overwritten
-    group->RemoveFromGroup(*channel);
-  }
-  else
-    group->SetChannelNumber(*channel, ++(*iChannelNumber));
-
-  return true;
+  return group->UpdateChannel(*pItem, bHidden, bVirtual, bEPGEnabled, bParentalLocked, iEPGSource, ++(*iChannelNumber), strChannelName, strIconPath, strStreamURL);
 }
 
 void CGUIDialogPVRChannelManager::SaveList(void)
@@ -828,7 +806,7 @@ void CGUIDialogPVRChannelManager::SaveList(void)
 
   /* persist all channels */
   unsigned int iNextChannelNumber(0);
-  CPVRChannelGroup *group = g_PVRChannelGroups->GetGroupAll(m_bIsRadio);
+  CPVRChannelGroupPtr group = g_PVRChannelGroups->GetGroupAll(m_bIsRadio);
   if (!group)
     return;
   for (int iListPtr = 0; iListPtr < m_channelItems->Size(); iListPtr++)

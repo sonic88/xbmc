@@ -20,7 +20,7 @@
  */
 
 #include "PVROperations.h"
-#include "Application.h"
+#include "ApplicationMessenger.h"
 #include "utils/log.h"
 
 #include "pvr/PVRManager.h"
@@ -28,7 +28,7 @@
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/timers/PVRTimers.h"
 #include "pvr/timers/PVRTimerInfoTag.h"
-#include "epg/EpgInfoTag.h"
+#include "epg/Epg.h"
 #include "epg/EpgContainer.h"
 
 using namespace JSONRPC;
@@ -49,15 +49,15 @@ JSONRPC_STATUS CPVROperations::ChannelSwitch(const CStdString &method, ITranspor
 
   CLog::Log(LOGDEBUG, "JSONRPC: switch to channel '%d'", iChannelId);
 
-  const CPVRChannel *channel = g_PVRChannelGroups->GetByChannelIDFromAll(iChannelId);
-  if (channel == NULL)
+  CFileItemPtr channel = g_PVRChannelGroups->GetByChannelIDFromAll(iChannelId);
+  if (!channel || !channel->HasPVRChannelInfoTag())
     return InternalError;
 
   CPVRChannel currentChannel;
-  if (g_PVRManager.GetCurrentChannel(currentChannel) && currentChannel.IsRadio() == channel->IsRadio())
-    g_application.getApplicationMessenger().SendAction(CAction(ACTION_CHANNEL_SWITCH, (float)channel->ChannelNumber()));
+  if (g_PVRManager.GetCurrentChannel(currentChannel) && currentChannel.IsRadio() == channel->GetPVRChannelInfoTag()->IsRadio())
+    CApplicationMessenger::Get().SendAction(CAction(ACTION_CHANNEL_SWITCH, (float)channel->GetPVRChannelInfoTag()->ChannelNumber()));
   else
-    g_application.getApplicationMessenger().MediaPlay(CFileItem(*channel));
+    CApplicationMessenger::Get().MediaPlay(*channel);
   return ACK;
 }
 
@@ -70,7 +70,7 @@ JSONRPC_STATUS CPVROperations::ChannelUp(const CStdString &method, ITransportLay
   }
 
   CLog::Log(LOGDEBUG, "JSONRPC: channel up");
-  g_application.getApplicationMessenger().SendAction(CAction(ACTION_NEXT_ITEM));
+  CApplicationMessenger::Get().SendAction(CAction(ACTION_NEXT_ITEM));
   return ACK;
 }
 
@@ -83,7 +83,7 @@ JSONRPC_STATUS CPVROperations::ChannelDown(const CStdString &method, ITransportL
   }
 
   CLog::Log(LOGDEBUG, "JSONRPC: channel down");
-  g_application.getApplicationMessenger().SendAction(CAction(ACTION_PREV_ITEM));
+  CApplicationMessenger::Get().SendAction(CAction(ACTION_PREV_ITEM));
   return ACK;
 }
 

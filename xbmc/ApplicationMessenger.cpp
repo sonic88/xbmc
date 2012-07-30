@@ -23,7 +23,6 @@
 #include "ApplicationMessenger.h"
 #include "Application.h"
 
-#include "guilib/TextureManager.h"
 #include "PlayListPlayer.h"
 #include "Util.h"
 #ifdef HAS_PYTHON
@@ -39,7 +38,6 @@
 #include "settings/GUISettings.h"
 #include "FileItem.h"
 #include "guilib/GUIDialog.h"
-#include "windowing/WindowingFactory.h"
 #include "GUIInfoManager.h"
 #include "utils/Splash.h"
 #include "cores/VideoRenderers/RenderManager.h"
@@ -69,8 +67,6 @@
 #include "playlists/PlayList.h"
 #include "FileItem.h"
 
-#include "utils/JobManager.h"
-#include "storage/DetectDVDType.h"
 #include "ThumbLoader.h"
 
 #include "pvr/PVRManager.h"
@@ -96,7 +92,17 @@ void CDelayedMessage::Process()
   Sleep(m_delay);
 
   if (!m_bStop)
-    g_application.getApplicationMessenger().SendMessage(m_msg, false);
+    CApplicationMessenger::Get().SendMessage(m_msg, false);
+}
+
+CApplicationMessenger& CApplicationMessenger::Get()
+{
+  static CApplicationMessenger s_messenger;
+  return s_messenger;
+}
+
+CApplicationMessenger::CApplicationMessenger()
+{
 }
 
 CApplicationMessenger::~CApplicationMessenger()
@@ -534,23 +540,23 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       switch (m_pXbmcHttp->xbmcCommand(pMsg->strParam))
       {
         case 1:
-          g_application.getApplicationMessenger().Restart();
+          Restart();
           break;
 
         case 2:
-          g_application.getApplicationMessenger().Shutdown();
+          Shutdown();
           break;
 
         case 3:
-          g_application.getApplicationMessenger().Quit();
+          Quit();
           break;
 
         case 4:
-          g_application.getApplicationMessenger().Reset();
+          Reset();
           break;
 
         case 5:
-          g_application.getApplicationMessenger().RestartApp();
+          RestartApp();
           break;
       }
 #endif
@@ -783,8 +789,8 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
 
     case TMSG_SPLASH_MESSAGE:
       {
-        if (g_application.m_splash)
-          g_application.m_splash->Show(pMsg->strParam);
+        if (g_application.GetSplash())
+          g_application.GetSplash()->Show(pMsg->strParam);
       }
       break;
   }

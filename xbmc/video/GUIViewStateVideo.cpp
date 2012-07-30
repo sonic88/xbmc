@@ -25,13 +25,11 @@
 #include "filesystem/PVRDirectory.h"
 #include "filesystem/VideoDatabaseDirectory.h"
 #include "filesystem/Directory.h"
-#include "guilib/GUIBaseContainer.h"
 #include "VideoDatabase.h"
 #include "settings/GUISettings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "FileItem.h"
-#include "Util.h"
 #include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 

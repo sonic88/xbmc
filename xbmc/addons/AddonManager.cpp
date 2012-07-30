@@ -31,7 +31,6 @@
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "utils/XBMCTinyXML.h"
-#include "dialogs/GUIDialogYesNo.h"
 #ifdef HAS_VISUALISATION
 #include "Visualisation.h"
 #endif
@@ -51,6 +50,7 @@
 #include "Service.h"
 #include "pvr/PVRManager.h"
 #include "pvr/addons/PVRClients.h"
+#include "Util.h"
 
 using namespace std;
 using namespace PVR;

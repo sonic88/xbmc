@@ -54,6 +54,7 @@
 #include "XBDateTime.h"
 #include "pvr/PVRManager.h"
 #include "pvr/recordings/PVRRecordings.h"
+#include "URL.h"
 
 using namespace std;
 using namespace dbiplus;
@@ -4245,11 +4246,7 @@ void CVideoDatabase::SetPlayCount(const CFileItem &item, int count, const CDateT
 
     // PVR: Set recording's play count on the backend (if supported)
     if (item.HasPVRRecordingInfoTag() && g_PVRManager.IsStarted())
-    {
-      CPVRRecording *recording = g_PVRRecordings->GetByRecording(*item.GetPVRRecordingInfoTag());
-      if (recording)
-        recording->SetPlayCount(count);
-    }
+      g_PVRRecordings->SetPlayCount(item, count);
 
     // We only need to announce changes to video items in the library
     if (item.HasVideoInfoTag() && item.GetVideoInfoTag()->m_iDbId > 0)

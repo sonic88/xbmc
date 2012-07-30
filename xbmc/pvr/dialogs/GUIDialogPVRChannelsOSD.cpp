@@ -21,6 +21,7 @@
 
 #include "GUIDialogPVRChannelsOSD.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "FileItem.h"
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogOK.h"
@@ -114,8 +115,8 @@ bool CGUIDialogPVRChannelsOSD::OnMessage(CGUIMessage& message)
         CPVRChannel channel;
         g_PVRManager.GetCurrentChannel(channel);
 
-        const CPVRChannelGroup *group = g_PVRManager.GetPlayingGroup(channel.IsRadio());
-        CPVRChannelGroup *nextGroup = iAction == ACTION_MOVE_RIGHT ? group->GetNextGroup() : group->GetPreviousGroup();
+        CPVRChannelGroupPtr group = g_PVRManager.GetPlayingGroup(channel.IsRadio());
+        CPVRChannelGroupPtr nextGroup = iAction == ACTION_MOVE_RIGHT ? group->GetNextGroup() : group->GetPreviousGroup();
 
         g_PVRManager.SetPlayingGroup(nextGroup);
 
@@ -146,7 +147,7 @@ void CGUIDialogPVRChannelsOSD::Update()
 
   CPVRChannel channel;
   g_PVRManager.GetCurrentChannel(channel);
-  const CPVRChannelGroup *group = g_PVRManager.GetPlayingGroup(channel.IsRadio());
+  CPVRChannelGroupPtr group = g_PVRManager.GetPlayingGroup(channel.IsRadio());
 
   if (group)
   {
@@ -194,7 +195,7 @@ void CGUIDialogPVRChannelsOSD::GotoChannel(int item)
     }
   }
   else
-    g_application.getApplicationMessenger().PlayFile(*pItem);
+    CApplicationMessenger::Get().PlayFile(*pItem);
 
   CloseOrSelect(item);
 }

@@ -25,6 +25,7 @@
 #include "epg/GUIEPGGridContainer.h"
 #include "threads/CriticalSection.h"
 #include "utils/Observer.h"
+#include "../channels/PVRChannelGroup.h"
 
 namespace PVR
 {
@@ -67,7 +68,8 @@ namespace PVR
     void UpdateViewNext(bool bUpdateSelectedFile);
     void UpdateViewTimeline(bool bUpdateSelectedFile);
 
-    int            m_iGuideView;
-    CFileItemList *m_cachedTimeline;
+    int               m_iGuideView;
+    CFileItemList    *m_cachedTimeline;
+    CPVRChannelGroupPtr m_cachedChannelGroup;
   };
 }

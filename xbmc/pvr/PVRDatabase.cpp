@@ -27,6 +27,7 @@
 
 #include "PVRManager.h"
 #include "channels/PVRChannelGroupsContainer.h"
+#include "channels/PVRChannelGroupInternal.h"
 #include "addons/PVRClient.h"
 
 using namespace std;
@@ -347,7 +348,7 @@ int CPVRDatabase::Get(CPVRChannelGroupInternal &results)
     {
       while (!m_pDS->eof())
       {
-        CPVRChannel *channel = new CPVRChannel();
+        CPVRChannelPtr channel = CPVRChannelPtr(new CPVRChannel());
 
         channel->m_iChannelId              = m_pDS->fv("idChannel").get_asInt();
         channel->m_iUniqueId               = m_pDS->fv("iUniqueId").get_asInt();
@@ -372,7 +373,7 @@ int CPVRDatabase::Get(CPVRChannelGroupInternal &results)
             __FUNCTION__, channel->m_strChannelName.c_str(), channel->m_iChannelId, channel->m_iClientId, channel->m_iUniqueId, channel->m_iClientChannelNumber);
 
         PVRChannelGroupMember newMember = { channel, m_pDS->fv("iChannelNumber").get_asInt() };
-        results.push_back(newMember);
+        results.m_members.push_back(newMember);
 
         m_pDS->next();
         ++iReturn;
@@ -610,7 +611,7 @@ bool CPVRDatabase::RemoveStaleChannelsFromGroup(const CPVRChannelGroup &group)
     bDelete = DeleteValues("map_channelgroups_channels", strWhereClause);
   }
 
-  if (group.size() > 0)
+  if (group.m_members.size() > 0)
   {
     vector<int> currentMembers;
     if (GetCurrentGroupMembers(group, currentMembers))
@@ -659,7 +660,7 @@ bool CPVRDatabase::Delete(const CPVRChannelGroup &group)
 bool CPVRDatabase::Get(CPVRChannelGroups &results)
 {
   bool bReturn = false;
-  CStdString strQuery = FormatSQL("SELECT * from channelgroups WHERE bIsRadio = %u;", results.IsRadio());
+  CStdString strQuery = FormatSQL("SELECT * from channelgroups WHERE bIsRadio = %u", results.IsRadio());
 
   if (ResultQuery(strQuery))
   {
@@ -667,12 +668,8 @@ bool CPVRDatabase::Get(CPVRChannelGroups &results)
     {
       while (!m_pDS->eof())
       {
-        CPVRChannelGroup data(m_pDS->fv("bIsRadio").get_asBool());
-
-        data.SetGroupID(m_pDS->fv("idGroup").get_asInt());
-        data.SetGroupName(m_pDS->fv("sName").get_asString());
+        CPVRChannelGroup data(m_pDS->fv("bIsRadio").get_asBool(), m_pDS->fv("idGroup").get_asInt(), m_pDS->fv("sName").get_asString());
         data.SetGroupType(m_pDS->fv("iGroupType").get_asInt());
-
         results.Update(data);
 
         if (data.IsRadio())
@@ -722,7 +719,7 @@ int CPVRDatabase::Get(CPVRChannelGroup &group)
       {
         int iChannelId = m_pDS->fv("idChannel").get_asInt();
         int iChannelNumber = m_pDS->fv("iChannelNumber").get_asInt();
-        CPVRChannel *channel = (CPVRChannel *) g_PVRChannelGroups->GetByChannelIDFromAll(iChannelId);
+        CPVRChannelPtr channel = g_PVRChannelGroups->GetGroupAll(group.IsRadio())->GetByChannelID(iChannelId);
 
         if (channel && group.AddToGroup(*channel, iChannelNumber))
           ++iReturn;
@@ -749,13 +746,13 @@ bool CPVRDatabase::PersistChannels(CPVRChannelGroup &group)
   if (m_sqlite)
     iLastChannel = GetLastChannelId();
 
-  for (unsigned int iChannelPtr = 0; iChannelPtr < group.size(); iChannelPtr++)
+  for (unsigned int iChannelPtr = 0; iChannelPtr < group.m_members.size(); iChannelPtr++)
   {
-    PVRChannelGroupMember member = group.at(iChannelPtr);
+    PVRChannelGroupMember member = group.m_members.at(iChannelPtr);
     if (member.channel->IsChanged() || member.channel->IsNew())
     {
       if (m_sqlite && member.channel->IsNew())
-        member.channel->SetChannelID(++iLastChannel, false);
+        member.channel->SetChannelID(++iLastChannel);
       bReturn &= Persist(*member.channel, m_sqlite || !member.channel->IsNew());
     }
   }
@@ -769,11 +766,11 @@ bool CPVRDatabase::PersistGroupMembers(CPVRChannelGroup &group)
   CStdString strQuery;
   CSingleLock lock(group.m_critSection);
 
-  if (group.size() > 0)
+  if (group.m_members.size() > 0)
   {
-    for (unsigned int iChannelPtr = 0; iChannelPtr < group.size(); iChannelPtr++)
+    for (unsigned int iChannelPtr = 0; iChannelPtr < group.m_members.size(); iChannelPtr++)
     {
-      PVRChannelGroupMember member = group.at(iChannelPtr);
+      PVRChannelGroupMember member = group.m_members.at(iChannelPtr);
 
       CStdString strWhereClause = FormatSQL("idChannel = %u AND idGroup = %u AND iChannelNumber = %u",
           member.channel->ChannelID(), group.GroupID(), member.iChannelNumber);

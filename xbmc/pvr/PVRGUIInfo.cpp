@@ -837,7 +837,9 @@ void CPVRGUIInfo::UpdatePlayingTag(void)
   {
     CEpgInfoTag epgTag;
     bool bHasEpgTag  = GetPlayingTag(epgTag);
-    const CPVRChannel *channel = bHasEpgTag ? epgTag.ChannelTag() : NULL;
+    CPVRChannelPtr channel;
+    if (bHasEpgTag)
+      channel = epgTag.ChannelTag();
 
     if (!bHasEpgTag || !epgTag.IsActive() ||
         !channel || *channel != currentChannel)

@@ -23,6 +23,7 @@
 #include "PVRClient.h"
 
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "settings/GUISettings.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogSelect.h"
@@ -531,7 +532,7 @@ bool CPVRClients::SwitchChannel(const CPVRChannel &channel)
       {
         // StreamURL should always be opened as a new file
         CFileItem m_currentFile(channel);
-        g_application.getApplicationMessenger().PlayFile(m_currentFile, false);
+        CApplicationMessenger::Get().PlayFile(m_currentFile, false);
         bSwitchSuccessful = true;
         bNewStreamOpened = true;
       }
@@ -764,7 +765,7 @@ bool CPVRClients::HasRecordingsSupport(int iClientId)
 
 int CPVRClients::GetRecordings(CPVRRecordings *recordings)
 {
-  int iCurSize = recordings->size();
+  int iCurSize = recordings->GetNumRecordings();
   CLIENTMAP clients;
   GetConnectedClients(&clients);
 
@@ -779,7 +780,7 @@ int CPVRClients::GetRecordings(CPVRRecordings *recordings)
     itrClients++;
   }
 
-  return recordings->size() - iCurSize;
+  return recordings->GetNumRecordings() - iCurSize;
 }
 
 bool CPVRClients::RenameRecording(const CPVRRecording &recording, PVR_ERROR *error)
@@ -908,7 +909,7 @@ bool CPVRClients::HasChannelGroupSupport(int iClientId)
 int CPVRClients::GetChannelGroups(CPVRChannelGroups *groups, PVR_ERROR *error)
 {
   *error = PVR_ERROR_UNKNOWN;
-  int iCurSize = groups->size();
+  int iCurSize = groups->Size();
   CLIENTMAP clients;
   GetConnectedClients(&clients);
 
@@ -924,7 +925,7 @@ int CPVRClients::GetChannelGroups(CPVRChannelGroups *groups, PVR_ERROR *error)
     itrClients++;
   }
 
-  return groups->size() - iCurSize;
+  return groups->Size() - iCurSize;
 }
 
 int CPVRClients::GetChannelGroupMembers(CPVRChannelGroup *group, PVR_ERROR *error)

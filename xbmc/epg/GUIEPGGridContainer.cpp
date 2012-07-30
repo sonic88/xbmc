@@ -31,7 +31,7 @@
 #include "threads/SystemClock.h"
 #include "GUIInfoManager.h"
 
-#include "epg/EpgInfoTag.h"
+#include "epg/Epg.h"
 #include "pvr/channels/PVRChannel.h"
 
 #include "GUIEPGGridContainer.h"
@@ -248,7 +248,7 @@ void CGUIEPGGridContainer::Render()
 
     pos -= missingSection * m_blockSize;
   }
-  while (pos < end && m_rulerItems.size())
+  while (pos < end && (rulerOffset/m_rulerUnit+1) < m_rulerItems.size())
   {
     item = m_rulerItems[rulerOffset/m_rulerUnit+1];
     if (m_orientation == VERTICAL)
@@ -687,7 +687,7 @@ bool CGUIEPGGridContainer::OnMessage(CGUIMessage& message)
         int iCurrentChannelNumber = tag->PVRChannelNumber();
         if (iCurrentChannelNumber != iLastChannelNumber)
         {
-          const CPVRChannel *channel = tag->ChannelTag();
+          CPVRChannelPtr channel = tag->ChannelTag();
           if (!channel)
             continue;
 
@@ -1638,8 +1638,8 @@ void CGUIEPGGridContainer::GoToEnd()
 
 void CGUIEPGGridContainer::SetStartEnd(CDateTime start, CDateTime end)
 {
-  m_gridStart = CDateTime(start.GetYear(), start.GetMonth(), start.GetDay(), start.GetHour(), start.GetMinute() >= 30 ? 30 : 0, 0).GetAsUTCDateTime();
-  m_gridEnd = CDateTime(end.GetYear(), end.GetMonth(), end.GetDay(), end.GetHour(), end.GetMinute() >= 30 ? 30 : 0, 0).GetAsUTCDateTime();
+  m_gridStart = CDateTime(start.GetYear(), start.GetMonth(), start.GetDay(), start.GetHour(), start.GetMinute() >= 30 ? 30 : 0, 0);
+  m_gridEnd = CDateTime(end.GetYear(), end.GetMonth(), end.GetDay(), end.GetHour(), end.GetMinute() >= 30 ? 30 : 0, 0);
 
   CLog::Log(LOGDEBUG, "CGUIEPGGridContainer - %s - start=%s end=%s",
       __FUNCTION__, m_gridStart.GetAsLocalizedDateTime(false, true).c_str(), m_gridEnd.GetAsLocalizedDateTime(false, true).c_str());

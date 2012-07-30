@@ -51,7 +51,6 @@ CGUIDialogPVRGroupManager::CGUIDialogPVRGroupManager() :
   m_ungroupedChannels = new CFileItemList;
   m_groupMembers      = new CFileItemList;
   m_channelGroups     = new CFileItemList;
-  m_selectedGroup     = NULL;
 }
 
 CGUIDialogPVRGroupManager::~CGUIDialogPVRGroupManager()
@@ -105,7 +104,7 @@ bool CGUIDialogPVRGroupManager::ActionButtonNewGroup(CGUIMessage &message)
         if (groups->AddGroup(strGroupName))
         {
           g_PVRChannelGroups->Get(m_bIsRadio)->GetByName(strGroupName)->SetGroupType(PVR_GROUP_TYPE_USER_DEFINED);
-          m_iSelectedChannelGroup = groups->size() - 1;
+          m_iSelectedChannelGroup = groups->Size() - 1;
           Update();
         }
       }
@@ -319,8 +318,6 @@ void CGUIDialogPVRGroupManager::OnWindowUnload()
 
 void CGUIDialogPVRGroupManager::Update()
 {
-  m_selectedGroup = NULL;
-
   /* lock our display, as this window is rendered from the player thread */
   g_graphicsContext.Lock();
   m_viewUngroupedChannels.SetCurrentView(CONTROL_LIST_CHANNELS_LEFT);
@@ -336,8 +333,8 @@ void CGUIDialogPVRGroupManager::Update()
 
   /* select a group or select the default group if no group was selected */
   CFileItemPtr pItem = m_channelGroups->Get(m_viewChannelGroups.GetSelectedItem());
-  m_selectedGroup = (CPVRChannelGroup *) g_PVRChannelGroups->Get(m_bIsRadio)->GetByName(pItem->m_strTitle);
-  if (m_selectedGroup != NULL)
+  m_selectedGroup = g_PVRChannelGroups->Get(m_bIsRadio)->GetByName(pItem->m_strTitle);
+  if (m_selectedGroup)
   {
     /* set this group in the pvrmanager, so it becomes the selected group in other dialogs too */
     g_PVRManager.SetPlayingGroup(m_selectedGroup);

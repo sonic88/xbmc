@@ -29,7 +29,7 @@ using namespace ADDON;
 
 bool         m_bCreated  = false;
 ADDON_STATUS m_CurStatus = ADDON_STATUS_UNKNOWN;
-int          g_iClientId = -1;
+//int          g_iClientId = -1;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
@@ -184,7 +184,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   XBMC->Log(LOG_DEBUG, "%s - Creating VU+ PVR-Client", __FUNCTION__);
 
   m_CurStatus     = ADDON_STATUS_UNKNOWN;
-  g_iClientId     = pvrprops->iClientId;
+  //g_iClientId     = pvrprops->iClientId; //removed from Frodo PVR API
   g_szUserPath   = pvrprops->strUserPath;
   g_szClientPath  = pvrprops->strClientPath;
 

@@ -38,7 +38,7 @@ extern std::string               g_strPassword;
 extern std::string               g_strIconPath;
 extern std::string               g_strRecordingPath;
 extern int 			 g_iUpdateInterval;
-extern int                       g_iClientId;
+//extern int                       g_iClientId;
 extern unsigned int              g_iPacketSequence;
 extern bool                      g_bShowTimerNotifications;
 extern bool			 g_bZap;

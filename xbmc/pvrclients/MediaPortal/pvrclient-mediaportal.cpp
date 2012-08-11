@@ -556,12 +556,10 @@ PVR_ERROR cPVRClientMediaPortal::GetEpg(PVR_HANDLE handle, const PVR_CHANNEL &ch
 int cPVRClientMediaPortal::GetNumChannels(void)
 {
   string result;
-  //CStdString      command;
 
   if (!IsUp())
     return -1;
 
-  //command.Format("GetChannelCount:%s\n", g_sTVGroup.c_str());
   // Get the total channel count (radio+tv)
   // It is only used to check whether XBMC should request the channel list
   result = SendCommand("GetChannelCount:\n");
@@ -744,7 +742,6 @@ int cPVRClientMediaPortal::GetChannelGroupsAmount(void)
 
   // just tell XBMC that we have groups
   return 1;
-  //return -1; // not implemented
 }
 
 PVR_ERROR cPVRClientMediaPortal::GetChannelGroups(PVR_HANDLE handle, bool bRadio)
@@ -1623,18 +1620,9 @@ bool cPVRClientMediaPortal::OpenRecordedStream(const PVR_RECORDING &recording)
     {
       XBMC->Log(LOG_DEBUG, "RECORDING: %s", result.c_str() );
 
-      //if (g_bUseRecordingsDir == true)
       if (!g_bUseRTSP)
-      { //Replace path by given path in g_szRecordingsDir
-        //if (g_szRecordingsDir.length() > 0)
-        //{
-        //  myrecording.SetDirectory(g_szRecordingsDir);
-        //  recfile = myrecording.FilePath();
-        //}
-        //else
-        //{
-          recfile  = myrecording.FilePath();
-        //}
+      {
+        recfile  = myrecording.FilePath();
       }
       else
       {

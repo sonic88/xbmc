@@ -38,15 +38,11 @@ bool             g_bRadioEnabled        = DEFAULT_RADIO;                 ///< Se
 bool             g_bHandleMessages      = DEFAULT_HANDLE_MSG;            ///< Send VDR's OSD status messages to XBMC OSD
 bool             g_bResolveRTSPHostname = DEFAULT_RESOLVE_RTSP_HOSTNAME; ///< Resolve the server hostname in the rtsp URLs to an IP at the TV Server side (default: false)
 bool             g_bReadGenre           = DEFAULT_READ_GENRE;            ///< Read the genre strings from MediaPortal and translate them into XBMC DVB genre id's (only English)
-//bool             g_bUseRecordingsDir    = DEFAULT_USE_REC_DIR;           ///< Use a normal directory if true for recordings
-//std::string      g_szRecordingsDir      = DEFAULT_REC_DIR;               ///< The path to the recordings directory
-//std::string      g_szTimeshiftDir       = DEFAULT_TIMESHIFT_DIR;         ///< The path to the recordings directory
 std::string      g_szTVGroup            = DEFAULT_TVGROUP;               ///< Import only TV channels from this TV Server TV group
 std::string      g_szRadioGroup         = DEFAULT_RADIOGROUP;            ///< Import only radio channels from this TV Server radio group
 std::string      g_szSMBusername        = DEFAULT_SMBUSERNAME;           ///< Windows user account used to access share
 std::string      g_szSMBpassword        = DEFAULT_SMBPASSWORD;           ///< Windows user password used to access share
                                                                          ///< Leave empty to use current user when running on Windows
-//bool             g_bDirectTSFileRead    = DEFAULT_DIRECT_TS_FR;          ///< Open the Live-TV timeshift buffer directly (skip RTSP streaming)
 eStreamingMethod g_eStreamingMethod     = TSReader;
 bool             g_bFastChannelSwitch   = true;                          ///< Don't stop an existing timeshift on a channel switch
 bool             g_bUseRTSP             = false;                         ///< Use RTSP streaming when using the tsreader
@@ -54,7 +50,6 @@ bool             g_bUseRTSP             = false;                         ///< Us
 /* Client member variables */
 ADDON_STATUS           m_CurStatus    = ADDON_STATUS_UNKNOWN;
 cPVRClientMediaPortal *g_client       = NULL;
-bool                   g_bCreated     = false;
 std::string            g_szUserPath   = "";
 std::string            g_szClientPath = "";
 CHelper_libXBMC_addon *XBMC           = NULL;
@@ -110,13 +105,10 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     SAFE_DELETE(PVR);
     SAFE_DELETE(XBMC);
     m_CurStatus = ADDON_STATUS_LOST_CONNECTION;
-  }
-  else
-  {
-    m_CurStatus = ADDON_STATUS_OK;
+    return m_CurStatus;
   }
 
-  g_bCreated = true;
+  m_CurStatus = ADDON_STATUS_OK;
 
   return m_CurStatus;
 }
@@ -127,22 +119,9 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 //-----------------------------------------------------------------------------
 void ADDON_Destroy()
 {
-  if ((g_bCreated) && (g_client))
-  {
-    g_client->Disconnect();
-    SAFE_DELETE(g_client);
-
-    g_bCreated = false;
-  }
-
-  if (PVR)
-  {
-    SAFE_DELETE(PVR);
-  }
-  if (XBMC)
-  {
-    SAFE_DELETE(XBMC);
-  }
+  SAFE_DELETE(g_client);
+  SAFE_DELETE(PVR);
+  SAFE_DELETE(XBMC);
 
   m_CurStatus = ADDON_STATUS_UNKNOWN;
 }
@@ -152,6 +131,10 @@ void ADDON_Destroy()
 //-----------------------------------------------------------------------------
 ADDON_STATUS ADDON_GetStatus()
 {
+  /* check whether we're still connected */
+  if (m_CurStatus == ADDON_STATUS_OK && g_client && !g_client->IsUp())
+    m_CurStatus = ADDON_STATUS_LOST_CONNECTION;
+
   return m_CurStatus;
 }
 
@@ -272,41 +255,9 @@ void ADDON_ReadSettings(void)
     g_iSleepOnRTSPurl = DEFAULT_SLEEP_RTSP_URL;
   }
 
-  /* Read setting "userecordingsdir" from settings.xml */
-  //if (!XBMC->GetSetting("userecordingsdir", &g_bUseRecordingsDir))
-  //{
-  //  /* If setting is unknown fallback to defaults */
-  //  XBMC->Log(LOG_ERROR, "Couldn't get 'userecordingsdir' setting, falling back to 'false' as default");
-  //  g_bReadGenre = DEFAULT_USE_REC_DIR;
-  //}
-
-  //if (!XBMC->GetSetting("recordingsdir", &buffer))
-  //{
-  //  /* If setting is unknown fallback to defaults */
-  //  XBMC->Log(LOG_ERROR, "Couldn't get 'recordingsdir' setting, falling back to '%s' as default", DEFAULT_REC_DIR);
-  //} else {
-  //  g_szRecordingsDir = buffer;
-  //}
 
   /* TSReader settings */
   /*********************/
-  /* Read setting "directtsfileread" from settings.xml */
-  //if (!XBMC->GetSetting("directtsfileread", &g_bDirectTSFileRead))
-  //{
-  //  /* If setting is unknown fallback to defaults */
-  //  XBMC->Log(LOG_ERROR, "Couldn't get 'directtsfileread' setting, falling back to 'false' as default");
-  //  g_bDirectTSFileRead = DEFAULT_DIRECT_TS_FR;
-  //}
-
-  //if (!XBMC->GetSetting("timeshiftdir", &buffer))
-  //{
-  //  /* If setting is unknown fallback to defaults */
-  //  XBMC->Log(LOG_ERROR, "Couldn't get 'timeshiftdir' setting, falling back to '%s' as default", DEFAULT_TIMESHIFT_DIR);
-  //  g_szTimeshiftDir =  DEFAULT_TIMESHIFT_DIR;
-  //} else {
-  //  g_szTimeshiftDir = buffer;
-  //}
-
   /* Read setting "fastchannelswitch" from settings.xml */
   if (!XBMC->GetSetting("fastchannelswitch", &g_bFastChannelSwitch))
   {
@@ -346,9 +297,7 @@ void ADDON_ReadSettings(void)
   XBMC->Log(LOG_DEBUG, "settings: host='%s', port=%i, timeout=%i", g_szHostname.c_str(), g_iPort, g_iConnectTimeout);
   XBMC->Log(LOG_DEBUG, "settings: ftaonly=%i, useradio=%i, tvgroup='%s', radiogroup='%s'", (int) g_bOnlyFTA, (int) g_bRadioEnabled, g_szTVGroup.c_str(), g_szRadioGroup.c_str());
   XBMC->Log(LOG_DEBUG, "settings: readgenre=%i, sleeponrtspurl=%i", (int) g_bReadGenre, g_iSleepOnRTSPurl);
-  //XBMC->Log(LOG_DEBUG, "settings: userecordingsdir=%i, recordingsdir='%s'", (int) g_bUseRecordingsDir, g_szRecordingsDir.c_str());
   XBMC->Log(LOG_DEBUG, "settings: resolvertsphostname=%i", (int) g_bResolveRTSPHostname);
-//  XBMC->Log(LOG_DEBUG, "settings: directsfileread=%i, timeshiftdir='%s' fastchannelswitch=%i", (int) g_bDirectTSFileRead, g_szTimeshiftDir.c_str(), (int) g_bFastChannelSwitch);
   XBMC->Log(LOG_DEBUG, "settings: fastchannelswitch=%i", (int) g_bFastChannelSwitch);
   XBMC->Log(LOG_DEBUG, "settings: smb user='%s', pass='%s'", g_szSMBusername.c_str(), g_szSMBpassword.c_str());
 }
@@ -364,7 +313,7 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
   // SetSetting can occur when the addon is enabled, but TV support still
   // disabled. In that case the addon is not loaded, so we should not try
   // to change its settings.
-  if (!g_bCreated)
+  if (!XBMC)
     return ADDON_STATUS_OK;
 
   if (str == "host")
@@ -425,26 +374,6 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
     XBMC->Log(LOG_INFO, "Changed setting 'sleeponrtspurl' from %u to %u", g_iSleepOnRTSPurl, *(int*) settingValue);
     g_iSleepOnRTSPurl = *(int*) settingValue;
   }
-  //else if (str == "userecordingsdir")
-  //{
-  //  XBMC->Log(LOG_INFO, "Changed setting 'userecordingsdir' from %u to %u", g_bUseRecordingsDir, *(bool*) settingValue);
-  //  g_bUseRecordingsDir = *(bool*) settingValue;
-  //}
-  //else if (str == "recordingsdir")
-  //{
-  //  XBMC->Log(LOG_INFO, "Changed setting 'recordingsdir' from %s to %s", g_szRecordingsDir.c_str(), (const char*) settingValue);
-  //  g_szRecordingsDir = (const char*) settingValue;
-  //}
-  //else if (str == "directtsfileread")
-  //{
-  //  XBMC->Log(LOG_INFO, "Changed setting 'directtsfileread' from %u to %u", g_bDirectTSFileRead, *(bool*) settingValue);
-  //  g_bDirectTSFileRead = *(bool*) settingValue;
-  //}
-  //else if (str == "timeshiftdir")
-  //{
-  //  XBMC->Log(LOG_INFO, "Changed setting 'timeshiftdir' from %s to %s", g_szTimeshiftDir.c_str(), (const char*) settingValue);
-  //  g_szTimeshiftDir = (const char*) settingValue;
-  //}
   else if (str == "smbusername")
   {
     XBMC->Log(LOG_INFO, "Changed setting 'smbusername' from '%s' to '%s'", g_szSMBusername.c_str(), (const char*) settingValue);
@@ -493,7 +422,7 @@ void ADDON_FreeSettings()
  * PVR Client AddOn specific public library functions
  ***********************************************************/
 
-//-- GetAddonCapabilities ------------------------------------------------------------
+//-- GetAddonCapabilities -----------------------------------------------------
 // Tell XBMC our requirements
 //-----------------------------------------------------------------------------
 PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES *pCapabilities)

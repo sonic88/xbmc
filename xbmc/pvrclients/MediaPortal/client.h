@@ -55,8 +55,6 @@ enum eStreamingMethod
 #define DEFAULT_SMBUSERNAME           "Guest"
 #define DEFAULT_SMBPASSWORD           ""
 
-extern bool             g_bCreated;           ///< Shows that the Create function was successfully called
-extern int              g_iClientID;          ///< The PVR client ID used by XBMC for this driver
 extern std::string      g_szUserPath;         ///< The Path to the user directory inside user profile
 extern std::string      g_szClientPath;       ///< The Path where this driver is located
 
@@ -70,12 +68,8 @@ extern bool             g_bRadioEnabled;
 extern bool             g_bHandleMessages;
 extern bool             g_bResolveRTSPHostname;
 extern bool             g_bReadGenre;
-//extern bool             g_bUseRecordingsDir;
-//extern bool             g_bDirectTSFileRead;
 extern bool             g_bFastChannelSwitch;
 extern bool             g_bUseRTSP;           ///< Use RTSP streaming when using the tsreader
-//extern std::string      g_szRecordingsDir;
-//extern std::string      g_szTimeshiftDir;
 extern std::string      g_szTVGroup;
 extern std::string      g_szRadioGroup;
 extern std::string      g_szSMBusername;

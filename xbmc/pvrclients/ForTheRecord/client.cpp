@@ -46,7 +46,7 @@ std::string  g_szBaseURL;
 ADDON_STATUS            m_CurStatus    = ADDON_STATUS_UNKNOWN;
 cPVRClientForTheRecord *g_client       = NULL;
 bool                    g_bCreated     = false;
-int                     g_iClientID    = -1;
+//int                     g_iClientID    = -1;
 std::string             g_szUserPath   = "";
 std::string             g_szClientPath = "";
 CHelper_libXBMC_addon  *XBMC           = NULL;
@@ -92,7 +92,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
   m_CurStatus    = ADDON_STATUS_UNKNOWN;
   g_client       = new cPVRClientForTheRecord();
-  g_iClientID    = pvrprops->iClientId;
+  // g_iClientID    = pvrprops->iClientId; removed from Frodo PVR API
   g_szUserPath   = pvrprops->strUserPath;
   g_szClientPath = pvrprops->strClientPath;
 

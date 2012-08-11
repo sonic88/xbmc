@@ -55,7 +55,6 @@ bool             g_bUseRTSP             = false;                         ///< Us
 ADDON_STATUS           m_CurStatus    = ADDON_STATUS_UNKNOWN;
 cPVRClientMediaPortal *g_client       = NULL;
 bool                   g_bCreated     = false;
-int                    g_iClientID    = -1;
 std::string            g_szUserPath   = "";
 std::string            g_szClientPath = "";
 CHelper_libXBMC_addon *XBMC           = NULL;
@@ -98,7 +97,6 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   XBMC->Log(LOG_INFO, "Creating MediaPortal PVR-Client");
 
   m_CurStatus    = ADDON_STATUS_UNKNOWN;
-  g_iClientID    = pvrprops->iClientId;
   g_szUserPath   = pvrprops->strUserPath;
   g_szClientPath = pvrprops->strClientPath;
 

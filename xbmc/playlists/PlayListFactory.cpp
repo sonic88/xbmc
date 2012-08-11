@@ -63,6 +63,7 @@ CPlayList* CPlayListFactory::Create(const CFileItem& item)
     || strMimeType == "text/html")
       return new CPlayListPLS();
 
+    // online m3u8 files are for hls streaming -- do not treat as playlist
     if (strMimeType == "audio/x-mpegurl" && !item.IsType(".m3u8"))
       return new CPlayListM3U();
 
@@ -118,9 +119,13 @@ bool CPlayListFactory::IsPlaylist(const CFileItem& item)
     return true;
 */
 
+  // online m3u8 files are hls:// -- do not treat as playlist
+  if (item.IsInternetStream() && item.IsType(".m3u8"))
+    return false;
+
   if(strMimeType == "audio/x-pn-realaudio"
   || strMimeType == "playlist"
-  || (strMimeType == "audio/x-mpegurl") && !item.IsType(".m3u8"))
+  || strMimeType == "audio/x-mpegurl")
     return true;
 
   return IsPlaylist(item.GetPath());

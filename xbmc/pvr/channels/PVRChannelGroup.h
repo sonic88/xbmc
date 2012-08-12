@@ -208,7 +208,7 @@ namespace PVR
      * @brief The name of this group.
      * @return The name of this group.
      */
-    CStdString GroupName(void) const;
+    const CStdString &GroupName(void) const;
 
     /*! @name Sort methods
      */

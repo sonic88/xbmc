@@ -1086,11 +1086,9 @@ int CPVRChannelGroup::GroupType(void) const
   return m_iGroupType;
 }
 
-CStdString CPVRChannelGroup::GroupName(void) const
+const CStdString& CPVRChannelGroup::GroupName(void) const
 {
-  CSingleLock lock(m_critSection);
-  CStdString strReturn(m_strGroupName);
-  return strReturn;
+  return m_strGroupName;
 }
 
 bool CPVRChannelGroup::UpdateChannel(const CFileItem &item, bool bHidden, bool bVirtual, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const CStdString &strChannelName, const CStdString &strIconPath, const CStdString &strStreamURL)

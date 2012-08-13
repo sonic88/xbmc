@@ -307,13 +307,13 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES *pCapabilities)
 {
   XBMC->Log(LOG_DEBUG, "->GetProperties()");
 
-  pCapabilities->bSupportsTimeshift          = true;
+  //pCapabilities->bSupportsTimeshift          = true; // removed in Frodo PVR API
   pCapabilities->bSupportsEPG                = true;
   pCapabilities->bSupportsRecordings         = true;
   pCapabilities->bSupportsTimers             = true;
   pCapabilities->bSupportsTV                 = true;
   pCapabilities->bSupportsRadio              = g_bRadioEnabled;
-  pCapabilities->bSupportsChannelSettings    = true;
+  //pCapabilities->bSupportsChannelSettings    = true; // removed in Frodo PVR API
   pCapabilities->bSupportsChannelGroups      = true;
   pCapabilities->bHandlesInputStream         = true;
   pCapabilities->bHandlesDemuxing            = false;

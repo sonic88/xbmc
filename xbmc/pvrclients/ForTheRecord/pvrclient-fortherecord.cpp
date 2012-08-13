@@ -490,23 +490,23 @@ PVR_ERROR cPVRClientForTheRecord::GetChannels(PVR_HANDLE handle, bool bRadio)
           tag.iChannelNumber = FetchChannel(channel.Guid())->ID();
         }
         tag.iUniqueId = tag.iChannelNumber;
-        tag.strChannelName = channel.Name();
+        strncpy(tag.strChannelName, channel.Name(), sizeof(tag.strChannelName));
         std::string logopath = ForTheRecord::GetChannelLogo(channel.Guid()).c_str();
-        tag.strIconPath = logopath.c_str();
+        strncpy(tag.strIconPath, logopath.c_str(), sizeof(tag.strIconPath));
         tag.iEncryptionSystem = -1; //How to fetch this from ForTheRecord??
         tag.bIsRadio = (channel.Type() == ForTheRecord::Radio ? true : false);
         tag.bIsHidden = false;
         //Use OpenLiveStream to read from the timeshift .ts file or an rtsp stream
 #ifdef TSREADER
-        tag.strStreamURL = "";
-        tag.strInputFormat = "video/x-mpegts";
+        memset(tag.strStreamURL, 0, sizeof(tag.strStreamURL));
+        strncpy(tag.strInputFormat, "video/x-mpegts", sizeof(tag.strInputFormat));
 #else
         //Use GetLiveStreamURL to fetch an rtsp stream
         if(bRadio)
-          tag.strStreamURL = "pvr://stream/radio/%i.ts"; //stream.c_str();
+          strncpy(tag.strStreamURL, "pvr://stream/radio/%i.ts", sizeof(tag.strStreamURL)); //stream.c_str();
         else
           tag.strStreamURL = "pvr://stream/tv/%i.ts"; //stream.c_str();
-        tag.strInputFormat = "";
+        memset(tag.strInputFormat, 0, sizeof(tag.strInputFormat));
 #endif
 
         if (!tag.bIsRadio)
@@ -581,7 +581,7 @@ PVR_ERROR cPVRClientForTheRecord::GetChannelGroups(PVR_HANDLE handle, bool bRadi
       memset(&tag, 0 , sizeof(PVR_CHANNEL_GROUP));
 
       tag.bIsRadio     = bRadio;
-      tag.strGroupName = name.c_str();
+      tag.strGroupName[0] = '\0';
 
       PVR->TransferChannelGroup(handle, &tag);
     }
@@ -652,7 +652,7 @@ PVR_ERROR cPVRClientForTheRecord::GetChannelGroupMembers(PVR_HANDLE handle, cons
     PVR_CHANNEL_GROUP_MEMBER tag;
     memset(&tag,0 , sizeof(PVR_CHANNEL_GROUP_MEMBER));
 
-    tag.strGroupName     = group.strGroupName;
+    strncpy(tag.strGroupName, group.strGroupName, sizeof(tag.strGroupName));
     tag.iChannelUniqueId = pChannel->ID();
     tag.iChannelNumber   = index+1;
 
@@ -718,7 +718,7 @@ PVR_ERROR cPVRClientForTheRecord::GetRecordings(PVR_HANDLE handle)
           for (int recordingindex = 0; recordingindex < nrOfRecordings; recordingindex++)
           {
             cRecording recording;
-            CStdString strRecordingId;
+            //CStdString strRecordingId;
 
             cRecordingSummary recordingsummary;
             if (recordingsummary.Parse(recordingsbytitleresponse[recordingindex]) && FetchRecordingDetails(recordingsummary.RecordingId(), recording))
@@ -726,34 +726,27 @@ PVR_ERROR cPVRClientForTheRecord::GetRecordings(PVR_HANDLE handle)
               PVR_RECORDING tag;
               memset(&tag, 0 , sizeof(tag));
 
-              strRecordingId.Format("%i", iNumRecordings);
-              tag.strRecordingId = recording.RecordingId();
-              tag.strChannelName = recording.ChannelDisplayName();
+              //strRecordingId.Format("%i", iNumRecordings);
+              strncpy(tag.strRecordingId, recording.RecordingId(), sizeof(tag.strRecordingId));
+              strncpy(tag.strChannelName, recording.ChannelDisplayName(), sizeof(tag.strChannelName));
               tag.iLifetime      = MAXLIFETIME; //TODO: recording.Lifetime();
               tag.iPriority      = 0; //TODO? recording.Priority();
               tag.recordingTime  = recording.RecordingStartTime();
               tag.iDuration      = recording.RecordingStopTime() - recording.RecordingStartTime();
-              tag.strPlot        = recording.Description();
+              strncpy(tag.strPlot, recording.Description(), sizeof(tag.strPlot));
               if (nrOfRecordings > 1)
               {
                 recording.Transform(true);
-                tag.strDirectory = recordinggroup.ProgramTitle().c_str(); //used in XBMC as directory structure below "Server X - hostname"
+                strncpy(tag.strDirectory, recordinggroup.ProgramTitle().c_str(), sizeof(tag.strDirectory)); //used in XBMC as directory structure below "Server X - hostname"
               }
               else
               {
                 recording.Transform(false);
-                tag.strDirectory = "";
+                tag.strDirectory[0] = '\0';
               }
-              tag.strTitle       = recording.Title();
-              tag.strPlotOutline = recording.SubTitle();
-              std::string emptystring;
-              emptystring.clear();
-              tag.strStreamURL   = emptystring.c_str();
-//#ifdef _WIN32
-              //tag.strStreamURL   = recording.RecordingFileName();
-//#else
-//              tag.strStreamURL   = recording.CIFSRecordingFileName();
-//#endif
+              strncpy(tag.strTitle, recording.Title(), sizeof(tag.strTitle));
+              strncpy(tag.strPlotOutline, recording.SubTitle(), sizeof(tag.strPlotOutline));
+              tag.strStreamURL[0] = '\0';
               PVR->TransferRecordingEntry(handle, &tag);
               iNumRecordings++;
             }
@@ -902,9 +895,9 @@ PVR_ERROR cPVRClientForTheRecord::GetTimers(PVR_HANDLE handle)
         }
       }
 
-      tag.strTitle          = upcomingrecording.Title().c_str();
-      tag.strDirectory      = "";
-      tag.strSummary        = "";
+      strncpy(tag.strTitle, upcomingrecording.Title().c_str(), sizeof(tag.strTitle));
+      tag.strDirectory[0]   = '\0';
+      tag.strSummary[0]     = '\0';
       tag.iPriority         = 0;
       tag.iLifetime         = 0;
       tag.bIsRepeating      = false;

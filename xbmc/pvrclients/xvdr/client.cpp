@@ -202,13 +202,13 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 {
   cMutexLock lock(&XVDRMutex);
 
-  pCapabilities->bSupportsTimeshift          = false;
+  //pCapabilities->bSupportsTimeshift          = false;
   pCapabilities->bSupportsEPG                = true;
   pCapabilities->bSupportsRecordings         = true;
   pCapabilities->bSupportsTimers             = true;
   pCapabilities->bSupportsTV                 = true;
   pCapabilities->bSupportsRadio              = true;
-  pCapabilities->bSupportsChannelSettings    = false;
+  //pCapabilities->bSupportsChannelSettings    = false;
   pCapabilities->bSupportsChannelGroups      = true;
   pCapabilities->bHandlesInputStream         = true;
   pCapabilities->bHandlesDemuxing            = true;

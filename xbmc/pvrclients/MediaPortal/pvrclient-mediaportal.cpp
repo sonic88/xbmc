@@ -686,7 +686,7 @@ PVR_ERROR cPVRClientMediaPortal::GetChannels(PVR_HANDLE handle, bool bRadio)
         }
       }
 #else
-      PVR_STRCLR(tag.strIconPath, 0, sizeof(tag.strIconPath));
+      PVR_STRCLR(tag.strIconPath);
 #endif
       tag.iEncryptionSystem = channel.Encrypted();
       tag.bIsRadio = bRadio;

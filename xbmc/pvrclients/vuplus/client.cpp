@@ -374,7 +374,7 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR GetEPGForChannel(PVR_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
   if (!VuData || !VuData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
@@ -390,7 +390,7 @@ int GetChannelsAmount(void)
   return VuData->GetChannelsAmount();
 }
 
-PVR_ERROR GetChannels(PVR_HANDLE handle, bool bRadio)
+PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
   if (!VuData || !VuData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
@@ -406,7 +406,7 @@ int GetRecordingsAmount(void)
   return VuData->GetRecordingsAmount();
 }
 
-PVR_ERROR GetRecordings(PVR_HANDLE handle)
+PVR_ERROR GetRecordings(ADDON_HANDLE handle)
 {
   if (!VuData || !VuData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
@@ -435,7 +435,7 @@ int GetTimersAmount(void)
   return VuData->GetTimersAmount();
 }
 
-PVR_ERROR GetTimers(PVR_HANDLE handle)
+PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
   if (!VuData || !VuData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
@@ -491,7 +491,7 @@ int GetChannelGroupsAmount(void)
   return VuData->GetNumChannelGroups();
 }
 
-PVR_ERROR GetChannelGroups(PVR_HANDLE handle, bool bRadio)
+PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
   if (bRadio)
     return PVR_ERROR_NO_ERROR;
@@ -502,7 +502,7 @@ PVR_ERROR GetChannelGroups(PVR_HANDLE handle, bool bRadio)
   return VuData->GetChannelGroups(handle);
 }
 
-PVR_ERROR GetChannelGroupMembers(PVR_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
   if (group.bIsRadio)
     return PVR_ERROR_NO_ERROR;

@@ -885,7 +885,7 @@ unsigned int Vu::GetRecordingsAmount() {
   return m_iNumRecordings;
 }
 
-PVR_ERROR Vu::GetChannels(PVR_HANDLE handle, bool bRadio) 
+PVR_ERROR Vu::GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
     for (unsigned int iChannelPtr = 0; iChannelPtr < m_channels.size(); iChannelPtr++)
   {
@@ -927,7 +927,7 @@ Vu::~Vu()
   m_bIsConnected = false;
 }
 
-PVR_ERROR Vu::GetEPGForChannel(PVR_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR Vu::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
   VuChannel &myChannel = m_channels.at(channel.iUniqueId-1);
 
@@ -1036,7 +1036,7 @@ int Vu::GetChannelNumber(CStdString strServiceReference)
   return -1;
 }
 
-PVR_ERROR Vu::GetTimers(PVR_HANDLE handle)
+PVR_ERROR Vu::GetTimers(ADDON_HANDLE handle)
 {
 
   XBMC->Log(LOG_INFO, "%s - timers available '%d'", __FUNCTION__, m_timers.size());
@@ -1295,7 +1295,7 @@ PVR_ERROR Vu::DeleteTimer(const PVR_TIMER &timer)
   return PVR_ERROR_NO_ERROR;
 }
 
-PVR_ERROR Vu::GetRecordings(PVR_HANDLE handle)
+PVR_ERROR Vu::GetRecordings(ADDON_HANDLE handle)
 {
   m_iNumRecordings = 0;
   m_recordings.clear();
@@ -1312,7 +1312,7 @@ PVR_ERROR Vu::GetRecordings(PVR_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-bool Vu::GetRecordingFromLocation(PVR_HANDLE handle, CStdString strRecordingFolder)
+bool Vu::GetRecordingFromLocation(ADDON_HANDLE handle, CStdString strRecordingFolder)
 {
   CStdString url;
 
@@ -1569,7 +1569,7 @@ int Vu::SplitString(const CStdString& input, const CStdString& delimiter, CStdSt
   return results.size();
 }
 
-PVR_ERROR Vu::GetChannelGroups(PVR_HANDLE handle)
+PVR_ERROR Vu::GetChannelGroups(ADDON_HANDLE handle)
 {
   for(unsigned int iTagPtr = 0; iTagPtr < m_groups.size(); iTagPtr++)
   {
@@ -1601,7 +1601,7 @@ CStdString Vu::GetGroupServiceReference(CStdString strGroupName)
   return "error";
 }
 
-PVR_ERROR Vu::GetChannelGroupMembers(PVR_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+PVR_ERROR Vu::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
   XBMC->Log(LOG_DEBUG, "%s - group '%s'", __FUNCTION__, group.strGroupName);
   CStdString strTmp = group.strGroupName;

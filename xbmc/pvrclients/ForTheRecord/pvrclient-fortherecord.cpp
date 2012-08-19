@@ -329,7 +329,7 @@ PVR_ERROR cPVRClientForTheRecord::GetBackendTime(time_t *localTime, int *gmtOffs
 /************************************************************/
 /** EPG handling */
 
-PVR_ERROR cPVRClientForTheRecord::GetEpg(PVR_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR cPVRClientForTheRecord::GetEpg(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
   XBMC->Log(LOG_DEBUG, "->RequestEPGForChannel(%i)", channel.iUniqueId);
 
@@ -449,7 +449,7 @@ int cPVRClientForTheRecord::GetNumChannels()
   return numberofchannels;
 }
 
-PVR_ERROR cPVRClientForTheRecord::GetChannels(PVR_HANDLE handle, bool bRadio)
+PVR_ERROR cPVRClientForTheRecord::GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
   Json::Value response;
   int retval = -1;
@@ -548,7 +548,7 @@ int cPVRClientForTheRecord::GetChannelGroupsAmount(void)
   return num;
 }
 
-PVR_ERROR cPVRClientForTheRecord::GetChannelGroups(PVR_HANDLE handle, bool bRadio)
+PVR_ERROR cPVRClientForTheRecord::GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
   Json::Value response;
   int retval;
@@ -593,7 +593,7 @@ PVR_ERROR cPVRClientForTheRecord::GetChannelGroups(PVR_HANDLE handle, bool bRadi
   }
 }
 
-PVR_ERROR cPVRClientForTheRecord::GetChannelGroupMembers(PVR_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+PVR_ERROR cPVRClientForTheRecord::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
   Json::Value response;
   int retval;
@@ -692,7 +692,7 @@ int cPVRClientForTheRecord::GetNumRecordings(void)
   return iNumRecordings;
 }
 
-PVR_ERROR cPVRClientForTheRecord::GetRecordings(PVR_HANDLE handle)
+PVR_ERROR cPVRClientForTheRecord::GetRecordings(ADDON_HANDLE handle)
 {
   Json::Value recordinggroupresponse;
   int retval = -1;
@@ -824,7 +824,7 @@ int cPVRClientForTheRecord::GetNumTimers(void)
   return response.size();
 }
 
-PVR_ERROR cPVRClientForTheRecord::GetTimers(PVR_HANDLE handle)
+PVR_ERROR cPVRClientForTheRecord::GetTimers(ADDON_HANDLE handle)
 {
   Json::Value activeRecordingsResponse, upcomingProgramsResponse;
   int         iNumberOfTimers = 0;

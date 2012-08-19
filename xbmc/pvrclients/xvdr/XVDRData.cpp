@@ -293,7 +293,7 @@ int cXVDRData::GetChannelsCount()
   return count;
 }
 
-bool cXVDRData::GetChannelsList(PVR_HANDLE handle, bool radio)
+bool cXVDRData::GetChannelsList(ADDON_HANDLE handle, bool radio)
 {
   cRequestPacket vrp;
   if (!vrp.init(XVDR_CHANNELS_GETCHANNELS))
@@ -338,7 +338,7 @@ bool cXVDRData::GetChannelsList(PVR_HANDLE handle, bool radio)
   return true;
 }
 
-bool cXVDRData::GetEPGForChannel(PVR_HANDLE handle, const PVR_CHANNEL &channel, time_t start, time_t end)
+bool cXVDRData::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t start, time_t end)
 {
   cRequestPacket vrp;
   if (!vrp.init(XVDR_EPG_GETFORCHANNEL))
@@ -496,7 +496,7 @@ PVR_ERROR cXVDRData::GetTimerInfo(unsigned int timernumber, PVR_TIMER &tag)
   return PVR_ERROR_NO_ERROR;
 }
 
-bool cXVDRData::GetTimersList(PVR_HANDLE handle)
+bool cXVDRData::GetTimersList(ADDON_HANDLE handle)
 {
   cRequestPacket vrp;
   if (!vrp.init(XVDR_TIMER_GETLIST))
@@ -714,7 +714,7 @@ int cXVDRData::GetRecordingsCount()
   return count;
 }
 
-PVR_ERROR cXVDRData::GetRecordingsList(PVR_HANDLE handle)
+PVR_ERROR cXVDRData::GetRecordingsList(ADDON_HANDLE handle)
 {
   cRequestPacket vrp;
   if (!vrp.init(XVDR_RECORDINGS_GETLIST))
@@ -987,7 +987,7 @@ int cXVDRData::GetChannelGroupCount(bool automatic)
   return count;
 }
 
-bool cXVDRData::GetChannelGroupList(PVR_HANDLE handle, bool bRadio)
+bool cXVDRData::GetChannelGroupList(ADDON_HANDLE handle, bool bRadio)
 {
   cRequestPacket vrp;
   if (!vrp.init(XVDR_CHANNELGROUP_LIST))
@@ -1018,7 +1018,7 @@ bool cXVDRData::GetChannelGroupList(PVR_HANDLE handle, bool bRadio)
   return true;
 }
 
-bool cXVDRData::GetChannelGroupMembers(PVR_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+bool cXVDRData::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
   cRequestPacket vrp;
   if (!vrp.init(XVDR_CHANNELGROUP_MEMBERS))

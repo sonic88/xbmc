@@ -515,7 +515,7 @@ PVR_ERROR CallMenuHook(const PVR_MENUHOOK &menuhook)
 /*******************************************/
 /** PVR EPG Functions                     **/
 
-PVR_ERROR GetEPGForChannel(PVR_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
   if (!g_client)
     return PVR_ERROR_SERVER_ERROR;
@@ -535,7 +535,7 @@ int GetChannelsAmount()
     return g_client->GetNumChannels();
 }
 
-PVR_ERROR GetChannels(PVR_HANDLE handle, bool bRadio)
+PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
   if (!g_client)
     return PVR_ERROR_SERVER_ERROR;
@@ -575,7 +575,7 @@ int GetChannelGroupsAmount(void)
     return g_client->GetChannelGroupsAmount();
 }
 
-PVR_ERROR GetChannelGroups(PVR_HANDLE handle, bool bRadio)
+PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio)
 {
   if (!g_client)
     return PVR_ERROR_SERVER_ERROR;
@@ -583,7 +583,7 @@ PVR_ERROR GetChannelGroups(PVR_HANDLE handle, bool bRadio)
     return g_client->GetChannelGroups(handle, bRadio);
 }
 
-PVR_ERROR GetChannelGroupMembers(PVR_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
 {
   if (!g_client)
     return PVR_ERROR_SERVER_ERROR;
@@ -603,7 +603,7 @@ int GetRecordingsAmount(void)
     return g_client->GetNumRecordings();
 }
 
-PVR_ERROR GetRecordings(PVR_HANDLE handle)
+PVR_ERROR GetRecordings(ADDON_HANDLE handle)
 {
   if (!g_client)
     return PVR_ERROR_SERVER_ERROR;
@@ -639,7 +639,7 @@ int GetTimersAmount(void)
     return g_client->GetNumTimers();
 }
 
-PVR_ERROR GetTimers(PVR_HANDLE handle)
+PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
   if (!g_client)
     return PVR_ERROR_SERVER_ERROR;

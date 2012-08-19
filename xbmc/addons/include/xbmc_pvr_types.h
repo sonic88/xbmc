@@ -35,6 +35,9 @@
 #endif
 #include <string.h>
 
+#include "xbmc_addon_types.h"
+#include "xbmc_epg_types.h"
+
 /*! @note Define "USE_DEMUX" on compile time if demuxing inside pvr
  *        addon is used. Also XBMC's "DVDDemuxPacket.h" file must be inside
  *        the include path of the pvr addon.
@@ -66,45 +69,12 @@ struct DemuxPacket;
 #define PVR_ADDON_DESC_STRING_LENGTH         1024
 #define PVR_ADDON_INPUT_FORMAT_STRING_LENGTH 32
 
-/*! @name PVR entry content event types */
-//@{
-/* These IDs come from the DVB-SI EIT table "content descriptor"
- * Also known under the name "E-book genre assignments"
- */
-#define EPG_EVENT_CONTENTMASK_UNDEFINED                0x00
-#define EPG_EVENT_CONTENTMASK_MOVIEDRAMA               0x10
-#define EPG_EVENT_CONTENTMASK_NEWSCURRENTAFFAIRS       0x20
-#define EPG_EVENT_CONTENTMASK_SHOW                     0x30
-#define EPG_EVENT_CONTENTMASK_SPORTS                   0x40
-#define EPG_EVENT_CONTENTMASK_CHILDRENYOUTH            0x50
-#define EPG_EVENT_CONTENTMASK_MUSICBALLETDANCE         0x60
-#define EPG_EVENT_CONTENTMASK_ARTSCULTURE              0x70
-#define EPG_EVENT_CONTENTMASK_SOCIALPOLITICALECONOMICS 0x80
-#define EPG_EVENT_CONTENTMASK_EDUCATIONALSCIENCE       0x90
-#define EPG_EVENT_CONTENTMASK_LEISUREHOBBIES           0xA0
-#define EPG_EVENT_CONTENTMASK_SPECIAL                  0xB0
-#define EPG_EVENT_CONTENTMASK_USERDEFINED              0xF0
-//@}
-/* Set EPGTAG.iGenreType to EPG_GENRE_USE_STRING to transfer genre strings to XBMC */
-#define EPG_GENRE_USE_STRING                          0x100
-
 /* using the default avformat's MAX_STREAMS value to be safe */
 #define PVR_STREAM_MAX_STREAMS 20
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-  /*!
-   * @brief Handle used to return data from the PVR add-on to CPVRClient
-   */
-  struct PVR_HANDLE_STRUCT
-  {
-    void *callerAddress;  /*!< address of the caller */
-    void *dataAddress;    /*!< address to store data in */
-    int   dataIdentifier; /*!< parameter to pass back when calling the callback */
-  };
-  typedef PVR_HANDLE_STRUCT *PVR_HANDLE;
 
   /*! \brief PVR Client Error Codes
    */
@@ -249,31 +219,6 @@ extern "C" {
   } ATTRIBUTE_PACKED PVR_CHANNEL_GROUP_MEMBER;
 
   /*!
-   * @brief Representation of an EPG event.
-   */
-  typedef struct EPG_TAG {
-    unsigned int  iUniqueBroadcastId;  /*!< @brief (required) identifier for this event */
-    const char *  strTitle;            /*!< @brief (required) this event's title */
-    unsigned int  iChannelNumber;      /*!< @brief (required) the number of the channel this event occurs on */
-    time_t        startTime;           /*!< @brief (required) start time in UTC */
-    time_t        endTime;             /*!< @brief (required) end time in UTC */
-    const char *  strPlotOutline;      /*!< @brief (optional) plot outline */
-    const char *  strPlot;             /*!< @brief (optional) plot */
-    const char *  strIconPath;         /*!< @brief (optional) icon path */
-    int           iGenreType;          /*!< @brief (optional) genre type */
-    int           iGenreSubType;       /*!< @brief (optional) genre sub type */
-    const char *  strGenreDescription; /*!< @brief (optional) genre. Will be used only when iGenreType = EPG_GENRE_USE_STRING */
-    time_t        firstAired;          /*!< @brief (optional) first aired in UTC */
-    int           iParentalRating;     /*!< @brief (optional) parental rating */
-    int           iStarRating;         /*!< @brief (optional) star rating */
-    bool          bNotify;             /*!< @brief (optional) notify the user when this event starts */
-    int           iSeriesNumber;       /*!< @brief (optional) series number */
-    int           iEpisodeNumber;      /*!< @brief (optional) episode number */
-    int           iEpisodePartNumber;  /*!< @brief (optional) episode part number */
-    const char *  strEpisodeName;      /*!< @brief (optional) episode name */
-  } ATTRIBUTE_PACKED EPG_TAG;
-
-  /*!
    * @brief Representation of a timer event.
    */
   typedef struct PVR_TIMER {
@@ -335,20 +280,20 @@ extern "C" {
 
     /** @name PVR EPG methods */
     //@{
-    PVR_ERROR    (__cdecl* GetEpg)(PVR_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
+    PVR_ERROR    (__cdecl* GetEpg)(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);
     //@}
 
     /** @name PVR channel group methods */
     //@{
     int          (__cdecl* GetChannelGroupsAmount)(void);
-    PVR_ERROR    (__cdecl* GetChannelGroups)(PVR_HANDLE handle, bool bRadio);
-    PVR_ERROR    (__cdecl* GetChannelGroupMembers)(PVR_HANDLE handle, const PVR_CHANNEL_GROUP &group);
+    PVR_ERROR    (__cdecl* GetChannelGroups)(ADDON_HANDLE handle, bool bRadio);
+    PVR_ERROR    (__cdecl* GetChannelGroupMembers)(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
     //@}
 
     /** @name PVR channel methods */
     //@{
     int          (__cdecl* GetChannelsAmount)(void);
-    PVR_ERROR    (__cdecl* GetChannels)(PVR_HANDLE handle, bool bRadio);
+    PVR_ERROR    (__cdecl* GetChannels)(ADDON_HANDLE handle, bool bRadio);
     PVR_ERROR    (__cdecl* DeleteChannel)(const PVR_CHANNEL &channel);
     PVR_ERROR    (__cdecl* RenameChannel)(const PVR_CHANNEL &channel);
     PVR_ERROR    (__cdecl* MoveChannel)(const PVR_CHANNEL &channel);
@@ -359,7 +304,7 @@ extern "C" {
     /** @name PVR recording methods */
     //@{
     int          (__cdecl* GetRecordingsAmount)(void);
-    PVR_ERROR    (__cdecl* GetRecordings)(PVR_HANDLE handle);
+    PVR_ERROR    (__cdecl* GetRecordings)(ADDON_HANDLE handle);
     PVR_ERROR    (__cdecl* DeleteRecording)(const PVR_RECORDING &recording);
     PVR_ERROR    (__cdecl* RenameRecording)(const PVR_RECORDING &recording);
     PVR_ERROR    (__cdecl* SetRecordingPlayCount)(const PVR_RECORDING &recording, int count);
@@ -370,7 +315,7 @@ extern "C" {
     /** @name PVR timer methods */
     //@{
     int          (__cdecl* GetTimersAmount)(void);
-    PVR_ERROR    (__cdecl* GetTimers)(PVR_HANDLE handle);
+    PVR_ERROR    (__cdecl* GetTimers)(ADDON_HANDLE handle);
     PVR_ERROR    (__cdecl* AddTimer)(const PVR_TIMER &timer);
     PVR_ERROR    (__cdecl* DeleteTimer)(const PVR_TIMER &timer, bool bForceDelete);
     PVR_ERROR    (__cdecl* UpdateTimer)(const PVR_TIMER &timer);

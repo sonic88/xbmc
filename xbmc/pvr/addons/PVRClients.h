@@ -246,9 +246,10 @@ namespace PVR
     /*!
      * @brief Open a stream on the given channel.
      * @param tag The channel to start playing.
+     * @param bIsSwitchingChannel True when switching channels, false otherwise.
      * @return True if the stream was opened successfully, false otherwise.
      */
-    bool OpenStream(const CPVRChannel &tag);
+    bool OpenStream(const CPVRChannel &tag, bool bIsSwitchingChannel);
 
     /*!
      * @brief Get the URL for the stream to the given channel.
@@ -269,7 +270,7 @@ namespace PVR
      * @param channel A copy of the channel that is currently playing.
      * @return True if a channel is playing, false otherwise.
      */
-    bool GetPlayingChannel(CPVRChannel &channel) const;
+    bool GetPlayingChannel(CPVRChannelPtr &channel) const;
 
     /*!
      * @return True if a recording is playing, false otherwise.

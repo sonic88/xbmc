@@ -50,6 +50,12 @@ enum DVDStreamType
 
 class CPoint;
 
+namespace PVR
+{
+  class CPVRChannel;
+  typedef boost::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
+}
+
 class CDVDInputStream
 {
 public:
@@ -61,7 +67,7 @@ public:
     virtual bool PrevChannel(bool preview = false) = 0;
     virtual bool SelectChannelByNumber(unsigned int channel) = 0;
     virtual bool SelectChannel(const PVR::CPVRChannel &channel) { return false; };
-    virtual bool GetSelectedChannel(PVR::CPVRChannel *) { return false; };
+    virtual bool GetSelectedChannel(PVR::CPVRChannelPtr&) { return false; };
     virtual int GetTotalTime() = 0;
     virtual int GetStartTime() = 0;
     virtual bool UpdateItem(CFileItem& item) = 0;
@@ -137,6 +143,7 @@ public:
   virtual ENextStream NextStream() { return NEXTSTREAM_NONE; }
   virtual void Abort() {}
   virtual int GetBlockSize() { return 0; }
+  virtual void ResetScanTimeout(unsigned int iTimeoutMs) { }
 
   /*! \brief Indicate expected read rate in bytes per second.
    *  This could be used to throttle caching rate. Should

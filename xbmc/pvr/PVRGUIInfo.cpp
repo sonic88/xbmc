@@ -94,15 +94,9 @@ void CPVRGUIInfo::ResetProperties(void)
 
 void CPVRGUIInfo::ClearQualityInfo(PVR_SIGNAL_STATUS &qualityInfo)
 {
+  memset(&qualityInfo, 0, sizeof(qualityInfo));
   strncpy(qualityInfo.strAdapterName, g_localizeStrings.Get(13106).c_str(), 1024);
   strncpy(qualityInfo.strAdapterStatus, g_localizeStrings.Get(13106).c_str(), 1024);
-  qualityInfo.iSNR          = 0;
-  qualityInfo.iSignal       = 0;
-  qualityInfo.iSNR          = 0;
-  qualityInfo.iUNC          = 0;
-  qualityInfo.dVideoBitrate = 0;
-  qualityInfo.dAudioBitrate = 0;
-  qualityInfo.dDolbyBitrate = 0;
 }
 
 void CPVRGUIInfo::Start(void)
@@ -620,9 +614,9 @@ void CPVRGUIInfo::CharInfoPlayingClientName(CStdString &strValue) const
 
 void CPVRGUIInfo::CharInfoEncryption(CStdString &strValue) const
 {
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   if (g_PVRClients->GetPlayingChannel(channel))
-    strValue.Format("%s", channel.EncryptionName());
+    strValue.Format("%s", channel->EncryptionName().c_str());
   else
     strValue = StringUtils::EmptyString;
 }
@@ -829,7 +823,7 @@ bool CPVRGUIInfo::GetPlayingTag(CEpgInfoTag &tag) const
 
 void CPVRGUIInfo::UpdatePlayingTag(void)
 {
-  CPVRChannel currentChannel;
+  CPVRChannelPtr currentChannel;
   CPVRRecording recording;
   if (g_PVRManager.GetCurrentChannel(currentChannel))
   {
@@ -840,13 +834,13 @@ void CPVRGUIInfo::UpdatePlayingTag(void)
       channel = epgTag.ChannelTag();
 
     if (!bHasEpgTag || !epgTag.IsActive() ||
-        !channel || *channel != currentChannel)
+        !channel || *channel != *currentChannel)
     {
       CEpgInfoTag newTag;
       {
         CSingleLock lock(m_critSection);
         ResetPlayingTag();
-        if (currentChannel.GetEPGNow(newTag))
+        if (currentChannel->GetEPGNow(newTag))
         {
           m_playingEpgTag = new CEpgInfoTag(newTag);
           m_iDuration     = m_playingEpgTag->GetDuration() * 1000;

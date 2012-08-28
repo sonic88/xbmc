@@ -112,10 +112,10 @@ bool CGUIDialogPVRChannelsOSD::OnMessage(CGUIMessage& message)
 
       if (iAction == ACTION_MOVE_RIGHT || iAction == ACTION_MOVE_LEFT)
       {
-        CPVRChannel channel;
+          CPVRChannelPtr channel;
         g_PVRManager.GetCurrentChannel(channel);
 
-        CPVRChannelGroupPtr group = g_PVRManager.GetPlayingGroup(channel.IsRadio());
+        CPVRChannelGroupPtr group = g_PVRManager.GetPlayingGroup(channel->IsRadio());
         CPVRChannelGroupPtr nextGroup = iAction == ACTION_MOVE_RIGHT ? group->GetNextGroup() : group->GetPreviousGroup();
 
         g_PVRManager.SetPlayingGroup(nextGroup);
@@ -145,15 +145,15 @@ void CGUIDialogPVRChannelsOSD::Update()
   // empty the list ready for population
   Clear();
 
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   g_PVRManager.GetCurrentChannel(channel);
-  CPVRChannelGroupPtr group = g_PVRManager.GetPlayingGroup(channel.IsRadio());
+  CPVRChannelGroupPtr group = g_PVRManager.GetPlayingGroup(channel->IsRadio());
 
   if (group)
   {
     group->GetMembers(*m_vecItems);
     m_viewControl.SetItems(*m_vecItems);
-    m_viewControl.SetSelectedItem(group->GetIndex(channel));
+    m_viewControl.SetSelectedItem(group->GetIndex(*channel));
   }
 
   g_graphicsContext.Unlock();
@@ -188,7 +188,8 @@ void CGUIDialogPVRChannelsOSD::GotoChannel(int item)
   if (g_PVRManager.IsPlaying() && pItem->HasPVRChannelInfoTag() && g_application.m_pPlayer)
   {
     CPVRChannel *channel = pItem->GetPVRChannelInfoTag();
-    if (!g_application.m_pPlayer->SwitchChannel(*channel))
+    if (!g_PVRManager.CheckParentalLock(*channel) ||
+        !g_application.m_pPlayer->SwitchChannel(*channel))
     {
       Close(true);
       return;

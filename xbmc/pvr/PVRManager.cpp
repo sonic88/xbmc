@@ -100,10 +100,6 @@ void CPVRManager::Cleanup(void)
   m_triggerEvent.Set();
 
   m_currentFile           = NULL;
-  m_PreviousChannel[0]    = -1;
-  m_PreviousChannel[1]    = -1;
-  m_PreviousChannelIndex  = 0;
-  m_LastChannel           = 0;
   m_bIsSwitchingChannels  = false;
 
   for (unsigned int iJobPtr = 0; iJobPtr < m_pendingUpdates.size(); iJobPtr++)
@@ -559,18 +555,18 @@ bool CPVRManager::IsPlaying(void) const
   return IsStarted() && m_addons && m_addons->IsPlaying();
 }
 
-bool CPVRManager::GetCurrentChannel(CPVRChannel &channel) const
+bool CPVRManager::GetCurrentChannel(CPVRChannelPtr &channel) const
 {
-  return IsPlaying() && m_addons && m_addons->GetPlayingChannel(channel);
+  return m_addons && m_addons->GetPlayingChannel(channel);
 }
 
 int CPVRManager::GetCurrentEpg(CFileItemList &results) const
 {
   int iReturn = -1;
 
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   if (m_addons->GetPlayingChannel(channel))
-    iReturn = channel.GetEPG(results);
+    iReturn = channel->GetEPG(results);
   else
     CLog::Log(LOGDEBUG,"PVRManager - %s - no current channel set", __FUNCTION__);
 
@@ -586,21 +582,15 @@ void CPVRManager::ResetPlayingTag(void)
 
 int CPVRManager::GetPreviousChannel(void)
 {
-  //XXX this must be the craziest way to store the last channel
-  int iReturn = -1;
-  CPVRChannel channel;
-  if (m_addons->GetPlayingChannel(channel))
+  CPVRChannelPtr currentChannel;
+  if (GetCurrentChannel(currentChannel))
   {
-    int iLastChannel = channel.ChannelNumber();
-
-    if ((m_PreviousChannel[m_PreviousChannelIndex ^ 1] == iLastChannel || iLastChannel != m_PreviousChannel[0]) &&
-        iLastChannel != m_PreviousChannel[1])
-      m_PreviousChannelIndex ^= 1;
-
-    iReturn = m_PreviousChannel[m_PreviousChannelIndex ^= 1];
+    CPVRChannelGroupPtr selectedGroup = GetPlayingGroup(currentChannel->IsRadio());
+    CFileItemPtr channel = selectedGroup->GetLastPlayedChannel(currentChannel->ChannelID());
+    if (channel && channel->HasPVRChannelInfoTag())
+      return channel->GetPVRChannelInfoTag()->ChannelNumber();
   }
-
-  return iReturn;
+  return -1;
 }
 
 bool CPVRManager::ToggleRecordingOnChannel(unsigned int iChannelId)
@@ -634,23 +624,23 @@ bool CPVRManager::StartRecordingOnPlayingChannel(bool bOnOff)
 {
   bool bReturn = false;
 
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   if (!m_addons->GetPlayingChannel(channel))
     return bReturn;
 
-  if (m_addons->HasTimerSupport(channel.ClientID()))
+  if (m_addons->HasTimerSupport(channel->ClientID()))
   {
     /* timers are supported on this channel */
-    if (bOnOff && !channel.IsRecording())
+    if (bOnOff && !channel->IsRecording())
     {
-      bReturn = m_timers->InstantTimer(channel);
+      bReturn = m_timers->InstantTimer(*channel);
       if (!bReturn)
         CGUIDialogOK::ShowAndGetInput(19033,0,19164,0);
     }
-    else if (!bOnOff && channel.IsRecording())
+    else if (!bOnOff && channel->IsRecording())
     {
       /* delete active timers */
-      bReturn = m_timers->DeleteTimersOnChannel(channel, false, true);
+      bReturn = m_timers->DeleteTimersOnChannel(*channel, false, true);
     }
   }
 
@@ -659,23 +649,11 @@ bool CPVRManager::StartRecordingOnPlayingChannel(bool bOnOff)
 
 bool CPVRManager::CheckParentalLock(const CPVRChannel &channel)
 {
-  bool bReturn(true);
+  bool bReturn = !IsParentalLocked(channel) ||
+      CheckParentalPIN();
 
-  if (IsParentalLocked(channel))
-  {
-    // check the pin code
-    if (!CheckParentalPIN())
-    {
-      CLog::Log(LOGERROR, "PVRManager - %s - parental lock verification failed for channel '%s': wrong PIN entered.",
-          __FUNCTION__, channel.ChannelName().c_str());
-      bReturn = false;
-    }
-    else if (m_parentalTimer)
-    {
-      // reset the timer
-      m_parentalTimer->StartZero();
-    }
-  }
+  if (!bReturn)
+    CLog::Log(LOGERROR, "PVRManager - %s - parental lock verification failed for channel '%s': wrong PIN entered.", __FUNCTION__, channel.ChannelName().c_str());
 
   return bReturn;
 }
@@ -683,10 +661,10 @@ bool CPVRManager::CheckParentalLock(const CPVRChannel &channel)
 bool CPVRManager::IsParentalLocked(const CPVRChannel &channel)
 {
   bool bReturn(false);
-  CPVRChannel currentChannel(NULL);
+  CPVRChannelPtr currentChannel(new CPVRChannel(false));
 
   if (// different channel
-      (!GetCurrentChannel(currentChannel) || channel != currentChannel) &&
+      (!GetCurrentChannel(currentChannel) || channel != *currentChannel) &&
       // parental control enabled
       g_guiSettings.GetBool("pvrparental.enabled") &&
       // channel is locked
@@ -712,6 +690,11 @@ bool CPVRManager::CheckParentalPIN(const char *strTitle /* = NULL */)
   if (!bValidPIN)
     // display message: The entered PIN number was incorrect
     CGUIDialogOK::ShowAndGetInput(19264,0,19265,0);
+  else if (m_parentalTimer)
+  {
+    // reset the timer
+    m_parentalTimer->StartZero();
+  }
 
   return bValidPIN;
 }
@@ -773,10 +756,10 @@ bool CPVRManager::OpenLiveStream(const CFileItem &channel)
       __FUNCTION__, channel.GetPVRChannelInfoTag()->ChannelName().c_str());
 
   // check if we're allowed to play this file
-  if (!CheckParentalLock(*channel.GetPVRChannelInfoTag()))
+  if (IsParentalLocked(*channel.GetPVRChannelInfoTag()))
     return bReturn;
 
-  if ((bReturn = m_addons->OpenStream(*channel.GetPVRChannelInfoTag())) != false)
+  if ((bReturn = m_addons->OpenStream(*channel.GetPVRChannelInfoTag(), false)) != false)
   {
     CSingleLock lock(m_critSection);
     if(m_currentFile)
@@ -806,23 +789,19 @@ bool CPVRManager::OpenRecordedStream(const CPVRRecording &tag)
 
 void CPVRManager::CloseStream(void)
 {
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   bool bPersistChannel(false);
 
   {
     CSingleLock lock(m_critSection);
 
-    if (m_addons->IsReadingLiveStream())
+    if (m_addons->GetPlayingChannel(channel))
     {
-      CPVRChannel channel;
-      if (m_addons->GetPlayingChannel(channel))
-      {
-        /* store current time in iLastWatched */
-        time_t tNow;
-        CDateTime::GetCurrentDateTime().GetAsTime(tNow);
-        channel.SetLastWatched(tNow);
-        bPersistChannel = true;
-      }
+      /* store current time in iLastWatched */
+      time_t tNow;
+      CDateTime::GetCurrentDateTime().GetAsTime(tNow);
+      channel->SetLastWatched(tNow);
+      bPersistChannel = true;
     }
 
     m_addons->CloseStream();
@@ -830,7 +809,7 @@ void CPVRManager::CloseStream(void)
   }
 
   if (bPersistChannel)
-    channel.Persist();
+    channel->Persist();
 }
 
 void CPVRManager::UpdateCurrentFile(void)
@@ -904,17 +883,6 @@ bool CPVRManager::UpdateItem(CFileItem& item)
     }
   }
 
-  CPVRChannel* tagPrev = item.GetPVRChannelInfoTag();
-  if (tagPrev && tagPrev->ChannelNumber() != m_LastChannel)
-  {
-    m_LastChannel         = tagPrev->ChannelNumber();
-    m_LastChannelChanged  = XbmcThreads::SystemClockMillis();
-  }
-  if (XbmcThreads::SystemClockMillis() - m_LastChannelChanged >= (unsigned int) g_guiSettings.GetInt("pvrplayback.channelentrytimeout") && m_LastChannel != m_PreviousChannel[m_PreviousChannelIndex])
-     m_PreviousChannel[m_PreviousChannelIndex ^= 1] = m_LastChannel;
-  else
-    m_LastChannelChanged = XbmcThreads::SystemClockMillis();
-
   return false;
 }
 
@@ -972,7 +940,7 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview
 {
   bool bSwitched(false);
 
-  if (!CheckParentalLock(channel))
+  if (IsParentalLocked(channel))
     return false;
 
   CSingleLock lock(m_critSection);
@@ -989,7 +957,18 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview
 
   /* make sure that channel settings are persisted */
   if (!bPreview)
+  {
+    CPVRChannelPtr currentChannel;
+    if (m_addons->GetPlayingChannel(currentChannel))
+    {
+      /* store current time in iLastWatched */
+      time_t tNow;
+      CDateTime::GetCurrentDateTime().GetAsTime(tNow);
+      currentChannel->SetLastWatched(tNow);
+    }
+
     SaveCurrentChannelSettings();
+  }
 
   SAFE_DELETE(m_currentFile);
 

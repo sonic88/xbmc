@@ -1,7 +1,0 @@
-*.o
-*.lo
-*.deps
-.deps
-.libs
-XBMC_vuplus.pvr
-*.la

@@ -316,9 +316,10 @@ namespace PVR
     /*!
      * @brief Open a live stream on the server.
      * @param channel The channel to stream.
+     * @param bIsSwitchingChannel True when switching channels, false otherwise.
      * @return True if the stream opened successfully, false otherwise.
      */
-    bool OpenStream(const CPVRChannel &channel);
+    bool OpenStream(const CPVRChannel &channel, bool bIsSwitchingChannel);
 
     /*!
      * @brief Close an open live stream.
@@ -434,7 +435,7 @@ namespace PVR
     bool IsPlayingEncryptedChannel(void) const;
     bool IsPlayingRecording(void) const;
     bool IsPlaying(void) const;
-    bool GetPlayingChannel(CPVRChannel &channel) const;
+    bool GetPlayingChannel(CPVRChannelPtr &channel) const;
     bool GetPlayingRecording(CPVRRecording &recording) const;
 
     /*! @name Signal status methods */
@@ -543,9 +544,10 @@ namespace PVR
 
     CCriticalSection m_critSection;
 
-    bool          m_bIsPlayingTV;
-    CPVRChannel   m_playingChannel;
-    bool          m_bIsPlayingRecording;
-    CPVRRecording m_playingRecording;
+    bool           m_bIsPlayingTV;
+    CPVRChannelPtr m_playingChannel;
+    bool           m_bIsPlayingRecording;
+    CPVRRecording  m_playingRecording;
+    ADDON::AddonVersion m_apiVersion;
   };
 }

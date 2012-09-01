@@ -82,7 +82,9 @@ bool CDVDInputStreamPVRManager::Open(const char* strFile, const std::string& con
   /* Open PVR File for both cases, to have access to ILiveTVInterface and
    * IRecordable
    */
-  m_pFile       = new CPVRFile();
+  m_pFile       = new CPVRFile;
+  m_pLiveTV     = ((CPVRFile*)m_pFile)->GetLiveTV();
+  m_pRecordable = ((CPVRFile*)m_pFile)->GetRecordable();
 
   CURL url(strFile);
   if (!CDVDInputStream::Open(strFile, content)) return false;
@@ -90,12 +92,11 @@ bool CDVDInputStreamPVRManager::Open(const char* strFile, const std::string& con
   {
     delete m_pFile;
     m_pFile = NULL;
+    m_pLiveTV = NULL;
+    m_pRecordable = NULL;
     return false;
   }
   m_eof = false;
-
-  m_pLiveTV     = ((CPVRFile*)m_pFile)->GetLiveTV();
-  m_pRecordable = ((CPVRFile*)m_pFile)->GetRecordable();
 
   /*
    * Translate the "pvr://....." entry.
@@ -124,6 +125,8 @@ bool CDVDInputStreamPVRManager::Open(const char* strFile, const std::string& con
       CLog::Log(LOGERROR, "CDVDInputStreamPVRManager::Open - error opening [%s]", transFile.c_str());
       delete m_pFile;
       m_pFile = NULL;
+      m_pLiveTV = NULL;
+      m_pRecordable = NULL;
       delete m_pOtherStream;
       m_pOtherStream = NULL;
       return false;

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,6 +25,7 @@
 #include "PVRClient.h"
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/recordings/PVRRecording.h"
+#include "addons/AddonDatabase.h"
 
 #include <vector>
 #include <deque>
@@ -515,7 +515,7 @@ namespace PVR
 
     //@}
 
-    void Notify(const Observable &obs, const CStdString& msg);
+    void Notify(const Observable &obs, const ObservableMessage msg);
 
     bool GetClient(const CStdString &strId, ADDON::AddonPtr &addon) const;
 
@@ -539,13 +539,6 @@ namespace PVR
     bool UpdateAddons(void);
 
     /*!
-     * @brief Register a client in the db if it's not been registered yet.
-     * @param client The client to register.
-     * @return The database id of the client or -1 if an error occured.
-     */
-    int AddClientToDb(const ADDON::AddonPtr client);
-
-    /*!
      * @brief Get the menu hooks for a client.
      * @param iClientID The client to get the hooks for.
      * @param hooks The container to add the hooks to.
@@ -562,6 +555,14 @@ namespace PVR
      * @brief Show a dialog to guide new users who have no clients enabled.
      */
     void ShowDialogNoClientsEnabled(void);
+
+    /*!
+     * @brief Get the instance of the client.
+     * @param iClientId The id of the client to get.
+     * @param addon The client.
+     * @return True if the client was found, false otherwise.
+     */
+    bool GetClient(int iClientId, boost::shared_ptr<CPVRClient> &addon) const;
 
     /*!
      * @brief Get the instance of the client, if it's connected.
@@ -588,9 +589,9 @@ namespace PVR
     /*!
      * @brief Initialise and connect a client.
      * @param client The client to initialise.
-     * @return True if the client was initialised successfully, false otherwise.
+     * @return The id of the client if it was created or found in the existing client map, -1 otherwise.
      */
-    bool InitialiseClient(ADDON::AddonPtr client);
+    int RegisterClient(ADDON::AddonPtr client);
 
     int GetClientId(const ADDON::AddonPtr client) const;
 
@@ -605,6 +606,8 @@ namespace PVR
     ADDON::VECADDONS      m_addons;
     PVR_CLIENTMAP         m_clientMap;                /*!< a map of all known clients */
     STREAMPROPS           m_streamProps;              /*!< the current stream's properties */
+    bool                  m_bNoAddonWarningDisplayed; /*!< true when a warning was displayed that no add-ons were found, false otherwise */
     CCriticalSection      m_critSection;
+    CAddonDatabase        m_addonDb;
   };
 }

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -213,7 +212,7 @@ const BUILT_IN commands[] = {
   { "LCD.Resume",                 false,  "Resumes LCDproc" },
 #endif
   { "VideoLibrary.Search",        false,  "Brings up a search dialog which will search the library" },
-  { "toggledebug",                false,  "Enables/disables debug mode" },
+  { "ToggleDebug",                false,  "Enables/disables debug mode" },
 };
 
 bool CBuiltins::HasCommand(const CStdString& execString)
@@ -459,6 +458,10 @@ int CBuiltins::Execute(const CStdString& execString)
     else if (parameter.Equals("ntsc")) res = RES_NTSC_4x3;
     else if (parameter.Equals("ntsc16x9")) res = RES_NTSC_16x9;
     else if (parameter.Equals("720p")) res = RES_HDTV_720p;
+    else if (parameter.Equals("720pSBS")) res = RES_HDTV_720pSBS;
+    else if (parameter.Equals("720pTB")) res = RES_HDTV_720pTB;
+    else if (parameter.Equals("1080pSBS")) res = RES_HDTV_1080pSBS;
+    else if (parameter.Equals("1080pTB")) res = RES_HDTV_1080pTB;
     else if (parameter.Equals("1080i")) res = RES_HDTV_1080i;
     if (g_graphicsContext.IsValidResolution(res))
     {
@@ -940,7 +943,7 @@ int CBuiltins::Execute(const CStdString& execString)
 #ifdef HAS_DVD_DRIVE
   else if (execute.Equals("ejecttray"))
   {
-    CIoSupport::ToggleTray();
+    g_mediaManager.ToggleTray();
   }
 #endif
   else if( execute.Equals("alarmclock") && params.size() > 1 )

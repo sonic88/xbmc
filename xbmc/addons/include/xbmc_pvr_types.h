@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -73,10 +72,10 @@ struct DemuxPacket;
 #define PVR_STREAM_MAX_STREAMS 20
 
 /* current PVR API version */
-#define XBMC_PVR_API_VERSION "1.1.0"
+#define XBMC_PVR_API_VERSION "1.2.0"
 
 /* min. PVR API version */
-#define XBMC_PVR_MIN_API_VERSION "1.0.0"
+#define XBMC_PVR_MIN_API_VERSION "1.2.0"
 
 #ifdef __cplusplus
 extern "C" {
@@ -154,17 +153,17 @@ extern "C" {
       unsigned int iCodecType;         /*!< @brief (required) codec type id */
       unsigned int iCodecId;           /*!< @brief (required) codec id */
       char         strLanguage[4];     /*!< @brief (required) language id */
-      unsigned int iIdentifier;        /*!< @brief (required) stream id */
-      unsigned int iFPSScale;          /*!< @brief (required) scale of 1000 and a rate of 29970 will result in 29.97 fps */
-      unsigned int iFPSRate;           /*!< @brief (required) FPS rate */
-      unsigned int iHeight;            /*!< @brief (required) height of the stream reported by the demuxer */
-      unsigned int iWidth;             /*!< @brief (required) width of the stream reported by the demuxer */
+      int          iIdentifier;        /*!< @brief (required) stream id */
+      int          iFPSScale;          /*!< @brief (required) scale of 1000 and a rate of 29970 will result in 29.97 fps */
+      int          iFPSRate;           /*!< @brief (required) FPS rate */
+      int          iHeight;            /*!< @brief (required) height of the stream reported by the demuxer */
+      int          iWidth;             /*!< @brief (required) width of the stream reported by the demuxer */
       float        fAspect;            /*!< @brief (required) display aspect ratio of the stream */
-      unsigned int iChannels;          /*!< @brief (required) amount of channels */
-      unsigned int iSampleRate;        /*!< @brief (required) sample rate */
-      unsigned int iBlockAlign;        /*!< @brief (required) block alignment */
-      unsigned int iBitRate;           /*!< @brief (required) bit rate */
-      unsigned int iBitsPerSample;     /*!< @brief (required) bits per sample */
+      int          iChannels;          /*!< @brief (required) amount of channels */
+      int          iSampleRate;        /*!< @brief (required) sample rate */
+      int          iBlockAlign;        /*!< @brief (required) block alignment */
+      int          iBitRate;           /*!< @brief (required) bit rate */
+      int          iBitsPerSample;     /*!< @brief (required) bits per sample */
      } stream[PVR_STREAM_MAX_STREAMS]; /*!< @brief (required) the streams */
    } ATTRIBUTE_PACKED PVR_STREAM_PROPERTIES;
 
@@ -274,6 +273,7 @@ extern "C" {
   typedef struct PVRClient
   {
     const char*  (__cdecl* GetPVRAPIVersion)(void);
+    const char*  (__cdecl* GetMininumPVRAPIVersion)(void);
     PVR_ERROR    (__cdecl* GetAddonCapabilities)(PVR_ADDON_CAPABILITIES*);
     PVR_ERROR    (__cdecl* GetStreamProperties)(PVR_STREAM_PROPERTIES*);
     const char*  (__cdecl* GetBackendName)(void);

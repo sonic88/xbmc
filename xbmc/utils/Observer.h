@@ -15,18 +15,32 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
-#include "StdString.h"
 #include "threads/CriticalSection.h"
 #include "interfaces/AnnouncementManager.h"
 
 class Observable;
 class ObservableMessageJob;
+
+typedef enum
+{
+  ObservableMessageNone,
+  ObservableMessageCurrentItem,
+  ObservableMessageGuiSettings,
+  ObservableMessageAddons,
+  ObservableMessageEpg,
+  ObservableMessageEpgContainer,
+  ObservableMessageEpgActiveItem,
+  ObservableMessageChannelGroup,
+  ObservableMessageChannelGroupReset,
+  ObservableMessageTimers,
+  ObservableMessageTimersReset,
+  ObservableMessageRecordings,
+} ObservableMessage;
 
 class Observer
 {
@@ -53,7 +67,7 @@ public:
    * @param obs The observable that sends the message.
    * @param msg The message.
    */
-  virtual void Notify(const Observable &obs, const CStdString& msg) = 0;
+  virtual void Notify(const Observable &obs, const ObservableMessage msg) = 0;
 
 protected:
   /*!
@@ -100,10 +114,10 @@ public:
 
   /*!
    * @brief Send a message to all observers when m_bObservableChanged is true.
-   * @param strMessage The message to send.
+   * @param message The message to send.
    * @param bAsync True to send the message async, using the jobmanager.
    */
-  virtual void NotifyObservers(const CStdString& strMessage = "", bool bAsync = false);
+  virtual void NotifyObservers(const ObservableMessage message = ObservableMessageNone, bool bAsync = false);
 
   /*!
    * @brief Mark an observable changed.
@@ -124,10 +138,9 @@ protected:
   /*!
    * @brief Send a message to all observer when m_bObservableChanged is true.
    * @param obs The observer that sends the message.
-   * @param observers The observers to send the message to.
-   * @param strMessage The message to send.
+   * @param message The message to send.
    */
-  static void SendMessage(Observable *obs, const std::vector<Observer *> *observers, const CStdString &strMessage);
+  static void SendMessage(const Observable& obs, const ObservableMessage message);
 
   bool                    m_bObservableChanged; /*!< true when the observable is marked as changed, false otherwise */
   std::vector<Observer *> m_observers;          /*!< all observers */

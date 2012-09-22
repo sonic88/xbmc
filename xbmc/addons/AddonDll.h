@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 #include "Addon.h"
@@ -52,6 +51,8 @@ namespace ADDON
     bool Create();
     virtual void Stop();
     void Destroy();
+
+    bool DllLoaded(void) const;
 
   protected:
     void HandleException(std::exception &e, const char* context);
@@ -186,10 +187,16 @@ bool CAddonDll<TheDll, TheStruct, TheProps>::LoadDll()
     new CAddonStatusHandler(ID(), ADDON_STATUS_UNKNOWN, "Can't load Dll", false);
     return false;
   }
+
   m_pStruct = (TheStruct*)malloc(sizeof(TheStruct));
-  ZeroMemory(m_pStruct, sizeof(TheStruct));
-  m_pDll->GetAddon(m_pStruct);
-  return (m_pStruct != NULL);
+  if (m_pStruct)
+  {
+    ZeroMemory(m_pStruct, sizeof(TheStruct));
+    m_pDll->GetAddon(m_pStruct);
+    return true;
+  }
+
+  return false;
 }
 
 template<class TheDll, typename TheStruct, typename TheProps>
@@ -204,7 +211,6 @@ bool CAddonDll<TheDll, TheStruct, TheProps>::Create()
   /* Allocate the helper function class to allow crosstalk over
      helper libraries */
   m_pHelpers = new CAddonCallbacks(this);
-  m_initialized = true;
 
   /* Call Create to make connections, initializing data or whatever is
      needed to become the AddOn running */
@@ -212,21 +218,19 @@ bool CAddonDll<TheDll, TheStruct, TheProps>::Create()
   {
     ADDON_STATUS status = m_pDll->Create(m_pHelpers->GetCallbacks(), m_pInfo);
     if (status == ADDON_STATUS_OK)
-      return true;
-    if ((status == ADDON_STATUS_NEED_SETTINGS) || (status == ADDON_STATUS_NEED_SAVEDSETTINGS))
+      m_initialized = true;
+    else if ((status == ADDON_STATUS_NEED_SETTINGS) || (status == ADDON_STATUS_NEED_SAVEDSETTINGS))
     {
       m_needsavedsettings = (status == ADDON_STATUS_NEED_SAVEDSETTINGS);
-      if (TransferSettings() != ADDON_STATUS_OK)
-      {
+      if (TransferSettings() == ADDON_STATUS_OK)
+        m_initialized = true;
+      else
         new CAddonStatusHandler(ID(), status, "", false);
-        return false;
-      }
     }
     else
     { // Addon failed initialization
       CLog::Log(LOGERROR, "ADDON: Dll %s - Client returned bad status (%i) from Create and is not usable", Name().c_str(), status);
       new CAddonStatusHandler(ID(), status, "", false);
-      return false;
     }
   }
   catch (std::exception &e)
@@ -303,6 +307,12 @@ void CAddonDll<TheDll, TheStruct, TheProps>::Destroy()
     CLog::Log(LOGINFO, "ADDON: Dll Destroyed - %s", Name().c_str());
   }
   m_initialized = false;
+}
+
+template<class TheDll, typename TheStruct, typename TheProps>
+bool CAddonDll<TheDll, TheStruct, TheProps>::DllLoaded(void) const
+{
+  return m_pDll != NULL;
 }
 
 template<class TheDll, typename TheStruct, typename TheProps>

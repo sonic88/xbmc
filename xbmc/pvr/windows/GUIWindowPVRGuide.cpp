@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -63,9 +62,9 @@ void CGUIWindowPVRGuide::ResetObservers(void)
   g_EpgContainer.RegisterObserver(this);
 }
 
-void CGUIWindowPVRGuide::Notify(const Observable &obs, const CStdString& msg)
+void CGUIWindowPVRGuide::Notify(const Observable &obs, const ObservableMessage msg)
 {
-  if (msg.Equals("epg"))
+  if (msg == ObservableMessageEpg)
   {
     m_bUpdateRequired = true;
 
@@ -73,7 +72,7 @@ void CGUIWindowPVRGuide::Notify(const Observable &obs, const CStdString& msg)
     if (IsFocused() && m_iGuideView == GUIDE_VIEW_TIMELINE)
       UpdateData(false);
   }
-  else if (msg.Equals("epg-now"))
+  else if (msg == ObservableMessageEpgActiveItem)
   {
     if (IsVisible() && m_iGuideView != GUIDE_VIEW_TIMELINE)
       SetInvalid();
@@ -142,10 +141,10 @@ void CGUIWindowPVRGuide::UpdateViewChannel(bool bUpdateSelectedFile)
   m_parent->m_viewControl.SetCurrentView(CONTROL_LIST_GUIDE_CHANNEL);
 
   m_parent->SetLabel(m_iControlButton, g_localizeStrings.Get(19222) + ": " + g_localizeStrings.Get(19029));
-  if (bGotCurrentChannel)
+  if (bGotCurrentChannel && CurrentChannel.get())
     m_parent->SetLabel(CONTROL_LABELGROUP, CurrentChannel->ChannelName().c_str());
 
-  if (!bGotCurrentChannel || g_PVRManager.GetCurrentEpg(*m_parent->m_vecItems) == 0)
+  if ((!bGotCurrentChannel || g_PVRManager.GetCurrentEpg(*m_parent->m_vecItems) == 0) && CurrentChannel.get())
   {
     CFileItemPtr item;
     item.reset(new CFileItem("pvr://guide/" + CurrentChannel->ChannelName() + "/empty.epg", false));

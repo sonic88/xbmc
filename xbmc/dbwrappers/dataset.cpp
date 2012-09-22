@@ -75,18 +75,6 @@ string Database::prepare(const char *format, ...)
   return result;
 }
 
-string Database::vprepare(const char *format, va_list args)
-{
-  char p[1024];
-  p[1023] = '\0';
-
-  vsnprintf(p, 1023, format, args);
-
-  return p;
-}
-
-
-
 //************* Dataset implementation ***************
 
 Dataset::Dataset() {

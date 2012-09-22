@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -64,6 +63,7 @@ public:
   virtual char* player_status2str(player_status status)=0;
 
   virtual int audio_set_volume(int pid,float val)=0;
+  virtual int audio_set_delay(int pid, int delay)=0;
   
   virtual int codec_open_sub_read(void)=0;
   virtual int codec_close_sub_fd(int sub_fd)=0;
@@ -111,6 +111,7 @@ class DllLibAmplayer : public DllDynamic, DllLibAmplayerInterface
   DEFINE_METHOD1(char*,          player_status2str,     (player_status p1))
 
   DEFINE_METHOD2(int,            audio_set_volume,      (int p1, float p2))
+  DEFINE_METHOD2(int,            audio_set_delay,       (int p1, int p2))
 
   DEFINE_METHOD0(int,            codec_open_sub_read)
   DEFINE_METHOD1(int,            codec_close_sub_fd,    (int p1))
@@ -149,6 +150,7 @@ class DllLibAmplayer : public DllDynamic, DllLibAmplayerInterface
     RESOLVE_METHOD(player_status2str)
 
     RESOLVE_METHOD(audio_set_volume)
+    RESOLVE_METHOD(audio_set_delay)
 
     RESOLVE_METHOD(codec_open_sub_read)
     RESOLVE_METHOD(codec_close_sub_fd)

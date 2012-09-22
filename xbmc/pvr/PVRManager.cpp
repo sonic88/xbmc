@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -298,7 +297,8 @@ void CPVRManager::StopUpdateThreads(void)
 bool CPVRManager::Load(void)
 {
   /* start the add-on update thread */
-  m_addons->Start();
+  if (m_addons)
+    m_addons->Start();
 
   /* load at least one client */
   while (GetState() == ManagerStateStarting && m_addons && !m_addons->HasConnectedClients())
@@ -314,16 +314,16 @@ bool CPVRManager::Load(void)
     pWindow->Reset();
 
   /* load all channels and groups */
-  ShowProgressDialog(g_localizeStrings.Get(19236), 0);
+  ShowProgressDialog(g_localizeStrings.Get(19236), 0); // Loading channels from clients
   if (!m_channelGroups->Load() || GetState() != ManagerStateStarting)
     return false;
 
   /* get timers from the backends */
-  ShowProgressDialog(g_localizeStrings.Get(19237), 50);
+  ShowProgressDialog(g_localizeStrings.Get(19237), 50); // Loading timers from clients
   m_timers->Load();
 
   /* get recordings from the backend */
-  ShowProgressDialog(g_localizeStrings.Get(19238), 75);
+  ShowProgressDialog(g_localizeStrings.Get(19238), 75); // Loading recordings from clients
   m_recordings->Load();
 
   CSingleLock lock(m_critSection);
@@ -331,7 +331,7 @@ bool CPVRManager::Load(void)
     return false;
 
   /* start the other pvr related update threads */
-  ShowProgressDialog(g_localizeStrings.Get(19239), 85);
+  ShowProgressDialog(g_localizeStrings.Get(19239), 85); // Starting background threads
   m_guiInfo->Start();
 
   /* close the progess dialog */
@@ -345,7 +345,7 @@ void CPVRManager::ShowProgressDialog(const CStdString &strText, int iProgress)
   if (!m_progressHandle)
   {
     CGUIDialogExtendedProgressBar *loadingProgressDialog = (CGUIDialogExtendedProgressBar *)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
-    m_progressHandle = loadingProgressDialog->GetHandle(g_localizeStrings.Get(19235));
+    m_progressHandle = loadingProgressDialog->GetHandle(g_localizeStrings.Get(19235)); // PVR manager is starting up
   }
 
   m_progressHandle->SetPercentage((float)iProgress);
@@ -439,7 +439,7 @@ void CPVRManager::ResetDatabase(bool bShowProgress /* = true */)
   {
     pDlgProgress = (CGUIDialogProgress*)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
     pDlgProgress->SetLine(0, StringUtils::EmptyString);
-    pDlgProgress->SetLine(1, g_localizeStrings.Get(19186));
+    pDlgProgress->SetLine(1, g_localizeStrings.Get(19186)); // All data in the PVR database is being erased
     pDlgProgress->SetLine(2, StringUtils::EmptyString);
     pDlgProgress->StartModal();
     pDlgProgress->Progress();
@@ -686,6 +686,7 @@ bool CPVRManager::CheckParentalPIN(const char *strTitle /* = NULL */)
   if (!g_guiSettings.GetBool("pvrparental.enabled") || pinCode.empty())
     return true;
 
+  // Locked channel. Enter PIN:
   bool bValidPIN = CGUIDialogNumeric::ShowAndVerifyInput(pinCode, strTitle ? strTitle : g_localizeStrings.Get(19263).c_str(), true);
   if (!bValidPIN)
     // display message: The entered PIN number was incorrect
@@ -1000,8 +1001,8 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannel &channel, bool bPreview
   if (!bSwitched)
   {
     CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error,
-        g_localizeStrings.Get(19166),
-        g_localizeStrings.Get(19035));
+        g_localizeStrings.Get(19166), // PVR information
+        g_localizeStrings.Get(19035)); // This channel cannot be played. Check the log for details.
   }
 
   return bSwitched;

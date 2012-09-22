@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -114,7 +113,7 @@ void CEpgContainer::Clear(bool bClearDb /* = false */)
   }
 
   SetChanged();
-  NotifyObservers("epg", true);
+  NotifyObservers(ObservableMessageEpgContainer, true);
 
   if (bThreadRunning)
     Start();
@@ -150,12 +149,12 @@ bool CEpgContainer::Stop(void)
   return true;
 }
 
-void CEpgContainer::Notify(const Observable &obs, const CStdString& msg)
+void CEpgContainer::Notify(const Observable &obs, const ObservableMessage msg)
 {
   /* settings were updated */
-  if (msg.Equals("settings"))
+  if (msg == ObservableMessageGuiSettings)
     LoadSettings();
-  else if (msg.Equals("epg"))
+  else
   {
     SetChanged();
     NotifyObservers(msg);
@@ -314,13 +313,12 @@ CEpg *CEpgContainer::CreateChannelEpg(CPVRChannelPtr channel)
     epg->RegisterObserver(this);
   }
 
-  if (epg)
-    epg->SetChannel(channel);
+  epg->SetChannel(channel);
 
   m_bPreventUpdates = false;
   CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(m_iNextEpgUpdate);
 
-  NotifyObservers("epg");
+  NotifyObservers(ObservableMessageEpgContainer);
 
   return epg;
 }
@@ -514,21 +512,18 @@ bool CEpgContainer::UpdateEPG(bool bOnlyPending /* = false */)
       ++iUpdatedTables;
   }
 
-  if (!bInterrupted)
+  if (bInterrupted)
   {
-    if (bInterrupted)
-    {
-      /* the update has been interrupted. try again later */
-      time_t iNow;
-      CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(iNow);
-      m_iNextEpgUpdate = iNow + g_advancedSettings.m_iEpgRetryInterruptedUpdateInterval;
-    }
-    else
-    {
-      CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(m_iNextEpgUpdate);
-      m_iNextEpgUpdate += g_advancedSettings.m_iEpgUpdateCheckInterval;
-      m_bHasPendingUpdates = false;
-    }
+    /* the update has been interrupted. try again later */
+    time_t iNow;
+    CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(iNow);
+    m_iNextEpgUpdate = iNow + g_advancedSettings.m_iEpgRetryInterruptedUpdateInterval;
+  }
+  else
+  {
+    CDateTime::GetCurrentDateTime().GetAsUTCDateTime().GetAsTime(m_iNextEpgUpdate);
+    m_iNextEpgUpdate += g_advancedSettings.m_iEpgUpdateCheckInterval;
+    m_bHasPendingUpdates = false;
   }
 
   if (bShowProgress && !bOnlyPending)
@@ -538,7 +533,7 @@ bool CEpgContainer::UpdateEPG(bool bOnlyPending /* = false */)
   if (iUpdatedTables > 0)
   {
     SetChanged();
-    NotifyObservers("epg", true);
+    NotifyObservers(ObservableMessageEpgContainer, true);
   }
 
   CSingleLock lock(m_critSection);
@@ -631,7 +626,7 @@ bool CEpgContainer::CheckPlayingEvents(void)
     if (bFoundChanges)
     {
       SetChanged();
-      NotifyObservers("epg-now", true);
+      NotifyObservers(ObservableMessageEpgActiveItem, true);
     }
 
     /* pvr tags always start on the full minute */

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -253,36 +252,9 @@ bool CDVDInputStreamHTSP::UpdateItem(CFileItem& item)
 
 int CDVDInputStreamHTSP::GetTotalTime()
 {
-  if(m_event.id == 0)
-    return 0;
-
-  long duration = (time_t)m_event.stop - (time_t)m_event.start;
-  CDateTimeSpan time = CDateTimeSpan(0, 0, duration / 60, duration % 60);
-
-  return time.GetDays()    * 1000 * 60 * 60 * 24
-       + time.GetHours()   * 1000 * 60 * 60
-       + time.GetMinutes() * 1000 * 60
-       + time.GetSeconds() * 1000;
-}
-
-int CDVDInputStreamHTSP::GetStartTime()
-{
-  if(m_event.id == 0)
-    return 0;
-
-  time_t time_c;
-
-  CDateTime::GetCurrentDateTime().GetAsTime(time_c);
-
-  return (m_event.start - time_c) * 1000;
-}
-
-/*
-int CDVDInputStreamHTSP::GetTotalTime()
-{
-  if(m_event.id == 0)
-    return 0;
-  return (m_event.stop - m_event.start) * 1000;
+    if(m_event.id == 0)
+        return 0;
+    return (m_event.stop - m_event.start) * 1000;
 }
 
 int CDVDInputStreamHTSP::GetTime()
@@ -296,7 +268,6 @@ int CDVDInputStreamHTSP::GetTime()
        + time.GetMinutes() * 1000 * 60
        + time.GetSeconds() * 1000;
 }
-*/
 
 void CDVDInputStreamHTSP::Abort()
 {

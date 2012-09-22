@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,14 +14,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "DVDDemux.h"
 #include <map>
+#include "DllAvCodec.h"
+#include "DllAvFormat.h"
 
 #ifndef _LINUX
 #include <libavformat/avformat.h>
@@ -49,9 +50,11 @@ class CDemuxStreamVideoPVRClient : public CDemuxStreamVideo
   CDVDDemuxPVRClient *m_parent;
 public:
   CDemuxStreamVideoPVRClient(CDVDDemuxPVRClient *parent)
-    : m_parent(parent)
+    : m_parent(parent), m_pParser(NULL)
   {}
+  virtual ~CDemuxStreamVideoPVRClient();
   virtual void GetStreamInfo(std::string& strInfo);
+  AVCodecParserContext* m_pParser;
 };
 
 class CDemuxStreamAudioPVRClient : public CDemuxStreamAudio
@@ -61,7 +64,9 @@ public:
   CDemuxStreamAudioPVRClient(CDVDDemuxPVRClient *parent)
     : m_parent(parent)
   {}
+  virtual ~CDemuxStreamAudioPVRClient();
   virtual void GetStreamInfo(std::string& strInfo);
+  AVCodecParserContext* m_pParser;
 };
 
 class CDemuxStreamSubtitlePVRClient : public CDemuxStreamSubtitle
@@ -77,6 +82,9 @@ public:
 
 class CDVDDemuxPVRClient : public CDVDDemux
 {
+  friend class CDemuxStreamVideoPVRClient;
+  friend class CDemuxStreamAudioPVRClient;
+
 public:
 
   CDVDDemuxPVRClient();
@@ -102,10 +110,14 @@ protected:
   #define MAX_STREAMS 100
 #endif
   CDemuxStream* m_streams[MAX_STREAMS]; // maximum number of streams that ffmpeg can handle
+  CDemuxStream* m_streamsToParse[MAX_STREAMS];
   boost::shared_ptr<PVR::CPVRClient> m_pvrClient;
+
+  DllAvCodec  m_dllAvCodec;
 
 private:
   void RequestStreams();
   void UpdateStreams(PVR_STREAM_PROPERTIES *props);
+  bool ParsePacket(DemuxPacket* pPacket);
 };
 

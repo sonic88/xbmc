@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 #include "AddonManager.h"
@@ -308,14 +307,14 @@ bool CAddonMgr::HasAddons(const TYPE &type, bool enabled /*= true*/)
   return GetAddons(type, addons, enabled);
 }
 
-bool CAddonMgr::GetAllAddons(VECADDONS &addons, bool enabled /*= true*/, bool allowRepos /* = false */, bool bGetDisabledPVRAddons /* = true */)
+bool CAddonMgr::GetAllAddons(VECADDONS &addons, bool enabled /*= true*/, bool allowRepos /* = false */)
 {
   for (int i = ADDON_UNKNOWN+1; i < ADDON_VIZ_LIBRARY; ++i)
   {
     if (!allowRepos && ADDON_REPOSITORY == (TYPE)i)
       continue;
     VECADDONS temp;
-    if (CAddonMgr::Get().GetAddons((TYPE)i, temp, enabled, bGetDisabledPVRAddons))
+    if (CAddonMgr::Get().GetAddons((TYPE)i, temp, enabled))
       addons.insert(addons.end(), temp.begin(), temp.end());
   }
   return !addons.empty();
@@ -394,9 +393,8 @@ bool CAddonMgr::HasOutdatedAddons(bool enabled /*= true*/)
   return GetAllOutdatedAddons(dummy,enabled);
 }
 
-bool CAddonMgr::GetAddons(const TYPE &type, VECADDONS &addons, bool enabled /* = true */, bool bGetDisabledPVRAddons /* = true */)
+bool CAddonMgr::GetAddons(const TYPE &type, VECADDONS &addons, bool enabled /* = true */)
 {
-  CStdString xbmcPath = CSpecialProtocol::TranslatePath("special://xbmc/addons");
   CSingleLock lock(m_critSection);
   addons.clear();
   cp_status_t status;
@@ -406,13 +404,12 @@ bool CAddonMgr::GetAddons(const TYPE &type, VECADDONS &addons, bool enabled /* =
   for(int i=0; i <num; i++)
   {
     const cp_extension_t *props = exts[i];
-    bool bIsPVRAddon(TranslateType(props->ext_point_id) == ADDON_PVRDLL);
-
-    if (((bGetDisabledPVRAddons && bIsPVRAddon) ||
-        m_database.IsAddonDisabled(props->plugin->identifier) != enabled))
+    if (m_database.IsAddonDisabled(props->plugin->identifier) != enabled)
     {
       // get a pointer to a running pvrclient if it's already started, or we won't be able to change settings
-      if (bIsPVRAddon && g_PVRManager.IsStarted())
+      if (TranslateType(props->ext_point_id) == ADDON_PVRDLL &&
+          enabled &&
+          g_PVRManager.IsStarted())
       {
         AddonPtr pvrAddon;
         if (g_PVRClients->GetClient(props->plugin->identifier, pvrAddon))
@@ -435,7 +432,6 @@ bool CAddonMgr::GetAddon(const CStdString &str, AddonPtr &addon, const TYPE &typ
 {
   CSingleLock lock(m_critSection);
 
-  CStdString xbmcPath = CSpecialProtocol::TranslatePath("special://xbmc/addons");
   cp_status_t status;
   cp_plugin_info_t *cpaddon = m_cpluff->get_plugin_info(m_cp_context, str.c_str(), &status);
   if (status == CP_OK && cpaddon)
@@ -550,7 +546,7 @@ void CAddonMgr::FindAddons()
       SetChanged();
     }
   }
-  NotifyObservers("addons");
+  NotifyObservers(ObservableMessageAddons);
 }
 
 void CAddonMgr::RemoveAddon(const CStdString& ID)
@@ -559,7 +555,7 @@ void CAddonMgr::RemoveAddon(const CStdString& ID)
   {
     m_cpluff->uninstall_plugin(m_cp_context,ID.c_str());
     SetChanged();
-    NotifyObservers("addons");
+    NotifyObservers(ObservableMessageAddons);
   }
 }
 

@@ -7,6 +7,7 @@ testMain
 # Eclipse
 *.project
 *.cproject
+.classpath
 
 # generated files etc
 config.cache
@@ -28,6 +29,7 @@ config.log
 *.orig
 *.bak
 *.apk
+*.class
 
 # Windows specific generated files
 *.exp
@@ -96,6 +98,7 @@ autom4te.cache
 /configure
 /xbmc/stamp-h1
 /xbmc.bin
+/xbmc-test
 /xbmc-xrandr
 /git_revision.h
 /libtool
@@ -120,7 +123,7 @@ autom4te.cache
 /addons/visualization.waveform/Waveform_win32.vis
 /addons/visualization.itunes/iTunes.mvis
 /addons/script.module.pil/
-/addons/pvr.*/*.pvr
+/addons/pvr.*
 
 # /xbmc/android
 /xbmc/android/Makefile
@@ -144,6 +147,9 @@ autom4te.cache
 # /xbmc/peripherals/
 /xbmc/peripherals/bus/Makefile
 /xbmc/peripherals/devices/Makefile
+
+# /xbmc/main/
+/xbmc/main/Makefile
 
 # /lib/
 /lib/Makefile
@@ -217,6 +223,33 @@ lib/cmyth/Makefile
 # /lib/fribidi
 /lib/fribidi/libfridibidi/Debug
 /lib/fribidi/libfridibidi/Release
+
+# /lib/gtest
+/lib/gtest/Makefile.in
+/lib/gtest/aclocal.m4
+/lib/gtest/build-aux/config.guess
+/lib/gtest/build-aux/config.h.in
+/lib/gtest/build-aux/config.sub
+/lib/gtest/build-aux/depcomp
+/lib/gtest/build-aux/install-sh
+/lib/gtest/build-aux/ltmain.sh
+/lib/gtest/build-aux/missing
+/lib/gtest/configure
+/lib/gtest/m4/libtool.m4
+/lib/gtest/m4/ltoptions.m4
+/lib/gtest/m4/ltsugar.m4
+/lib/gtest/m4/ltversion.m4
+/lib/gtest/m4/lt~obsolete.m4
+/lib/gtest/Makefile
+/lib/gtest/build-aux/config.h
+/lib/gtest/build-aux/config.h.in~
+/lib/gtest/build-aux/stamp-h1
+/lib/gtest/fused-src/
+/lib/gtest/lib/
+/lib/gtest/libtool
+/lib/gtest/samples/.dirstamp
+/lib/gtest/scripts/gtest-config
+/lib/gtest/src/.dirstamp
 
 # /lib/jsoncpp
 /lib/jsoncpp/src/lib_json/Makefile
@@ -348,6 +381,8 @@ lib/cmyth/Makefile
 /project/BuildDependencies/lib
 /project/BuildDependencies/msys
 /project/BuildDependencies/scripts/tmp
+/project/BuildDependencies/bin/swig
+/project/BuildDependencies/bin/doxygen
 
 # /project/VS2008Express
 /project/VS2008Express/Debug
@@ -562,6 +597,7 @@ lib/cmyth/Makefile
 
 /xbmc/cores/dvdplayer/Makefile
 /xbmc/cores/amlplayer/Makefile
+/xbmc/cores/omxplayer/Makefile
 
 # /lib/ffmpeg/
 /lib/ffmpeg/config.h
@@ -1119,31 +1155,11 @@ lib/cmyth/Makefile
 # /xbmc/interfaces/
 /xbmc/interfaces/Makefile
 /xbmc/interfaces/python/Makefile
-/xbmc/interfaces/python/xbmcmodule/Makefile
-/xbmc/interfaces/python/linux/Makefile
-/xbmc/interfaces/python/linux/wrapper_python.def
+/xbmc/interfaces/python/generated/
 
 # /xbmc/network/
 /xbmc/network/Makefile
-
-/lib/python/Makefile
-/lib/python/Include/pyconfig.h
-/lib/python/Makefile.pre
-/lib/python/Modules/Setup
-/lib/python/Modules/Setup.config
-/lib/python/Modules/Setup.local
-/lib/python/Modules/config.c
-/lib/python/Parser/pgen
-/lib/python/Parser/pgen.exe
-/lib/python/PC/pythonnt_rc.h
-/lib/python/build/
-/lib/python/buildno
-/lib/python/pyconfig.h
-/lib/python/pyconfig.hbak
-/lib/python/python
-/lib/python/python.exe
-/lib/python/Mac/Python/
-/lib/python/PC/pythonnt_rc_d.h
+/xbmc/network/upnp/Makefile
 
 # /lib/libRTV/
 /lib/libRTV/Makefile
@@ -1168,11 +1184,6 @@ lib/cmyth/Makefile
 
 # /portable_data
 /portable_data
-
-# /xbmc/pvrclients
-/xbmc/pvrclients/Makefile.include
-/xbmc/pvrclients/*/.dependencies
-/xbmc/pvrclients/*/Makefile
 
 /xbmc/screensavers/Makefile
 
@@ -1281,44 +1292,4 @@ xbmc/visualizations/EGLHelpers/Makefile
 /addons/library.xbmc.pvr/libXBMC_pvr.dll
 /addons/library.xbmc.pvr/libXBMC_pvr.lib
 
-/addons/pvr.team-mediaportal.tvserver/XBMC_MPTV.lib
-/addons/pvr.team-mediaportal.tvserver-tsreader/XBMC_MPTV.lib
-/addons/pvr.fortherecord.argus/XBMC_ForTheRecord.lib
-/addons/pvr.fortherecord.argus/libcurl.dll
-/addons/pvr.fortherecord.argus/libcurld.dll
-/addons/pvr.hts/XBMC_Tvheadend_win32.lib
-/addons/pvr.vdr.vnsi/XBMC_VDR_vnsi_win32.lib
-/addons/pvr.vdr.xvdr/XBMC_VDR_xvdr_win32.lib
-/addons/pvr.vuplus/XBMC_vuplus_win32.lib
-/addons/pvr.vuplus/libcurl.dll
-/addons/pvr.vuplus/libcurld.dll
-
-/xbmc/pvrclients/MediaPortal/project/VS2010Express/Debug
-/xbmc/pvrclients/MediaPortal/project/VS2010Express/Release
-
-/xbmc/pvrclients/tvheadend/project/VS2010Express/Debug
-/xbmc/pvrclients/tvheadend/project/VS2010Express/Release
-
-/xbmc/pvrclients/vdr-vnsi/project/VS2010Express/Debug
-/xbmc/pvrclients/vdr-vnsi/project/VS2010Express/Release
-
-/xbmc/pvrclients/vuplus/project/VS2010Express/Debug
-/xbmc/pvrclients/vuplus/project/VS2010Express/Release
-
-/xbmc/pvrclients/xvdr/project/VS2010Express/Debug
-/xbmc/pvrclients/xvdr/project/VS2010Express/Release
-
-/xbmc/pvrclients/MediaPortal/lib/live555/obj
-/xbmc/pvrclients/MediaPortal/lib/live555/shared
-/xbmc/pvrclients/MediaPortal/project/VS2010Express/Debug-tsreader
-/xbmc/pvrclients/MediaPortal/project/VS2010Express/Release-tsreader
-
-/xbmc/pvrclients/ForTheRecord/project/VS2010Express/Debug
-/xbmc/pvrclients/ForTheRecord/project/VS2010Express/Release
-/xbmc/pvrclients/ForTheRecord/project/VS2010Express/Debug-RTSP/
-/xbmc/pvrclients/ForTheRecord/project/VS2010Express/Release-RTSP/
-
-/xbmc/pvrclients/lib/curl-7.21.6/lib/Debug
-/xbmc/pvrclients/lib/curl-7.21.6/lib/Release
-/xbmc/pvrclients/lib/curl-7.21.6/libcurl.*
-/xbmc/pvrclients/lib/curl-7.21.6/libcurld.*
+/pvr-addons

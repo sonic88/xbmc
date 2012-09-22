@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -54,6 +53,7 @@ CGUIDialogAddonInfo::CGUIDialogAddonInfo(void)
     : CGUIDialog(WINDOW_DIALOG_ADDON_INFO, "DialogAddonInfo.xml")
 {
   m_item = CFileItemPtr(new CFileItem);
+  m_loadType = KEEP_IN_MEMORY;
 }
 
 CGUIDialogAddonInfo::~CGUIDialogAddonInfo(void)
@@ -214,10 +214,8 @@ void CGUIDialogAddonInfo::OnEnable(bool enable)
   CStdString xbmcPath = CSpecialProtocol::TranslatePath("special://xbmc/addons");
   CAddonDatabase database;
   database.Open();
-//  if (m_localAddon->Type() == ADDON_PVRDLL && m_localAddon->Path().Left(xbmcPath.size()).Equals(xbmcPath))
-//    database.EnableSystemPVRAddon(m_localAddon->ID(), enable);
-//  else
-    database.DisableAddon(m_localAddon->ID(), !enable);
+  database.DisableAddon(m_localAddon->ID(), !enable);
+  database.Close();
 
   if (m_localAddon->Type() == ADDON_PVRDLL && enable)
     g_application.StartPVRManager();

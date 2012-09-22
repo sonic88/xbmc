@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -118,7 +117,7 @@
 #include "filesystem/FileDAAP.h"
 #endif
 #ifdef HAS_UPNP
-#include "network/UPnP.h"
+#include "network/upnp/UPnP.h"
 #include "filesystem/UPnPDirectory.h"
 #endif
 #if defined(_LINUX) && defined(HAS_FILESYSTEM_SMB)
@@ -437,6 +436,15 @@ CApplication::CApplication(void)
 #ifdef HAS_DVD_DRIVE
   m_Autorun = new CAutorun();
 #endif
+
+  m_splash = NULL;
+  m_threadID = 0;
+  m_eCurrentPlayer = EPC_NONE;
+  m_progressTrackingPlayCountUpdate = false;
+  m_currentStackPosition = 0;
+  m_lastFrameTime = 0;
+  m_lastRenderTime = 0;
+  m_bTestMode = false;
 }
 
 CApplication::~CApplication(void)
@@ -456,6 +464,8 @@ CApplication::~CApplication(void)
   delete &m_httpWebinterfaceAddonsHandler;
 #endif
 #endif
+  delete m_musicInfoScanner;
+  delete m_videoInfoScanner;
   delete &m_progressTrackingVideoResumeBookmark;
 #ifdef HAS_DVD_DRIVE
   delete m_Autorun;
@@ -1228,7 +1238,6 @@ bool CApplication::Initialize()
 #ifdef HAS_DX
     g_windowManager.Add(new CGUIWindowTestPatternDX);      // window id = 8
 #endif
-    g_windowManager.Add(new CGUIDialogTeletext);               // window id =
     g_windowManager.Add(new CGUIWindowSettingsScreenCalibration); // window id = 11
     g_windowManager.Add(new CGUIWindowSettingsCategory);         // window id = 12 slideshow:window id 2007
     g_windowManager.Add(new CGUIWindowVideoNav);                 // window id = 36
@@ -1296,18 +1305,18 @@ bool CApplication::Initialize()
     g_windowManager.Add(new CGUIWindowMusicPlaylistEditor);    // window id = 503
 
     /* Load PVR related Windows and Dialogs */
-    g_windowManager.Add(new CGUIWindowPVR);                    // window id = 600
-    g_windowManager.Add(new CGUIDialogPVRGuideInfo);           // window id = 601
-    g_windowManager.Add(new CGUIDialogPVRRecordingInfo);       // window id = 602
-    g_windowManager.Add(new CGUIDialogPVRTimerSettings);       // window id = 603
-    g_windowManager.Add(new CGUIDialogPVRGroupManager);        // window id = 604
-    g_windowManager.Add(new CGUIDialogPVRChannelManager);      // window id = 605
-    g_windowManager.Add(new CGUIDialogPVRGuideSearch);         // window id = 606
-    g_windowManager.Add(new CGUIDialogPVRChannelsOSD);         // window id = 609
-    g_windowManager.Add(new CGUIDialogPVRGuideOSD);            // window id = 610
-    g_windowManager.Add(new CGUIDialogPVRDirectorOSD);         // window id = 611
-    g_windowManager.Add(new CGUIDialogPVRCutterOSD);           // window id = 612
-    g_windowManager.Add(new CGUIDialogTeletext);               // window id = 613
+    g_windowManager.Add(new CGUIDialogTeletext);               // window id = 600
+    g_windowManager.Add(new CGUIWindowPVR);                    // window id = 601
+    g_windowManager.Add(new CGUIDialogPVRGuideInfo);           // window id = 602
+    g_windowManager.Add(new CGUIDialogPVRRecordingInfo);       // window id = 603
+    g_windowManager.Add(new CGUIDialogPVRTimerSettings);       // window id = 604
+    g_windowManager.Add(new CGUIDialogPVRGroupManager);        // window id = 605
+    g_windowManager.Add(new CGUIDialogPVRChannelManager);      // window id = 606
+    g_windowManager.Add(new CGUIDialogPVRGuideSearch);         // window id = 607
+    g_windowManager.Add(new CGUIDialogPVRChannelsOSD);         // window id = 610
+    g_windowManager.Add(new CGUIDialogPVRGuideOSD);            // window id = 611
+    g_windowManager.Add(new CGUIDialogPVRDirectorOSD);         // window id = 612
+    g_windowManager.Add(new CGUIDialogPVRCutterOSD);           // window id = 613
 
     g_windowManager.Add(new CGUIDialogSelect);             // window id = 2000
     g_windowManager.Add(new CGUIDialogMusicInfo);          // window id = 2001
@@ -1671,10 +1680,10 @@ void CApplication::StartUPnP()
 void CApplication::StopUPnP(bool bWait)
 {
 #ifdef HAS_UPNP
-  if (CUPnP::IsInstantiated())
+  if (UPNP::CUPnP::IsInstantiated())
   {
     CLog::Log(LOGNOTICE, "stopping upnp");
-    CUPnP::ReleaseInstance(bWait);
+    UPNP::CUPnP::ReleaseInstance(bWait);
   }
 #endif
 }
@@ -1752,7 +1761,7 @@ void CApplication::StartUPnPRenderer()
   if (g_guiSettings.GetBool("services.upnprenderer"))
   {
     CLog::Log(LOGNOTICE, "starting upnp renderer");
-    CUPnP::GetInstance()->StartRenderer();
+    UPNP::CUPnP::GetInstance()->StartRenderer();
   }
 #endif
 }
@@ -1760,10 +1769,10 @@ void CApplication::StartUPnPRenderer()
 void CApplication::StopUPnPRenderer()
 {
 #ifdef HAS_UPNP
-  if (CUPnP::IsInstantiated())
+  if (UPNP::CUPnP::IsInstantiated())
   {
     CLog::Log(LOGNOTICE, "stopping upnp renderer");
-    CUPnP::GetInstance()->StopRenderer();
+    UPNP::CUPnP::GetInstance()->StopRenderer();
   }
 #endif
 }
@@ -1774,7 +1783,7 @@ void CApplication::StartUPnPServer()
   if (g_guiSettings.GetBool("services.upnpserver"))
   {
     CLog::Log(LOGNOTICE, "starting upnp server");
-    CUPnP::GetInstance()->StartServer();
+    UPNP::CUPnP::GetInstance()->StartServer();
   }
 #endif
 }
@@ -1782,10 +1791,10 @@ void CApplication::StartUPnPServer()
 void CApplication::StopUPnPServer()
 {
 #ifdef HAS_UPNP
-  if (CUPnP::IsInstantiated())
+  if (UPNP::CUPnP::IsInstantiated())
   {
     CLog::Log(LOGNOTICE, "stopping upnp server");
-    CUPnP::GetInstance()->StopServer();
+    UPNP::CUPnP::GetInstance()->StopServer();
   }
 #endif
 }
@@ -1827,7 +1836,8 @@ void CApplication::StartEPGManager(void)
 void CApplication::StopPVRManager()
 {
   CLog::Log(LOGINFO, "stopping PVRManager");
-  StopPlaying();
+  if (g_PVRManager.IsPlaying())
+    StopPlaying();
   g_PVRManager.Stop();
 }
 
@@ -1891,16 +1901,24 @@ void CApplication::ReloadSkin()
   m_skinReloading = false;
   CGUIMessage msg(GUI_MSG_LOAD_SKIN, -1, g_windowManager.GetActiveWindow());
   g_windowManager.SendMessage(msg);
+  
   // Reload the skin, restoring the previously focused control.  We need this as
   // the window unload will reset all control states.
+  int iCtrlID = -1;
   CGUIWindow* pWindow = g_windowManager.GetWindow(g_windowManager.GetActiveWindow());
-  int iCtrlID = pWindow->GetFocusedControlID();
+  if (pWindow)
+    iCtrlID = pWindow->GetFocusedControlID();
+  
   g_application.LoadSkin(g_guiSettings.GetString("lookandfeel.skin"));
-  pWindow = g_windowManager.GetWindow(g_windowManager.GetActiveWindow());
-  if (pWindow && pWindow->HasSaveLastControl())
+ 
+  if (iCtrlID != -1)
   {
-    CGUIMessage msg3(GUI_MSG_SETFOCUS, g_windowManager.GetActiveWindow(), iCtrlID, 0);
-    pWindow->OnMessage(msg3);
+    pWindow = g_windowManager.GetWindow(g_windowManager.GetActiveWindow());
+    if (pWindow && pWindow->HasSaveLastControl())
+    {
+      CGUIMessage msg3(GUI_MSG_SETFOCUS, g_windowManager.GetActiveWindow(), iCtrlID, 0);
+      pWindow->OnMessage(msg3);
+    }
   }
 }
 
@@ -2166,6 +2184,7 @@ bool CApplication::LoadUserWindows()
             continue;
           }
           pWindow->SetVisibleCondition(visibleCondition);
+          pWindow->SetLoadType(CGUIWindow::KEEP_IN_MEMORY);
           g_windowManager.AddCustomWindow(pWindow);
         }
       }
@@ -3871,14 +3890,23 @@ bool CApplication::PlayStack(const CFileItem& item, bool bRestart)
         CLog::Log(LOGERROR, "%s - Cannot open VideoDatabase", __FUNCTION__);
     }
 
-    // set startoffset in movieitem, track stack item for updating purposes, and finally play disc part
-    if (selectedFile > 0 && selectedFile <= (int)movieList.Size())
+    // make sure that the selected part is within the boundaries
+    if (selectedFile <= 0)
     {
-      movieList[selectedFile - 1]->m_lStartOffset = startoffset > 0 ? STARTOFFSET_RESUME : 0;
-      movieList[selectedFile - 1]->SetProperty("stackFileItemToUpdate", true);
-      *m_stackFileItemToUpdate = item;
-      return PlayFile(*(movieList[selectedFile - 1]));
+      CLog::Log(LOGWARNING, "%s - Selected part %d out of range, playing part 1", __FUNCTION__, selectedFile);
+      selectedFile = 1;
     }
+    else if (selectedFile > movieList.Size())
+    {
+      CLog::Log(LOGWARNING, "%s - Selected part %d out of range, playing part %d", __FUNCTION__, selectedFile, movieList.Size());
+      selectedFile = movieList.Size();
+    }
+
+    // set startoffset in movieitem, track stack item for updating purposes, and finally play disc part
+    movieList[selectedFile - 1]->m_lStartOffset = startoffset > 0 ? STARTOFFSET_RESUME : 0;
+    movieList[selectedFile - 1]->SetProperty("stackFileItemToUpdate", true);
+    *m_stackFileItemToUpdate = item;
+    return PlayFile(*(movieList[selectedFile - 1]));
   }
   // case 2: all other stacks
   else
@@ -3993,12 +4021,18 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
   if (item.IsDiscStub())
   {
 #ifdef HAS_DVD_DRIVE
-    // Display the Play Eject dialog
-    if (CGUIDialogPlayEject::ShowAndGetInput(item))
-      // PlayDiscAskResume takes path to disc. No parameter means default DVD drive.
-      // Can't do better as CGUIDialogPlayEject calls CMediaManager::IsDiscInDrive, which assumes default DVD drive anyway
-      return MEDIA_DETECT::CAutorun::PlayDiscAskResume();
+    // Display the Play Eject dialog if there is any optical disc drive
+    if (g_mediaManager.HasOpticalDrive())
+    {
+      if (CGUIDialogPlayEject::ShowAndGetInput(item))
+        // PlayDiscAskResume takes path to disc. No parameter means default DVD drive.
+        // Can't do better as CGUIDialogPlayEject calls CMediaManager::IsDiscInDrive, which assumes default DVD drive anyway
+        return MEDIA_DETECT::CAutorun::PlayDiscAskResume();
+    }
+    else
 #endif
+      CGUIDialogOK::ShowAndGetInput(435, 0, 436, 0);
+
     return true;
   }
 
@@ -4013,6 +4047,7 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
     return false;
   }
 
+#ifdef HAS_UPNP
   if (URIUtils::IsUPnP(item.GetPath()))
   {
     CFileItem item_new(item);
@@ -4020,6 +4055,7 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
       return PlayFile(item_new, false);
     return false;
   }
+#endif
 
   // if we have a stacked set of files, we need to setup our stack routines for
   // "seamless" seeking and total time of the movie etc.
@@ -4176,7 +4212,11 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
   // one of the players that allows gapless playback (paplayer, dvdplayer)
   if (m_pPlayer)
   {
-    if ( !(m_eCurrentPlayer == eNewCore && (m_eCurrentPlayer == EPC_DVDPLAYER || m_eCurrentPlayer  == EPC_PAPLAYER)) )
+    if ( !(m_eCurrentPlayer == eNewCore && (m_eCurrentPlayer == EPC_DVDPLAYER || m_eCurrentPlayer  == EPC_PAPLAYER
+#if defined(HAS_OMXPLAYER)
+            || m_eCurrentPlayer == EPC_OMXPLAYER
+#endif            
+            )) )
     {
       delete m_pPlayer;
       m_pPlayer = NULL;
@@ -4751,7 +4791,10 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
       {
         m_iScreenSaveLock = 2;
         CGUIMessage msg(GUI_MSG_CHECK_LOCK,0,0);
-        g_windowManager.GetWindow(WINDOW_SCREENSAVER)->OnMessage(msg);
+
+        CGUIWindow* pWindow = g_windowManager.GetWindow(WINDOW_SCREENSAVER);
+        if (pWindow)
+          pWindow->OnMessage(msg);
       }
     if (m_iScreenSaveLock == -1)
     {
@@ -5326,8 +5369,10 @@ void CApplication::ProcessSlow()
 #endif
 
   // update upnp server/renderer states
-  if(CUPnP::IsInstantiated())
-    CUPnP::GetInstance()->UpdateState();
+#ifdef HAS_UPNP
+  if(UPNP::CUPnP::IsInstantiated())
+    UPNP::CUPnP::GetInstance()->UpdateState();
+#endif
 
   //Check to see if current playing Title has changed and whether we should broadcast the fact
   CheckForTitleChange();
@@ -5529,6 +5574,10 @@ void CApplication::SetHardwareVolume(float hardwareVolume)
     value = 1.0f;
 
   CAEFactory::SetVolume(value);
+
+  /* for platforms where we do not have AE */
+  if (m_pPlayer)
+    m_pPlayer->SetVolume(g_settings.m_fVolumeLevel);
 }
 
 int CApplication::GetVolume() const

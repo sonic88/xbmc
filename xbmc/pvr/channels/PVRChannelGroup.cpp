@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -652,7 +651,7 @@ bool CPVRChannelGroup::UpdateGroupEntries(const CPVRChannelGroup &channels)
     SetChanged();
     lock.Leave();
 
-    NotifyObservers(HasNewChannels() || bRemoved || bRenumbered ? "channelgroup-reset" : "channelgroup");
+    NotifyObservers(HasNewChannels() || bRemoved || bRenumbered ? ObservableMessageChannelGroup : ObservableMessageChannelGroupReset);
 
     bReturn = Persist();
   }
@@ -943,9 +942,9 @@ void CPVRChannelGroup::ResetChannelNumbers(void)
     m_members.at(iChannelPtr).channel->SetCachedChannelNumber(0);
 }
 
-void CPVRChannelGroup::Notify(const Observable &obs, const CStdString& msg)
+void CPVRChannelGroup::Notify(const Observable &obs, const ObservableMessage msg)
 {
-  if (msg.Equals("settings"))
+  if (msg == ObservableMessageGuiSettings)
   {
     CSingleLock lock(m_critSection);
     bool bUsingBackendChannelOrder   = g_guiSettings.GetBool("pvrmanager.backendchannelorder");
@@ -1089,9 +1088,11 @@ int CPVRChannelGroup::GroupType(void) const
   return m_iGroupType;
 }
 
-const CStdString& CPVRChannelGroup::GroupName(void) const
+CStdString CPVRChannelGroup::GroupName(void) const
 {
-  return m_strGroupName;
+  CSingleLock lock(m_critSection);
+  CStdString strReturn(m_strGroupName);
+  return strReturn;
 }
 
 bool CPVRChannelGroup::UpdateChannel(const CFileItem &item, bool bHidden, bool bVirtual, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const CStdString &strChannelName, const CStdString &strIconPath, const CStdString &strStreamURL)

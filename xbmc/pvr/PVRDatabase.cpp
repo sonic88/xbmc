@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -171,7 +170,7 @@ bool CPVRDatabase::CreateTables()
   {
     // disable all PVR add-on when started the first time
     ADDON::VECADDONS addons;
-    if ((bReturn = CAddonMgr::Get().GetAddons(ADDON_PVRDLL, addons, true, false)) == false)
+    if ((bReturn = CAddonMgr::Get().GetAddons(ADDON_PVRDLL, addons, true)) == false)
       CLog::Log(LOGERROR, "PVR - %s - failed to get add-ons from the add-on manager", __FUNCTION__);
     else
     {
@@ -243,7 +242,7 @@ bool CPVRDatabase::UpdateOldVersion(int iVersion)
       {
         // bit of a hack, but we need to keep the version/contents of the non-pvr databases the same to allow clean upgrades
         ADDON::VECADDONS addons;
-        if ((bReturn = CAddonMgr::Get().GetAddons(ADDON_PVRDLL, addons, true, false)) == false)
+        if ((bReturn = CAddonMgr::Get().GetAddons(ADDON_PVRDLL, addons, true)) == false)
           CLog::Log(LOGERROR, "PVR - %s - failed to get add-ons from the add-on manager", __FUNCTION__);
         else
         {
@@ -341,7 +340,7 @@ int CPVRDatabase::Get(CPVRChannelGroupInternal &results)
       "channels.iClientChannelNumber, channels.sInputFormat, channels.sInputFormat, channels.sStreamURL, channels.iEncryptionSystem, map_channelgroups_channels.iChannelNumber, channels.idEpg "
       "FROM map_channelgroups_channels "
       "LEFT JOIN channels ON channels.idChannel = map_channelgroups_channels.idChannel "
-      "WHERE map_channelgroups_channels.idGroup = %u  AND channels.bIsRadio = %u ", results.IsRadio() ? XBMC_INTERNAL_GROUP_RADIO : XBMC_INTERNAL_GROUP_TV, results.IsRadio());
+      "WHERE map_channelgroups_channels.idGroup = %u", results.IsRadio() ? XBMC_INTERNAL_GROUP_RADIO : XBMC_INTERNAL_GROUP_TV);
   if (ResultQuery(strQuery))
   {
     try
@@ -369,9 +368,7 @@ int CPVRDatabase::Get(CPVRChannelGroupInternal &results)
         channel->m_iClientEncryptionSystem = m_pDS->fv("iEncryptionSystem").get_asInt();
         channel->m_iEpgId                  = m_pDS->fv("idEpg").get_asInt();
 
-        CLog::Log(LOGDEBUG, "PVRDB - %s - channel '%s' (id: %i) loaded from the database (client id: %i channel uid: %i channel nr: %i)",
-            __FUNCTION__, channel->m_strChannelName.c_str(), channel->m_iChannelId, channel->m_iClientId, channel->m_iUniqueId, channel->m_iClientChannelNumber);
-
+        CLog::Log(LOGDEBUG, "PVR - %s - channel '%s' loaded from the database", __FUNCTION__, channel->m_strChannelName.c_str());
         PVRChannelGroupMember newMember = { channel, m_pDS->fv("iChannelNumber").get_asInt() };
         results.m_members.push_back(newMember);
 
@@ -672,17 +669,7 @@ bool CPVRDatabase::Get(CPVRChannelGroups &results)
         data.SetGroupType(m_pDS->fv("iGroupType").get_asInt());
         results.Update(data);
 
-        if (data.IsRadio())
-        {
-          CLog::Log(LOGDEBUG, "PVRDB - %s - radio group '%s' loaded from the database",
-            __FUNCTION__, data.GroupName().c_str() );
-        }
-        else
-        {
-          CLog::Log(LOGDEBUG, "PVRDB - %s - TV group '%s' loaded from the database",
-            __FUNCTION__, data.GroupName().c_str() );
-        }
-
+        CLog::Log(LOGDEBUG, "PVR - %s - group '%s' loaded from the database", __FUNCTION__, data.GroupName().c_str());
         m_pDS->next();
       }
       m_pDS->close();
@@ -690,7 +677,7 @@ bool CPVRDatabase::Get(CPVRChannelGroups &results)
     }
     catch (...)
     {
-      CLog::Log(LOGERROR, "%s - couldn't load channelgroups from the database", __FUNCTION__);
+      CLog::Log(LOGERROR, "%s - couldn't load channels from the database", __FUNCTION__);
     }
   }
 
@@ -879,23 +866,11 @@ int CPVRDatabase::Persist(const AddonPtr client)
     return iReturn;
   }
 
-  /* only add this client if it's not already in the database */
-  iReturn = GetClientId(client->ID());
-  if (iReturn <= 0)
-  {
-    CStdString strQuery = FormatSQL("INSERT INTO clients (sName, sUid) VALUES ('%s', '%s');",
-        client->Name().c_str(), client->ID().c_str());
+  CStdString strQuery = FormatSQL("REPLACE INTO clients (sName, sUid) VALUES ('%s', '%s');",
+      client->Name().c_str(), client->ID().c_str());
 
-    if (ExecuteQuery(strQuery))
-    {
-      iReturn = (int) m_pDS->lastinsertid();
-
-      CAddonDatabase database;
-      database.Open();
-      database.DisableAddon(client->ID());
-      database.Close();
-    }
-  }
+  if (ExecuteQuery(strQuery))
+    iReturn = (int) m_pDS->lastinsertid();
 
   return iReturn;
 }

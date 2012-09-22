@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -143,6 +142,7 @@ using namespace PERIPHERALS;
 CGUIWindowSettingsCategory::CGUIWindowSettingsCategory(void)
     : CGUIWindow(WINDOW_SETTINGS_MYPICTURES, "SettingsCategory.xml")
 {
+  m_loadType = KEEP_IN_MEMORY;
   m_pOriginalSpin = NULL;
   m_pOriginalRadioButton = NULL;
   m_pOriginalButton = NULL;
@@ -150,7 +150,17 @@ CGUIWindowSettingsCategory::CGUIWindowSettingsCategory(void)
   m_pOriginalImage = NULL;
   m_pOriginalEdit = NULL;
   // set the correct ID range...
-  m_idRange = 9;
+  m_idRange.clear();
+  m_idRange.push_back(WINDOW_SETTINGS_MYPICTURES);
+  m_idRange.push_back(WINDOW_SETTINGS_MYPROGRAMS);
+  m_idRange.push_back(WINDOW_SETTINGS_MYWEATHER);
+  m_idRange.push_back(WINDOW_SETTINGS_MYMUSIC);
+  m_idRange.push_back(WINDOW_SETTINGS_SYSTEM);
+  m_idRange.push_back(WINDOW_SETTINGS_MYVIDEOS);
+  m_idRange.push_back(WINDOW_SETTINGS_SERVICE);
+  m_idRange.push_back(WINDOW_SETTINGS_APPEARANCE);
+  m_idRange.push_back(WINDOW_SETTINGS_MYPVR);
+
   m_iScreen = 0;
   m_strOldTrackFormat = "";
   m_strOldTrackFormatRight = "";
@@ -219,6 +229,7 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
       }
       return true;
     }
+    break;
   case GUI_MSG_LOAD_SKIN:
     {
       if (IsActive())
@@ -247,6 +258,7 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
       m_delayedSetting = NULL;
       return true;
     }
+    break;
   case GUI_MSG_UPDATE:
     if (HasID(message.GetSenderId()))
       UpdateSettings();
@@ -1001,7 +1013,7 @@ void CGUIWindowSettingsCategory::UpdateSettings()
   }
 
   g_guiSettings.SetChanged();
-  g_guiSettings.NotifyObservers("settings", true);
+  g_guiSettings.NotifyObservers(ObservableMessageGuiSettings, true);
 }
 
 void CGUIWindowSettingsCategory::OnClick(CBaseSettingControl *pSettingControl)
@@ -2046,8 +2058,8 @@ CGUIControl* CGUIWindowSettingsCategory::AddSetting(CSetting *pSetting, float wi
   {
     pControl->AllocResources();
     group->AddControl(pControl);
-    m_vecSettings.push_back(pSettingControl);
   }
+  m_vecSettings.push_back(pSettingControl);
   return pControl;
 }
 
@@ -2873,8 +2885,7 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
 
 void CGUIWindowSettingsCategory::NetworkInterfaceChanged(void)
 {
-  return;
-
+#if 0
    NetworkAssignment iAssignment;
    CStdString sIPAddress;
    CStdString sNetworkMask;
@@ -2927,6 +2938,7 @@ void CGUIWindowSettingsCategory::NetworkInterfaceChanged(void)
       GetSetting("network.essid")->GetSetting()->FromString("");
       GetSetting("network.key")->GetSetting()->FromString("");
    }
+#endif
 }
 
 void CGUIWindowSettingsCategory::ValidatePortNumber(CBaseSettingControl* pSettingControl, const CStdString& userPort, const CStdString& privPort, bool listening/*=true*/)

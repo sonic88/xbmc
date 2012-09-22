@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -329,7 +328,10 @@ void CDVDDemuxHTSP::SubscriptionStart (htsmsg_t *m)
     }
 
     if((lang = htsmsg_get_str(sub, "language")))
+    {
       strncpy(st.g->language, lang, sizeof(st.g->language));
+      st.g->language[sizeof(st.g->language) - 1] = '\0';
+    }
 
     st.g->iId         = m_Streams.size();
     st.g->iPhysicalId = index;

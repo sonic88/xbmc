@@ -1,5 +1,5 @@
 /*
-*      Copyright (C) 2005-2008 Team XBMC
+*      Copyright (C) 2012 Team XBMC
 *      http://www.xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, write to
-*  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-*  http://www.gnu.org/copyleft/gpl.html
+*  along with XBMC; see the file COPYING.  If not, see
+*  <http://www.gnu.org/licenses/>.
 *
 */
 
@@ -248,7 +247,7 @@ void CGUIEPGGridContainer::Render()
 
     pos -= missingSection * m_blockSize;
   }
-  while (pos < end && (rulerOffset/m_rulerUnit+1) < m_rulerItems.size())
+  while (pos < end && (rulerOffset/m_rulerUnit+1) < (int)m_rulerItems.size())
   {
     item = m_rulerItems[rulerOffset/m_rulerUnit+1];
     if (m_orientation == VERTICAL)
@@ -711,7 +710,7 @@ bool CGUIEPGGridContainer::OnMessage(CGUIMessage& message)
         m_programmeItems.push_back(items->Get(i));
 
       ClearGridIndex();
-      m_gridIndex = (struct GridItemsPtr **) calloc(1,m_channelItems.size()*sizeof(struct GridItemsPtr));
+      m_gridIndex = (struct GridItemsPtr **) calloc(1,m_channelItems.size()*sizeof(struct GridItemsPtr*));
       if (m_gridIndex != NULL)
       {
         for (unsigned int i = 0; i < m_channelItems.size(); i++)
@@ -1156,7 +1155,7 @@ void CGUIEPGGridContainer::SetChannel(const CPVRChannel &channel)
   int iChannelIndex(-1);
   for (unsigned int iIndex = 0; iIndex < m_channelItems.size(); iIndex++)
   {
-    int iChannelId = (int) m_channelItems[iIndex]->GetProperty("channelid").asInteger(-1);
+    int iChannelId = (int)m_channelItems[iIndex]->GetProperty("channelid").asInteger(-1);
     if (iChannelId == channel.ChannelID())
     {
       iChannelIndex = iIndex;

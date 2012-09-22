@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -599,7 +598,6 @@ void CAddonCallbacksGUI::Window_SetPropertyDouble(void *addonData, GUIHANDLE han
   Unlock();
 }
 
-static string Window_GetProperty_retval;
 const char* CAddonCallbacksGUI::Window_GetProperty(void *addonData, GUIHANDLE handle, const char *key)
 {
   CAddonCallbacks* helper = (CAddonCallbacks*) addonData;
@@ -621,10 +619,10 @@ const char* CAddonCallbacksGUI::Window_GetProperty(void *addonData, GUIHANDLE ha
 
   Lock();
   CStdString lowerKey = key;
-  Window_GetProperty_retval = pWindow->GetProperty(lowerKey.ToLower()).asString();
+  string value = pWindow->GetProperty(lowerKey.ToLower()).asString();
   Unlock();
 
-  return Window_GetProperty_retval.c_str();
+  return strdup(value.c_str());
 }
 
 int CAddonCallbacksGUI::Window_GetPropertyInt(void *addonData, GUIHANDLE handle, const char *key)
@@ -648,7 +646,7 @@ int CAddonCallbacksGUI::Window_GetPropertyInt(void *addonData, GUIHANDLE handle,
 
   Lock();
   CStdString lowerKey = key;
-  int value = (int) pWindow->GetProperty(lowerKey.ToLower()).asInteger();
+  int value = (int)pWindow->GetProperty(lowerKey.ToLower()).asInteger();
   Unlock();
 
   return value;
@@ -1235,7 +1233,7 @@ CGUIAddonWindow::CGUIAddonWindow(int id, CStdString strXML, CAddon* addon)
  , m_actionEvent(true)
  , m_addon(addon)
 {
-  m_loadOnDemand  = false;
+  m_loadType = LOAD_ON_GUI_INIT;
   CBOnInit        = NULL;
   CBOnFocus       = NULL;
   CBOnClick       = NULL;
@@ -1483,7 +1481,6 @@ CGUIAddonWindowDialog::CGUIAddonWindowDialog(int id, CStdString strXML, CAddon* 
 : CGUIAddonWindow(id,strXML,addon)
 {
   m_bRunning = false;
-  m_loadOnDemand = false;
   m_bIsDialog = true;
 }
 

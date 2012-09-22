@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -42,6 +41,14 @@ extern "C"
    * @remarks Valid implementation required.
    */
   const char* GetPVRAPIVersion(void);
+
+  /*!
+   * Get the XBMC_PVR_MIN_API_VERSION that was used to compile this add-on.
+   * Used to check if this add-on is compatible with XBMC.
+   * @return The XBMC_PVR_MIN_API_VERSION that was used to compile this add-on.
+   * @remarks Valid implementation required.
+   */
+  const char* GetMininumPVRAPIVersion(void);
 
   /*!
    * Get the list of features that this add-on provides.
@@ -512,6 +519,7 @@ extern "C"
   void __declspec(dllexport) get_addon(struct PVRClient* pClient)
   {
     pClient->GetPVRAPIVersion               = GetPVRAPIVersion;
+    pClient->GetMininumPVRAPIVersion        = GetMininumPVRAPIVersion;
     pClient->GetAddonCapabilities           = GetAddonCapabilities;
     pClient->GetStreamProperties            = GetStreamProperties;
     pClient->GetConnectionString            = GetConnectionString;

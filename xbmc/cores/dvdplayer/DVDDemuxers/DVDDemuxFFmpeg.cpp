@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -211,6 +210,10 @@ CDVDDemuxFFmpeg::CDVDDemuxFFmpeg() : CDVDDemux()
   m_ioContext = NULL;
   for (int i = 0; i < MAX_STREAMS; i++) m_streams[i] = NULL;
   m_iCurrentPts = DVD_NOPTS_VALUE;
+  m_bMatroska = false;
+  m_bAVI = false;
+  m_speed = DVD_PLAYSPEED_NORMAL;
+  m_program = UINT_MAX;
 }
 
 CDVDDemuxFFmpeg::~CDVDDemuxFFmpeg()
@@ -772,7 +775,7 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
   if (!pPacket) return NULL;
 
   // check streams, can we make this a bit more simple?
-  if (pPacket && pPacket->iStreamId >= 0 && pPacket->iStreamId <= MAX_STREAMS)
+  if (pPacket && pPacket->iStreamId >= 0 && pPacket->iStreamId < MAX_STREAMS)
   {
     if (!m_streams[pPacket->iStreamId] ||
         m_streams[pPacket->iStreamId]->pPrivate != m_pFormatContext->streams[pPacket->iStreamId] ||
@@ -895,6 +898,9 @@ void CDVDDemuxFFmpeg::UpdateCurrentPTS()
 int CDVDDemuxFFmpeg::GetStreamLength()
 {
   if (!m_pFormatContext)
+    return 0;
+
+  if (m_pFormatContext->duration < 0)
     return 0;
 
   return (int)(m_pFormatContext->duration / (AV_TIME_BASE / 1000));
@@ -1046,8 +1052,7 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
         {
           CDemuxStreamSubtitleFFmpeg* st = new CDemuxStreamSubtitleFFmpeg(this, pStream);
           m_streams[iId] = st;
-          if(pStream->codec)
-            st->identifier = pStream->codec->sub_id;
+          st->identifier = pStream->codec->sub_id;
 	    
           if(m_dllAvUtil.av_dict_get(pStream->metadata, "title", NULL, 0))
             st->m_description = m_dllAvUtil.av_dict_get(pStream->metadata, "title", NULL, 0)->value;
@@ -1057,7 +1062,11 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
       }
     case AVMEDIA_TYPE_ATTACHMENT:
       { //mkv attachments. Only bothering with fonts for now.
-        if(pStream->codec->codec_id == CODEC_ID_TTF)
+        if(pStream->codec->codec_id == CODEC_ID_TTF
+#if (!defined USE_EXTERNAL_FFMPEG)
+          || pStream->codec->codec_id == CODEC_ID_OTF
+#endif
+          )
         {
           std::string fileName = "special://temp/fonts/";
           XFILE::CDirectory::Create(fileName);

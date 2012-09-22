@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -67,6 +66,11 @@ namespace PVR
      * @param iClientId The ID of this add-on.
      */
     bool Create(int iClientId);
+
+    /*!
+     * @return True when the dll for this add-on was loaded, false otherwise (e.g. unresolved symbols)
+     */
+    bool DllLoaded(void) const;
 
     /*!
      * @brief Destroy the instance of this add-on.
@@ -469,10 +473,11 @@ namespace PVR
   private:
     /*!
      * @brief Checks whether the provided API version is compatible with XBMC
-     * @param version The version to check
+     * @param minVersion The add-on's XBMC_PVR_MIN_API_VERSION version
+     * @param version The add-on's XBMC_PVR_API_VERSION version
      * @return True when compatible, false otherwise
      */
-    static bool IsCompatibleAPIVersion(const ADDON::AddonVersion &version);
+    static bool IsCompatibleAPIVersion(const ADDON::AddonVersion &minVersion, const ADDON::AddonVersion &version);
 
     /*!
      * @brief Reset the signal quality data to the initial values.
@@ -521,8 +526,8 @@ namespace PVR
      */
     bool CanPlayChannel(const CPVRChannel &channel) const;
 
-    bool LogError(const PVR_ERROR error, const char *strMethod);
-    void LogException(const std::exception &e, const char *strFunctionName);
+    bool LogError(const PVR_ERROR error, const char *strMethod) const;
+    void LogException(const std::exception &e, const char *strFunctionName) const;
 
     bool                   m_bReadyToUse;          /*!< true if this add-on is connected to the backend, false otherwise */
     CStdString             m_strHostName;          /*!< the host name */
@@ -541,6 +546,10 @@ namespace PVR
     PVR_ADDON_CAPABILITIES m_addonCapabilities;     /*!< the cached add-on capabilities */
     bool                   m_bGotAddonCapabilities; /*!< true if the add-on capabilities have already been fetched */
     PVR_SIGNAL_STATUS      m_qualityInfo;           /*!< stream quality information */
+
+    /* stored strings to make sure const char* members in PVR_PROPERTIES stay valid */
+    std::string m_strUserPath;    /*!< @brief translated path to the user profile */
+    std::string m_strClientPath;  /*!< @brief translated path to this add-on */
 
     CCriticalSection m_critSection;
 

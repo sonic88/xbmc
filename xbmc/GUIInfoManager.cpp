@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -55,6 +54,7 @@
 #include "utils/MathUtils.h"
 #include "utils/SeekHandler.h"
 #include "URL.h"
+#include "addons/Skin.h"
 
 // stuff for current song
 #include "music/MusicInfoLoader.h"
@@ -106,6 +106,11 @@ CGUIInfoManager::CGUIInfoManager(void) :
   m_frameCounter = 0;
   m_lastFPSTime = 0;
   m_updateTime = 1;
+  m_MusicBitrate = 0;
+  m_playerShowTime = false;
+  m_playerShowCodec = false;
+  m_playerShowInfo = false;
+  m_fps = 0.0f;
   ResetLibraryBools();
 }
 
@@ -553,7 +558,8 @@ const infomap fanart_labels[] =  {{ "color1",           FANART_COLOR1 },
 const infomap skin_labels[] =    {{ "currenttheme",     SKIN_THEME },
                                   { "currentcolourtheme",SKIN_COLOUR_THEME },
                                   {"hasvideooverlay",   SKIN_HAS_VIDEO_OVERLAY},
-                                  {"hasmusicoverlay",   SKIN_HAS_MUSIC_OVERLAY}};
+                                  {"hasmusicoverlay",   SKIN_HAS_MUSIC_OVERLAY},
+                                  {"aspectratio",       SKIN_ASPECT_RATIO}};
 
 const infomap window_bools[] =   {{ "ismedia",          WINDOW_IS_MEDIA },
                                   { "isactive",         WINDOW_IS_ACTIVE },
@@ -1709,6 +1715,10 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     break;
   case SKIN_COLOUR_THEME:
     strLabel = g_guiSettings.GetString("lookandfeel.skincolors");
+    break;
+  case SKIN_ASPECT_RATIO:
+    if (g_SkinInfo)
+      strLabel = g_SkinInfo->GetCurrentAspect();
     break;
 #ifdef HAS_LCD
   case LCD_PROGRESS_BAR:
@@ -3818,7 +3828,7 @@ void CGUIInfoManager::SetCurrentItem(CFileItem &item)
     SetCurrentMovie(item);
 
   SetChanged();
-  NotifyObservers("current-item", true);
+  NotifyObservers(ObservableMessageCurrentItem, true);
 }
 
 void CGUIInfoManager::SetCurrentAlbumThumb(const CStdString thumbFileName)
@@ -4249,6 +4259,7 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
   case LISTITEM_DIRECTOR:
     if (item->HasVideoInfoTag())
       return StringUtils::Join(item->GetVideoInfoTag()->m_director, g_advancedSettings.m_videoItemSeparator);
+    break;
   case LISTITEM_ALBUM:
     if (item->HasVideoInfoTag())
       return item->GetVideoInfoTag()->m_strAlbum;
@@ -5264,4 +5275,14 @@ CStdString CGUIInfoManager::GetSkinVariableString(int info,
     return m_skinVariableStrings[info].GetValue(preferImage, item);
 
   return "";
+}
+
+bool CGUIInfoManager::ConditionsChangedValues(const std::map<int, bool>& map)
+{
+  for (std::map<int, bool>::const_iterator it = map.begin() ; it != map.end() ; it++)
+  {
+    if (GetBoolValue(it->first) != it->second)
+      return true;
+  }
+  return false;
 }

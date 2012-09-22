@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -412,12 +411,16 @@ CDVDPlayer::CDVDPlayer(IPlayerCallback& callback)
 
   m_dvd.Clear();
   m_State.Clear();
+  m_EdlAutoSkipMarkers.Clear();
   m_UpdateApplication = 0;
 
   m_bAbortRequest = false;
   m_errorCount = 0;
+  m_offset_pts = 0.0;
   m_playSpeed = DVD_PLAYSPEED_NORMAL;
   m_caching = CACHESTATE_DONE;
+
+  memset(&m_SpeedState, 0, sizeof(m_SpeedState));
 
 #ifdef DVDDEBUG_MESSAGE_TRACKER
   g_dvdMessageTracker.Init();
@@ -466,10 +469,13 @@ bool CDVDPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &options)
     if(!m_ready.WaitMSec(100))
     {
       CGUIDialogBusy* dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
-      dialog->Show();
-      while(!m_ready.WaitMSec(1))
-        g_windowManager.ProcessRenderLoop(false);
-      dialog->Close();
+      if(dialog)
+      {
+        dialog->Show();
+        while(!m_ready.WaitMSec(1))
+          g_windowManager.ProcessRenderLoop(false);
+        dialog->Close();
+      }
     }
 
     // Playback might have been stopped due to some error
@@ -808,16 +814,19 @@ bool CDVDPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
     if(packet->iStreamId < 0)
       return true;
 
-    stream = m_pDemuxer->GetStream(packet->iStreamId);
-    if (!stream)
+    if(m_pDemuxer)
     {
-      CLog::Log(LOGERROR, "%s - Error demux packet doesn't belong to a valid stream", __FUNCTION__);
-      return false;
-    }
-    if(stream->source == STREAM_SOURCE_NONE)
-    {
-      m_SelectionStreams.Clear(STREAM_NONE, STREAM_SOURCE_DEMUX);
-      m_SelectionStreams.Update(m_pInputStream, m_pDemuxer);
+      stream = m_pDemuxer->GetStream(packet->iStreamId);
+      if (!stream)
+      {
+        CLog::Log(LOGERROR, "%s - Error demux packet doesn't belong to a valid stream", __FUNCTION__);
+        return false;
+      }
+      if(stream->source == STREAM_SOURCE_NONE)
+      {
+        m_SelectionStreams.Clear(STREAM_NONE, STREAM_SOURCE_DEMUX);
+        m_SelectionStreams.Update(m_pInputStream, m_pDemuxer);
+      }
     }
     return true;
   }
@@ -890,30 +899,6 @@ bool CDVDPlayer::IsBetterStream(CCurrentStream& current, CDemuxStream* stream)
     if(current.type == STREAM_SUBTITLE && stream->iPhysicalId == m_dvd.iSelectedSPUStream)
       return true;
     if(current.type == STREAM_VIDEO    && current.id < 0)
-      return true;
-  }
-  else if (m_pInputStream && m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
-  {
-    if(stream->source == current.source &&
-       stream->iId    == current.id)
-      return false;
-
-    if(stream->disabled)
-      return false;
-
-    if(stream->type != current.type)
-      return false;
-
-    if(current.type == STREAM_AUDIO    && stream->iPhysicalId == m_dvd.iSelectedAudioStream)
-      return true;
-
-    if(current.type == STREAM_SUBTITLE && stream->iPhysicalId == m_dvd.iSelectedSPUStream)
-      return true;
-
-    if(current.type == STREAM_TELETEXT)
-      return true;
-
-    if(current.id < 0)
       return true;
   }
   else
@@ -3814,20 +3799,15 @@ void CDVDPlayer::UpdatePlayState(double timeout)
   if(m_pInputStream)
   {
     // override from input stream if needed
-
-    if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_TV))
+    CDVDInputStream::IChannel* pChannel = dynamic_cast<CDVDInputStream::IChannel*>(m_pInputStream);
+    if (pChannel)
     {
-      state.canrecord = static_cast<CDVDInputStreamTV*>(m_pInputStream)->CanRecord();
-      state.recording = static_cast<CDVDInputStreamTV*>(m_pInputStream)->IsRecording();
-    }
-    else if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
-    {
-      state.canrecord = static_cast<CDVDInputStreamPVRManager*>(m_pInputStream)->CanRecord();
-      state.recording = static_cast<CDVDInputStreamPVRManager*>(m_pInputStream)->IsRecording();
+      state.canrecord = pChannel->CanRecord();
+      state.recording = pChannel->IsRecording();
     }
 
     CDVDInputStream::IDisplayTime* pDisplayTime = dynamic_cast<CDVDInputStream::IDisplayTime*>(m_pInputStream);
-    if (pDisplayTime)
+    if (pDisplayTime && pDisplayTime->GetTotalTime() > 0)
     {
       state.time       = pDisplayTime->GetTime();
       state.time_total = pDisplayTime->GetTotalTime();
@@ -3841,24 +3821,6 @@ void CDVDPlayer::UpdatePlayState(double timeout)
         state.time_total = m_dvd.iDVDStillTime;
       }
     }
-
-    if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_TV))
-    {
-      if(((CDVDInputStreamTV*)m_pInputStream)->GetTotalTime() > 0)
-      {
-        state.time      -= ((CDVDInputStreamTV*)m_pInputStream)->GetStartTime();
-        state.time_total = ((CDVDInputStreamTV*)m_pInputStream)->GetTotalTime();
-      }
-    }
-    else if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
-    {
-      if(((CDVDInputStreamPVRManager*)m_pInputStream)->GetTotalTime() > 0 &&
-         ((CDVDInputStreamPVRManager*)m_pInputStream)->GetStartTime() > 0)
-      {
-        state.time       = ((CDVDInputStreamPVRManager*)m_pInputStream)->GetStartTime();
-        state.time_total = ((CDVDInputStreamPVRManager*)m_pInputStream)->GetTotalTime();
-      }
-    }
   }
 
   if (m_Edl.HasCut())
@@ -3868,7 +3830,7 @@ void CDVDPlayer::UpdatePlayState(double timeout)
   }
 
   state.player_state = "";
-  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD))
+  if (m_pInputStream && m_pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD))
   {
     state.time_offset = DVD_MSEC_TO_TIME(state.time) - state.dts;
     if(!((CDVDInputStreamNavigator*)m_pInputStream)->GetNavigatorState(state.player_state))

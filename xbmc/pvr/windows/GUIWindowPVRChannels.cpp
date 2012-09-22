@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -160,16 +159,16 @@ void CGUIWindowPVRChannels::SetSelectedGroup(CPVRChannelGroupPtr group)
   g_PVRManager.SetPlayingGroup(m_selectedGroup);
 }
 
-void CGUIWindowPVRChannels::Notify(const Observable &obs, const CStdString& msg)
+void CGUIWindowPVRChannels::Notify(const Observable &obs, const ObservableMessage msg)
 {
-  if (msg.Equals("channelgroup") || msg.Equals("timers-reset") || msg.Equals("timers") || msg.Equals("epg-current-event") || msg.Equals("current-item"))
+  if (msg == ObservableMessageChannelGroup || msg == ObservableMessageTimers || msg == ObservableMessageEpgActiveItem || msg == ObservableMessageCurrentItem)
   {
     if (IsVisible())
       SetInvalid();
     else
       m_bUpdateRequired = true;
   }
-  else if (msg.Equals("channelgroup-reset"))
+  else if (msg == ObservableMessageChannelGroupReset)
   {
     if (IsVisible())
       UpdateData(false);

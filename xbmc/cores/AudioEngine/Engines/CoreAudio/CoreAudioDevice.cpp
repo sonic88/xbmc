@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -476,22 +475,24 @@ bool CCoreAudioDevice::GetMixingSupport()
   propertyAddress.mElement  = 0;
   propertyAddress.mSelector = kAudioDevicePropertySupportsMixing;
 
-  OSStatus ret = AudioObjectIsPropertySettable(m_DeviceId, &propertyAddress, &writable);
-  if (ret)
+  if( AudioObjectHasProperty( m_DeviceId, &propertyAddress ) )
   {
-    CLog::Log(LOGERROR, "CCoreAudioDevice::SupportsMixing: "
-      "Unable to get propertyinfo mixing support. Error = %s", GetError(ret).c_str());
-    writable = false;
-  }
+    OSStatus ret = AudioObjectIsPropertySettable(m_DeviceId, &propertyAddress, &writable);
+    if (ret)
+    {
+      CLog::Log(LOGERROR, "CCoreAudioDevice::SupportsMixing: "
+        "Unable to get propertyinfo mixing support. Error = %s", GetError(ret).c_str());
+      writable = false;
+    }
 
-  if (writable)
-  {
-    size = sizeof(mix);
-    ret = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &size, &mix);
-    if (ret != noErr)
-      mix = 0;
+    if (writable)
+    {
+      size = sizeof(mix);
+      ret = AudioObjectGetPropertyData(m_DeviceId, &propertyAddress, 0, NULL, &size, &mix);
+      if (ret != noErr)
+        mix = 0;
+    }
   }
-
   CLog::Log(LOGERROR, "CCoreAudioDevice::SupportsMixing: "
     "Device mixing support : %s.", mix ? "'Yes'" : "'No'");
 

@@ -507,7 +507,7 @@ ifeq (@USE_PVR_ADDONS@,1)
 endif
 ifeq ($(findstring freebsd,@ARCH@), freebsd)
 	@find -E system addons -type f -not -iregex ".*svn.*" \
-		-iregex ".*@ARCH@.*|.*\.pvr|.*\.vis|.*\.xbs" \
+		-iregex ".*@ARCH@.*|.*\.vis|.*\.xbs" \
 		-exec sh -c "install -d \"$(DESTDIR)$(libdir)/xbmc/\`dirname '{}'\`\"" \; \
 		-and \
 		-exec install "{}" $(DESTDIR)$(libdir)/xbmc/"{}" \; \
@@ -515,7 +515,7 @@ ifeq ($(findstring freebsd,@ARCH@), freebsd)
 else
 ifeq ($(findstring Darwin,$(shell uname -s)),Darwin)
 	@find -E system addons -type f -not -iregex ".*svn.*" \
-		-iregex ".*@ARCH@.*|.*\.vis|.*\.xbs|.*\.pvr" \
+		-iregex ".*@ARCH@.*|.*\.vis|.*\.xbs" \
 		-exec sh -c "install -d \"$(DESTDIR)$(libdir)/xbmc/\`dirname '{}'\`\"" \; \
 		-and \
 		-exec install "{}" $(DESTDIR)$(libdir)/xbmc/"{}" \; \
@@ -546,7 +546,6 @@ install-datas: install-scripts
 	@# Arch independent files
 ifeq ($(findstring bsd,@ARCH@), bsd)
 	@find -E addons language media sounds userdata system -type f \
-		-not -iregex ".*@ARCH@.*|.*\.pvr|.*\.vis|.*\.xbs|.*svn.*|.*\.so|.*\.dll" \
 		-not -iregex ".*@ARCH@.*|.*\.vis|.*\.xbs|.*svn.*|.*\.so|.*\.dll" \
 		-exec sh -c "install -d \"$(DESTDIR)$(datarootdir)/xbmc/\`dirname '{}'\`\"" \; \
 		-and \
@@ -555,7 +554,7 @@ ifeq ($(findstring bsd,@ARCH@), bsd)
 else
 ifeq ($(findstring Darwin,$(shell uname -s)),Darwin)
 	@find -E addons language media sounds userdata system -type f \
-		-not -iregex ".*@ARCH@.*|.*\.vis|.*\.xbs|.*svn.*|.*\.so|.*\.dll|.*\.pvr" \
+		-not -iregex ".*@ARCH@.*|.*\.vis|.*\.xbs|.*svn.*|.*\.so|.*\.dll" \
 		-exec sh -c "install -d \"$(DESTDIR)$(datarootdir)/xbmc/\`dirname '{}'\`\"" \; \
 		-and \
 		-exec install -m 0644 "{}" $(DESTDIR)$(datarootdir)/xbmc/"{}" \; \

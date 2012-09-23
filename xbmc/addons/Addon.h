@@ -23,7 +23,6 @@
 #include "addons/AddonVersion.h"
 #include "utils/XBMCTinyXML.h"
 #include "guilib/LocalizeStrings.h"
-#include "addons/AddonCallbacksAddon.h"
 
 class TiXmlElement;
 class CAddonCallbacksAddon;

@@ -91,6 +91,7 @@ public:
     codec = (CodecID)0; // CODEC_ID_NONE
     codec_fourcc = 0;
     profile = FF_PROFILE_UNKNOWN;
+    level = 0;
     type = STREAM_NONE;
     source = STREAM_SOURCE_NONE;
     iDuration = 0;
@@ -119,7 +120,8 @@ public:
   int iPhysicalId; // id
   CodecID codec;
   unsigned int codec_fourcc; // if available
-  int profile;
+  int profile; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
+  int level;   // encoder level of the stream reported by the decoder. used to qualify hw decoders.
   StreamType type;
   int source;
 
@@ -156,12 +158,11 @@ public:
     iWidth = 0;
     fAspect = 0.0;
     bVFR = false;
-    iLevel = 0;
-    iProfile = 0;
     bPTSInvalid = false;
     bForcedAspect = false;
     type = STREAM_VIDEO;
     iOrientation = 0;
+    iBitsPerPixel = 0;
   }
 
   virtual ~CDemuxStreamVideo() {}
@@ -171,11 +172,10 @@ public:
   int iWidth; // width of the stream reported by the demuxer
   float fAspect; // display aspect of stream
   bool bVFR;  // variable framerate
-  int iLevel; // encoder level of the stream reported by the decoder. used to qualify hw decoders.
-  int iProfile; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
   bool bPTSInvalid; // pts cannot be trusted (avi's).
   bool bForcedAspect; // aspect is forced from container
   int iOrientation; // orientation of the video in degress counter clockwise
+  int iBitsPerPixel;
 };
 
 class CDemuxStreamAudio : public CDemuxStream

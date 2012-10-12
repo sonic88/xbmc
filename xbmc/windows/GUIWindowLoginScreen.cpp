@@ -198,9 +198,9 @@ void CGUIWindowLoginScreen::Update()
     else
       strLabel.Format(g_localizeStrings.Get(20112), profile->getDate());
     item->SetLabel2(strLabel);
-    item->SetThumbnailImage(profile->getThumb());
+    item->SetArt("thumb", profile->getThumb());
     if (profile->getThumb().IsEmpty() || profile->getThumb().Equals("-"))
-      item->SetThumbnailImage("unknown-user.png");
+      item->SetArt("thumb", "unknown-user.png");
     item->SetLabelPreformated(true);
     m_vecItems->Add(item);
   }
@@ -271,7 +271,6 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 
   // stop PVR related services
   g_application.StopPVRManager();
-  g_application.StopEPGManager();
 
   if (profile != 0 || !g_settings.IsMasterUser())
   {
@@ -309,7 +308,6 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   ADDON::CAddonMgr::Get().StartServices(false);
 
   // start PVR related services
-  g_application.StartEPGManager();
   g_application.StartPVRManager();
 
   g_windowManager.ChangeActiveWindow(g_SkinInfo->GetFirstWindow());

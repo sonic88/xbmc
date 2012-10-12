@@ -206,9 +206,9 @@ extern "C" void __stdcall init_emu_environ()
 extern "C" void __stdcall update_emu_environ()
 {
   // Use a proxy, if the GUI was configured as such
-  if (g_guiSettings.GetBool("network.usehttpproxy") &&
-      g_guiSettings.GetString("network.httpproxyserver") &&
-      g_guiSettings.GetString("network.httpproxyport"))
+  if (g_guiSettings.GetBool("network.usehttpproxy")
+      && !g_guiSettings.GetString("network.httpproxyserver").empty()
+      && !g_guiSettings.GetString("network.httpproxyport").empty())
   {
     CStdString strProxy;
     if (g_guiSettings.GetString("network.httpproxyusername") &&
@@ -842,6 +842,12 @@ extern "C"
       URIUtils::GetExtension(url.GetFileName(),strMask);
       url.SetFileName(url.GetFileName().Left(url.GetFileName().Find("*.")));
     }
+    else if (url.GetFileName().Find("*") != string::npos)
+    {
+      CStdString strReplaced = url.GetFileName();
+      strReplaced.Replace("*","");
+      url.SetFileName(strReplaced);
+    }
     int iDirSlot=0; // locate next free directory
     while ((vecDirsOpen[iDirSlot].curr_index != -1) && (iDirSlot<MAX_OPEN_DIRS)) iDirSlot++;
     if (iDirSlot >= MAX_OPEN_DIRS)
@@ -851,8 +857,6 @@ extern "C"
       CURL url2(url.GetFileName());
       url = url2;
     }
-    CStdString fName = url.GetFileName();
-    url.SetFileName("");
     strURL = url.Get();
     bVecDirsInited = true;
     vecDirsOpen[iDirSlot].items.Clear();

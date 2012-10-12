@@ -132,7 +132,8 @@ static const operatorField operators[] = { { "contains", CSmartPlaylistRule::OPE
                                            { "inthelast", CSmartPlaylistRule::OPERATOR_IN_THE_LAST, 21410 },
                                            { "notinthelast", CSmartPlaylistRule::OPERATOR_NOT_IN_THE_LAST, 21411 },
                                            { "true", CSmartPlaylistRule::OPERATOR_TRUE, 20122 },
-                                           { "false", CSmartPlaylistRule::OPERATOR_FALSE, 20424 }
+                                           { "false", CSmartPlaylistRule::OPERATOR_FALSE, 20424 },
+                                           { "between", CSmartPlaylistRule::OPERATOR_BETWEEN, 21456 }
                                          };
 
 #define NUM_OPERATORS sizeof(operators) / sizeof(operatorField)
@@ -375,6 +376,7 @@ vector<Field> CSmartPlaylistRule::GetFields(const CStdString &type)
     fields.push_back(FieldAlbumType);
     fields.push_back(FieldMusicLabel);
     fields.push_back(FieldRating);
+    fields.push_back(FieldPlaycount);
   }
   else if (type == "artists")
   {
@@ -407,6 +409,7 @@ vector<Field> CSmartPlaylistRule::GetFields(const CStdString &type)
     fields.push_back(FieldStudio);
     fields.push_back(FieldMPAA);
     fields.push_back(FieldDateAdded);
+    fields.push_back(FieldLastPlayed);
     fields.push_back(FieldInProgress);
   }
   else if (type == "episodes")
@@ -528,6 +531,7 @@ std::vector<SortBy> CSmartPlaylistRule::GetOrders(const CStdString &type)
     orders.push_back(SortByAlbumType);
     //orders.push_back(SortByMusicLabel);
     orders.push_back(SortByRating);
+    orders.push_back(SortByPlaycount);
   }
   else if (type == "artists")
   {
@@ -548,6 +552,7 @@ std::vector<SortBy> CSmartPlaylistRule::GetOrders(const CStdString &type)
     orders.push_back(SortByStudio);
     orders.push_back(SortByMPAA);
     orders.push_back(SortByDateAdded);
+    orders.push_back(SortByLastPlayed);
   }
   else if (type == "episodes")
   {
@@ -694,11 +699,21 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
     case OPERATOR_AFTER:
     case OPERATOR_GREATER_THAN:
     case OPERATOR_IN_THE_LAST:
-      operatorString = " > '%s'"; break;
+      operatorString = " > ";
+      if (GetFieldType(m_field) == NUMERIC_FIELD || GetFieldType(m_field) == SECONDS_FIELD)
+        operatorString += "%s";
+      else
+        operatorString += "'%s'";
+      break;
     case OPERATOR_BEFORE:
     case OPERATOR_LESS_THAN:
     case OPERATOR_NOT_IN_THE_LAST:
-      operatorString = " < '%s'"; break;
+      operatorString = " < ";
+      if (GetFieldType(m_field) == NUMERIC_FIELD || GetFieldType(m_field) == SECONDS_FIELD)
+        operatorString += "%s";
+      else
+        operatorString += "'%s'";
+      break;
     case OPERATOR_TRUE:
       operatorString = " = 1"; break;
     case OPERATOR_FALSE:
@@ -726,8 +741,26 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
     else if (strType == "tvshows")
     {
       if (m_field == FieldInProgress)
-        return GetField(FieldId, strType) + negate + " IN (select idShow from tvshowview where watchedcount > 0 AND watchedcount < totalCount)";
+        return GetField(FieldId, strType) + negate + " IN (select " + GetField(FieldId, strType) + " from tvshowview where "
+               "(watchedcount > 0 AND watchedcount < totalCount) OR "
+               "(watchedcount = 0 AND " + GetField(FieldId, strType) + " IN "
+               "(select episodeview.idShow from episodeview WHERE episodeview.idShow = " + GetField(FieldId, strType) + " AND episodeview.resumeTimeInSeconds > 0)))";
     }
+  }
+
+  // The BETWEEN operator is handled special
+  if (op == OPERATOR_BETWEEN)
+  {
+    if (m_parameter.size() != 2)
+      return "";
+
+    FIELD_TYPE fieldType = GetFieldType(m_field);
+    if (fieldType == NUMERIC_FIELD || m_field == FieldYear)
+      return db.PrepareSQL("CAST(%s as DECIMAL(5,1)) BETWEEN %s AND %s", GetField(m_field, strType).c_str(), m_parameter[0].c_str(), m_parameter[1].c_str());
+    else if (fieldType == SECONDS_FIELD)
+      return db.PrepareSQL("CAST(%s as INTEGER) BETWEEN %s AND %s", GetField(m_field, strType).c_str(), m_parameter[0].c_str(), m_parameter[1].c_str());
+    else
+      return db.PrepareSQL("%s BETWEEN '%s' AND '%s'", GetField(m_field, strType).c_str(), m_parameter[0].c_str(), m_parameter[1].c_str());
   }
 
   // now the query parameter
@@ -793,6 +826,13 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
       else if (m_field == FieldAlbumArtist)
         query = GetField(FieldId, strType) + negate + " IN (SELECT album_artist.idAlbum FROM album_artist, artist WHERE album_artist.idArtist = artist.idArtist AND artist.strArtist" + parameter + ")";
     }
+    else if (strType == "artists")
+    {
+      table = "artistview";
+
+      if (m_field == FieldGenre)
+        query = GetField(FieldId, strType) + negate + " IN (SELECT song_artist.idArtist FROM song_artist, song_genre, genre WHERE song_artist.idSong = song_genre.idSong AND song_genre.idGenre = genre.idGenre AND genre.strGenre" + parameter + ")";
+    }
     else if (strType == "movies")
     {
       table = "movieview";
@@ -811,8 +851,6 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
         query = GetField(FieldId, strType) + negate + " IN (SELECT idMovie FROM countrylinkmovie JOIN country ON country.idCountry=countrylinkmovie.idCountry WHERE country.strCountry" + parameter + ")";
       else if ((m_field == FieldLastPlayed || m_field == FieldDateAdded) && (m_operator == OPERATOR_LESS_THAN || m_operator == OPERATOR_BEFORE || m_operator == OPERATOR_NOT_IN_THE_LAST))
         query = GetField(m_field, strType) + " IS NULL OR " + GetField(m_field, strType) + parameter;
-      else if (m_field == FieldInProgress)
-        query = table + ".idFile " + negate + " IN (SELECT idFile FROM bookmark WHERE type = 1)";
       else if (m_field == FieldSet)
         query = GetField(FieldId, strType) + negate + " IN (SELECT idMovie FROM setlinkmovie JOIN sets ON sets.idSet=setlinkmovie.idSet WHERE sets.strSet" + parameter + ")";
       else if (m_field == FieldTag)
@@ -847,8 +885,8 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
         query = GetField(FieldId, strType) + negate + " IN (SELECT idShow FROM tvshowview WHERE " + GetField(m_field, strType) + parameter + ")";
       else if (m_field == FieldMPAA)
         query = GetField(FieldId, strType) + negate + " IN (SELECT idShow FROM tvshowview WHERE " + GetField(m_field, strType) + parameter + ")";
-      else if (m_field == FieldDateAdded && (m_operator == OPERATOR_LESS_THAN || m_operator == OPERATOR_BEFORE || m_operator == OPERATOR_NOT_IN_THE_LAST))
-        query = GetField(FieldDateAdded, strType) + " IS NULL OR " + GetField(FieldDateAdded, strType) + parameter;
+      else if ((m_field == FieldLastPlayed || m_field == FieldDateAdded) && (m_operator == OPERATOR_LESS_THAN || m_operator == OPERATOR_BEFORE || m_operator == OPERATOR_NOT_IN_THE_LAST))
+        query = GetField(m_field, strType) + " IS NULL OR " + GetField(m_field, strType) + parameter;
     }
     else if (strType == "episodes")
     {
@@ -864,8 +902,6 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
         query = GetField(FieldId, strType) + negate + " IN (SELECT idEpisode FROM writerlinkepisode JOIN actors ON actors.idActor=writerlinkepisode.idWriter WHERE actors.strActor" + parameter + ")";
       else if ((m_field == FieldLastPlayed || m_field == FieldDateAdded) && (m_operator == OPERATOR_LESS_THAN || m_operator == OPERATOR_BEFORE || m_operator == OPERATOR_NOT_IN_THE_LAST))
         query = GetField(m_field, strType) + " IS NULL OR " + GetField(m_field, strType) + parameter;
-      else if (m_field == FieldInProgress)
-        query = table + ".idFile " + negate + " IN (SELECT idFile FROM bookmark WHERE type = 1)";
       else if (m_field == FieldStudio)
         query = GetField(FieldId, strType) + negate + " IN (SELECT idEpisode FROM episodeview WHERE strStudio" + parameter + ")";
       else if (m_field == FieldMPAA)
@@ -897,7 +933,16 @@ CStdString CSmartPlaylistRule::GetWhereClause(const CDatabase &db, const CStdStr
     }
 
     if (query.IsEmpty() && m_field != FieldNone)
-      query = GetField(m_field,strType) + negate + parameter;
+    {
+      string fmt = "%s";
+      if (GetFieldType(m_field) == NUMERIC_FIELD)
+        fmt = "CAST(%s as DECIMAL(5,1))";
+      else if (GetFieldType(m_field) == SECONDS_FIELD)
+        fmt = "CAST(%s as INTEGER)";
+
+      query.Format(fmt.c_str(), GetField(m_field,strType).c_str());
+      query += negate + parameter;
+    }
     
     it++;
     if (query.Equals(negate + parameter))
@@ -1071,11 +1116,7 @@ void CSmartPlaylistRuleCombination::AddCombination(const CSmartPlaylistRuleCombi
 
 CSmartPlaylist::CSmartPlaylist()
 {
-  m_ruleCombination.SetType(CSmartPlaylistRuleCombination::CombinationAnd);
-  m_limit = 0;
-  m_orderField = SortByNone;
-  m_orderAscending = true;
-  m_playlistType = "songs"; // sane default
+  Reset();
 }
 
 TiXmlElement *CSmartPlaylist::OpenAndReadName(const CStdString &path)
@@ -1350,6 +1391,17 @@ bool CSmartPlaylist::SaveAsJson(CStdString &json, bool full /* = true */) const
 
   json = CJSONVariantWriter::Write(xsp, true);
   return json.size() > 0;
+}
+
+void CSmartPlaylist::Reset()
+{
+  m_ruleCombination.m_combinations.clear();
+  m_ruleCombination.m_rules.clear();
+  m_ruleCombination.SetType(CSmartPlaylistRuleCombination::CombinationAnd);
+  m_limit = 0;
+  m_orderField = SortByNone;
+  m_orderAscending = true;
+  m_playlistType = "songs"; // sane default
 }
 
 void CSmartPlaylist::SetName(const CStdString &name)

@@ -22,6 +22,7 @@
 
 #include "Application.h"
 #include "ApplicationMessenger.h"
+#include "GUIUserMessages.h"
 #include "settings/GUISettings.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogSelect.h"
@@ -301,9 +302,9 @@ bool CPVRClients::SwitchChannel(const CPVRChannel &channel)
       // stream URL should always be opened as a new file
       !channel.StreamURL().IsEmpty() || !currentChannel->StreamURL().IsEmpty())
   {
-    CloseStream();
     if (channel.StreamURL().IsEmpty())
     {
+      CloseStream();
       bSwitchSuccessful = OpenStream(channel, true);
     }
     else
@@ -532,6 +533,30 @@ bool CPVRClients::CanRecordInstantly(void)
   CPVRChannelPtr currentChannel;
   return GetPlayingChannel(currentChannel) &&
       currentChannel->CanRecord();
+}
+
+bool CPVRClients::CanPauseStream(void) const
+{
+  PVR_CLIENT client;
+
+  if (GetPlayingClient(client))
+  {
+    return client->CanPauseStream();
+  }
+
+  return false;
+}
+
+bool CPVRClients::CanSeekStream(void) const
+{
+  PVR_CLIENT client;
+
+  if (GetPlayingClient(client))
+  {
+    return client->CanSeekStream();
+  }
+
+  return false;
 }
 
 PVR_ERROR CPVRClients::GetEPGForChannel(const CPVRChannel &channel, CEpg *epg, time_t start, time_t end)
@@ -836,6 +861,7 @@ bool CPVRClients::UpdateAndInitialiseClients(bool bInitialiseAllClients /* = fal
       }
       else
       {
+        ADDON_STATUS status(ADDON_STATUS_UNKNOWN);
         CSingleLock lock(m_critSection);
         
         PVR_CLIENT addon;
@@ -846,10 +872,10 @@ bool CPVRClients::UpdateAndInitialiseClients(bool bInitialiseAllClients /* = fal
           bDisabled = true;
         }
         // re-check the enabled status. newly installed clients get disabled when they're added to the db
-        else if (addon->Enabled() && !addon->Create(iClientId))
+        else if (addon->Enabled() && (status = addon->Create(iClientId)) != ADDON_STATUS_OK)
         {
-          CLog::Log(LOGWARNING, "%s - failed to create add-on %s", __FUNCTION__, clientAddon->Name().c_str());
-          if (!addon.get() || !addon->DllLoaded())
+          CLog::Log(LOGWARNING, "%s - failed to create add-on %s, status = %d", __FUNCTION__, clientAddon->Name().c_str(), status);
+          if (!addon.get() || !addon->DllLoaded() || status == ADDON_STATUS_PERMANENT_FAILURE)
           {
             // failed to load the dll of this add-on, disable it
             CLog::Log(LOGWARNING, "%s - failed to load the dll for add-on %s, disabling it", __FUNCTION__, clientAddon->Name().c_str());
@@ -1038,6 +1064,17 @@ bool CPVRClients::UpdateAddons(void)
     CSingleLock lock(m_critSection);
     m_addons = addons;
   }
+  
+  // handle "new" addons which aren't yet in the db - these have to be added first
+  for (unsigned iClientPtr = 0; iClientPtr < m_addons.size(); iClientPtr++)
+  {
+    const AddonPtr clientAddon = m_addons.at(iClientPtr);
+  
+    if (!m_addonDb.HasAddon(clientAddon->ID()))
+    {
+      m_addonDb.AddAddon(clientAddon, -1);
+    }
+  }
 
   if ((!bReturn || addons.size() == 0) && !m_bNoAddonWarningDisplayed &&
       !CAddonMgr::Get().HasAddons(ADDON_PVRDLL, false) &&
@@ -1047,7 +1084,10 @@ bool CPVRClients::UpdateAddons(void)
     // You need a tuner, backend software, and an add-on for the backend to be able to use PVR.
     // Please visit xbmc.org/pvr to learn more.
     m_bNoAddonWarningDisplayed = true;
+    g_guiSettings.SetBool("pvrmanager.enabled", false);
     CGUIDialogOK::ShowAndGetInput(19271, 19272, 19273, 19274);
+    CGUIMessage msg(GUI_MSG_UPDATE, WINDOW_SETTINGS_MYPVR, 0);
+    g_windowManager.SendThreadMessage(msg, WINDOW_SETTINGS_MYPVR);
   }
 
   return bReturn;
@@ -1243,6 +1283,13 @@ int64_t CPVRClients::GetStreamPosition(void)
   if (GetPlayingClient(client))
     return client->GetStreamPosition();
   return -EINVAL;
+}
+
+void CPVRClients::PauseStream(bool bPaused)
+{
+  PVR_CLIENT client;
+  if (GetPlayingClient(client))
+    client->PauseStream(bPaused);
 }
 
 CStdString CPVRClients::GetCurrentInputFormat(void) const

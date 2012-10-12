@@ -562,7 +562,11 @@ msgctxt "#166"
 msgid "Skin"
 msgstr ""
 
-#empty strings from id 167 to 168
+msgctxt "#167"
+msgid "Cancel file operations"
+msgstr ""
+
+#empty string with id 168
 
 msgctxt "#169"
 msgid "Resolution"
@@ -918,7 +922,7 @@ msgstr ""
 
 msgctxt "#264"
 msgid "Record"
-msgstr ""
+msgstr "Record"
 
 msgctxt "#265"
 msgid "Stop Rec."
@@ -3197,6 +3201,12 @@ msgctxt "#1273"
 msgid "AirPlay"
 msgstr ""
 
+#empty string id 1274
+
+msgctxt "#1275"
+msgid "Filter %s"
+msgstr ""
+
 #empty strings from id 1274 to 1299
 
 msgctxt "#1300"
@@ -4827,7 +4837,15 @@ msgctxt "#13432"
 msgid "Allow hardware acceleration (VideoToolbox)"
 msgstr ""
 
-#empty strings from id 13433 to 13499
+msgctxt "#13433"
+msgid "Play the next video automatically"
+msgstr ""
+
+msgctxt "#13434"
+msgid "Play only this"
+msgstr ""
+
+#empty strings from id 13435 to 13499
 
 msgctxt "#13500"
 msgid "A/V sync method"
@@ -4873,7 +4891,27 @@ msgctxt "#13510"
 msgid "Sync playback to display"
 msgstr ""
 
-#empty strings from id 13511 to 13549
+msgctxt "#13511"
+msgid "Choose art"
+msgstr ""
+
+msgctxt "#13512"
+msgid "Current art"
+msgstr ""
+
+msgctxt "#13513"
+msgid "Remote art"
+msgstr ""
+
+msgctxt "#13514"
+msgid "Local art"
+msgstr ""
+
+msgctxt "#13515"
+msgid "No art"
+msgstr ""
+
+#empty strings from id 13516 to 13549
 
 msgctxt "#13550"
 msgid "Pause during refresh rate change"
@@ -5315,7 +5353,11 @@ msgctxt "#14099"
 msgid "Eject disc when CD ripping is complete"
 msgstr ""
 
-#empty strings from id 14100 to 15014
+msgctxt "#14100"
+msgid "Stop ripping CD"
+msgstr ""
+
+#empty strings from id 14101 to 15014
 
 msgctxt "#15015"
 msgid "Remove"
@@ -6060,7 +6102,7 @@ msgid "or use phrases to find an exact match, like \"The wizard of Oz\"."
 msgstr ""
 
 msgctxt "#19003"
-msgid "Find similar programme"
+msgid "Find similar programs"
 msgstr ""
 
 msgctxt "#19004"
@@ -7119,7 +7161,23 @@ msgctxt "#19274"
 msgid "Please visit xbmc.org/pvr to learn more."
 msgstr ""
 
-#empty strings from id 19275 to 19498
+msgctxt "#19275"
+msgid "Conflict warning"
+msgstr ""
+
+msgctxt "#19276"
+msgid "Conflict error"
+msgstr ""
+
+msgctxt "#19277"
+msgid "Recording conflict"
+msgstr ""
+
+msgctxt "#19278"
+msgid "Recording error"
+msgstr ""
+
+#empty strings from id 19279 to 19498
 
 msgctxt "#19499"
 msgid "Other/Unknown"
@@ -8199,7 +8257,9 @@ msgctxt "#20187"
 msgid "UPnP"
 msgstr ""
 
-#empty string with id 20188
+msgctxt "#20188"
+msgid "Announce library updates via UPnP"
+msgstr ""
 
 msgctxt "#20189"
 msgid "Enable auto scrolling for plot & review"
@@ -9384,7 +9444,23 @@ msgctxt "#21465"
 msgid "Above video"
 msgstr ""
 
-#empty strings from id 21466 to 21799
+msgctxt "#21466"
+msgid "between"
+msgstr ""
+
+msgctxt "#21467"
+msgid "%.1f to %.1f"
+msgstr ""
+
+msgctxt "#21468"
+msgid "%d to %d"
+msgstr ""
+
+msgctxt "#21469"
+msgid "%s to %s"
+msgstr ""
+
+#empty strings from id 21470 to 21799
 
 msgctxt "#21800"
 msgid "File name"
@@ -9894,6 +9970,10 @@ msgstr ""
 
 msgctxt "#23054"
 msgid "Running"
+msgstr ""
+
+msgctxt "#23055"
+msgid "Scale Teletext to 4:3"
 msgstr ""
 
 #strings 23100 thru 23150 reserved for external player
@@ -10823,11 +10903,17 @@ msgstr ""
 
 #empty strings from id 35010 to 35099
 
+#: xbmc/settings/GUISettings.cpp
 msgctxt "#35100"
 msgid "Enable joystick and gamepad support"
 msgstr ""
 
-#empty strings from id 35101 to 35499
+#: xbmc/settings/GUISettings.cpp
+msgctxt "#35101"
+msgid "Disable joystick when iMON is present"
+msgstr ""
+
+#empty strings from id 35102 to 35499
 
 msgctxt "#35500"
 msgid "Location"
@@ -10850,7 +10936,7 @@ msgid "Product ID"
 msgstr ""
 
 #empty strings from id 35505 to 35999
-
+#: xbmc/peripherals/devices/PeripheralCecAdapter.cpp
 msgctxt "#36000"
 msgid "Pulse-Eight CEC adapter"
 msgstr ""
@@ -10901,11 +10987,7 @@ msgctxt "#36012"
 msgid "Could not initialise the CEC adapter. Please check your settings."
 msgstr ""
 
-msgctxt "#36013"
-msgid "Unsupported libCEC interface version. %d is greater than the version XBMC supports (%d)"
-msgstr ""
-
-#empty string with id 36014
+#empty strings from id 36013 to 36014
 
 msgctxt "#36015"
 msgid "HDMI port number"
@@ -10997,3 +11079,21 @@ msgstr ""
 msgctxt "#36036"
 msgid "On start/stop"
 msgstr ""
+
+#: xbmc/peripherals/devices/PeripheralCecAdapter.cpp
+msgctxt "#36037"
+msgid "TV"
+msgstr ""
+
+msgctxt "#36038"
+msgid "Amplifier / AVR device"
+msgstr ""
+
+msgctxt "#36039"
+msgid "TV and AVR device (explicit)"
+msgstr ""
+
+msgctxt "#36040"
+msgid "Unsupported libCEC interface version. %x is lower than the version XBMC supports (%x)"
+msgstr ""
+

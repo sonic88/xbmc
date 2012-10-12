@@ -267,6 +267,22 @@ bool URIUtils::GetParentPath(const CStdString& strPath, CStdString& strParent)
     strFile = url.GetHostName();
     return GetParentPath(strFile, strParent);
   }
+  else if ((url.GetProtocol() == "videodb" || url.GetProtocol() == "musicdb") && !url.GetOptions().empty())
+  {
+    CStdString options = url.GetOptions();
+    size_t filterStart = options.find("filter=");
+    if (filterStart != string::npos)
+    {
+      size_t filterEnd = options.find("&", filterStart);
+      options.erase(filterStart, filterEnd - filterStart);
+      if (options.Equals("?"))
+        options.clear();
+
+      url.SetOptions(options);
+      strParent = url.Get();
+      return true;
+    }
+  }
   else if (url.GetProtocol() == "stack")
   {
     CStackDirectory dir;
@@ -897,6 +913,14 @@ void URIUtils::RemoveSlashAtEnd(CStdString& strFolder)
     strFolder.Delete(strFolder.size() - 1);
 }
 
+bool URIUtils::CompareWithoutSlashAtEnd(const CStdString& strPath1, const CStdString& strPath2)
+{
+  CStdString strc1 = strPath1, strc2 = strPath2;
+  RemoveSlashAtEnd(strc1);
+  RemoveSlashAtEnd(strc2);
+  return strc1.Equals(strc2);
+}
+
 void URIUtils::AddFileToFolder(const CStdString& strFolder, 
                                 const CStdString& strFile,
                                 CStdString& strResult)
@@ -928,6 +952,13 @@ void URIUtils::AddFileToFolder(const CStdString& strFolder,
     strResult.Replace('\\', '/');
   else
     strResult.Replace('/', '\\');
+}
+
+CStdString URIUtils::GetDirectory(const CStdString &filePath)
+{
+  CStdString directory;
+  GetDirectory(filePath, directory);
+  return directory;
 }
 
 void URIUtils::GetDirectory(const CStdString& strFilePath,
@@ -999,4 +1030,60 @@ void URIUtils::CreateArchivePath(CStdString& strUrlPath,
   strUrlPath += "&flags=";
   strUrlPath += strBuffer;
 #endif
+}
+
+string URIUtils::GetRealPath(const string &path)
+{
+  if (path.empty())
+    return path;
+
+  CURL url(path);
+  url.SetHostName(GetRealPath(url.GetHostName()));
+  url.SetFileName(resolvePath(url.GetFileName()));
+  
+  return url.Get();
+}
+
+std::string URIUtils::resolvePath(const std::string &path)
+{
+  if (path.empty())
+    return path;
+
+  size_t posSlash = path.find('/');
+  size_t posBackslash = path.find('\\');
+  string delim = posSlash < posBackslash ? "/" : "\\";
+  vector<string> parts = StringUtils::Split(path, delim);
+  vector<string> realParts;
+
+  for (vector<string>::const_iterator part = parts.begin(); part != parts.end(); part++)
+  {
+    if (part->empty() || part->compare(".") == 0)
+      continue;
+
+    // go one level back up
+    if (part->compare("..") == 0)
+    {
+      if (!realParts.empty())
+        realParts.pop_back();
+      continue;
+    }
+
+    realParts.push_back(*part);
+  }
+
+  CStdString realPath;
+  int i = 0;
+  // re-add any / or \ at the beginning
+  while (path.at(i) == delim.at(0))
+  {
+    realPath += delim;
+    i++;
+  }
+  // put together the path
+  realPath += StringUtils::Join(realParts, delim);
+  // re-add any / or \ at the end
+  if (path.at(path.size() - 1) == delim.at(0) && realPath.at(realPath.size() - 1) != delim.at(0))
+    realPath += delim;
+
+  return realPath;
 }

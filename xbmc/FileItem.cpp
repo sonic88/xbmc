@@ -82,7 +82,7 @@ CFileItem::CFileItem(const CSong& song)
   m_lStartPartNumber = 1;
   SetProperty("item_start", song.iStartOffset);
   m_lEndOffset = song.iEndOffset;
-  m_strThumbnailImage = song.strThumb;
+  SetArt("thumb", song.strThumb);
 }
 
 CFileItem::CFileItem(const CStdString &path, const CAlbum& album)
@@ -169,10 +169,7 @@ CFileItem::CFileItem(const CEpgInfoTag& tag)
   m_dateTime = tag.StartAsLocalTime();
 
   if (!tag.Icon().IsEmpty())
-  {
-    SetThumbnailImage(tag.Icon());
     SetIconImage(tag.Icon());
-  }
 }
 
 CFileItem::CFileItem(const CPVRChannel& channel)
@@ -217,10 +214,7 @@ CFileItem::CFileItem(const CPVRChannel& channel)
   }
 
   if (!channel.IconPath().IsEmpty())
-  {
-    SetThumbnailImage(channel.IconPath());
     SetIconImage(channel.IconPath());
-  }
 
   SetProperty("channelid", channel.ChannelID());
   SetProperty("path", channel.Path());
@@ -265,10 +259,7 @@ CFileItem::CFileItem(const CPVRTimerInfoTag& timer)
   m_dateTime = timer.StartAsLocalTime();
 
   if (!timer.ChannelIcon().IsEmpty())
-  {
-    SetThumbnailImage(timer.ChannelIcon());
     SetIconImage(timer.ChannelIcon());
-  }
 }
 
 CFileItem::CFileItem(const CArtist& artist)
@@ -398,7 +389,7 @@ CFileItem::CFileItem(const CMediaSource& share)
   m_iHasLock = share.m_iHasLock;
   m_iBadPwdCount = share.m_iBadPwdCount;
   m_iDriveType = share.m_iDriveType;
-  m_strThumbnailImage = share.m_strThumbnailImage;
+  SetArt("thumb", share.m_strThumbnailImage);
   SetLabelPreformated(true);
   if (IsDVD())
     GetVideoInfoTag()->m_strFileNameAndPath = share.strDiskUniqueId; // share.strDiskUniqueId contains disc unique id
@@ -591,6 +582,7 @@ void CFileItem::Reset()
   m_pictureInfoTag=NULL;
   m_extrainfo.Empty();
   m_specialSort = SortSpecialNone;
+  ClearProperties();
   SetInvalid();
 }
 
@@ -688,7 +680,7 @@ void CFileItem::Archive(CArchive& ar)
   }
 }
 
-void CFileItem::Serialize(CVariant& value)
+void CFileItem::Serialize(CVariant& value) const
 {
   //CGUIListItem::Serialize(value["CGUIListItem"]);
 
@@ -717,7 +709,7 @@ void CFileItem::ToSortable(SortItem &sortable)
   sortable[FieldSize] = m_dwSize;
   sortable[FieldDriveType] = m_iDriveType;
   sortable[FieldStartOffset] = m_lStartOffset;
-  sortable[FieldStartOffset] = m_lEndOffset;
+  sortable[FieldEndOffset] = m_lEndOffset;
   sortable[FieldProgramCount] = m_iprogramCount;
   sortable[FieldBitrate] = m_dwSize;
   sortable[FieldTitle] = m_strTitle;
@@ -1199,7 +1191,7 @@ bool CFileItem::IsReadOnly() const
 {
   if (IsParentFolder()) return true;
   if (m_bIsShareOrDrive) return true;
-  return !CUtil::SupportsFileOperations(m_strPath);
+  return !CUtil::SupportsWriteFileOperations(m_strPath);
 }
 
 void CFileItem::FillInDefaultIcon()
@@ -1334,12 +1326,6 @@ void CFileItem::SetLabel(const CStdString &strLabel)
   CGUIListItem::SetLabel(strLabel);
 }
 
-void CFileItem::SetLabel2(const CStdString &strLabel)
-{
-  m_strLabel2 = strLabel;
-}
-
-
 void CFileItem::SetFileSizeLabel()
 {
   if( m_bIsFolder && m_dwSize == 0 )
@@ -1377,6 +1363,8 @@ const CStdString& CFileItem::GetMimeType(bool lookup /*= true*/) const
 
     if( m_bIsFolder )
       m_ref = "x-directory/normal";
+    else if( m_pvrChannelInfoTag )
+      m_ref = m_pvrChannelInfoTag->InputFormat();
     else if( m_strPath.Left(8).Equals("shout://")
           || m_strPath.Left(7).Equals("http://")
           || m_strPath.Left(8).Equals("https://"))
@@ -1475,8 +1463,8 @@ void CFileItem::UpdateInfo(const CFileItem &item, bool replaceLabels /*=true*/)
     SetLabel(item.GetLabel());
   if (replaceLabels && !item.GetLabel2().IsEmpty())
     SetLabel2(item.GetLabel2());
-  if (!item.GetThumbnailImage().IsEmpty())
-    SetThumbnailImage(item.GetThumbnailImage());
+  if (!item.GetArt("thumb").empty())
+    SetArt("thumb", item.GetArt("thumb"));
   if (!item.GetIconImage().IsEmpty())
     SetIconImage(item.GetIconImage());
   AppendProperties(item);
@@ -1809,104 +1797,104 @@ void CFileItemList::Sort(SORT_METHOD sortMethod, SortOrder sortOrder)
   if (sortMethod == m_sortMethod && m_sortOrder == sortOrder)
     return;
 
-  SortBy sortBy = SortByNone;
-  SortAttribute sortAttributes = SortAttributeNone;
+  SortDescription sorting;
+  sorting.sortOrder = sortOrder;
 
   switch (sortMethod)
   {
   case SORT_METHOD_LABEL:
   case SORT_METHOD_LABEL_IGNORE_FOLDERS:
   case SORT_METHOD_LABEL_IGNORE_THE:
-    sortBy = SortByLabel;
+    sorting.sortBy = SortByLabel;
     break;
   case SORT_METHOD_DATE:
-    sortBy = SortByDate;
+    sorting.sortBy = SortByDate;
     break;
   case SORT_METHOD_SIZE:
-    sortBy = SortBySize;
+    sorting.sortBy = SortBySize;
     break;
   case SORT_METHOD_BITRATE:
-    sortBy = SortByBitrate;
+    sorting.sortBy = SortByBitrate;
     break;      
   case SORT_METHOD_DRIVE_TYPE:
-    sortBy = SortByDriveType;
+    sorting.sortBy = SortByDriveType;
     break;
   case SORT_METHOD_TRACKNUM:
-    sortBy = SortByTrackNumber;
+    sorting.sortBy = SortByTrackNumber;
     break;
   case SORT_METHOD_EPISODE:
-    sortBy = SortByEpisodeNumber;
+    sorting.sortBy = SortByEpisodeNumber;
     break;
   case SORT_METHOD_DURATION:
   case SORT_METHOD_VIDEO_RUNTIME:
-    sortBy = SortByTime;
+    sorting.sortBy = SortByTime;
     break;
   case SORT_METHOD_TITLE:
   case SORT_METHOD_TITLE_IGNORE_THE:
   case SORT_METHOD_VIDEO_TITLE:
-    sortBy = SortByTitle;
+    sorting.sortBy = SortByTitle;
     break;
   case SORT_METHOD_ARTIST:
   case SORT_METHOD_ARTIST_IGNORE_THE:
-    sortBy = SortByArtist;
+    sorting.sortBy = SortByArtist;
     break;
   case SORT_METHOD_ALBUM:
   case SORT_METHOD_ALBUM_IGNORE_THE:
-    sortBy = SortByAlbum;
+    sorting.sortBy = SortByAlbum;
     break;
   case SORT_METHOD_GENRE:
-    sortBy = SortByGenre;
+    sorting.sortBy = SortByGenre;
     break;
   case SORT_METHOD_COUNTRY:
-    sortBy = SortByCountry;
+    sorting.sortBy = SortByCountry;
     break;
   case SORT_METHOD_DATEADDED:
-    sortBy = SortByDateAdded;
+    sorting.sortBy = SortByDateAdded;
     break;
   case SORT_METHOD_FILE:
-    sortBy = SortByFile;
+    sorting.sortBy = SortByFile;
     break;
   case SORT_METHOD_SONG_RATING:
   case SORT_METHOD_VIDEO_RATING:
-    sortBy = SortByRating;
+    sorting.sortBy = SortByRating;
     break;
   case SORT_METHOD_VIDEO_SORT_TITLE:
   case SORT_METHOD_VIDEO_SORT_TITLE_IGNORE_THE:
-    sortBy = SortBySortTitle;
+    sorting.sortBy = SortBySortTitle;
     break;
   case SORT_METHOD_YEAR:
-    sortBy = SortByYear;
+    sorting.sortBy = SortByYear;
     break;
   case SORT_METHOD_PRODUCTIONCODE:
-    sortBy = SortByProductionCode;
+    sorting.sortBy = SortByProductionCode;
     break;
   case SORT_METHOD_PROGRAM_COUNT:
-    sortBy = SortByProgramCount;
+    sorting.sortBy = SortByProgramCount;
     break;
   case SORT_METHOD_PLAYLIST_ORDER:
-    sortBy = SortByPlaylistOrder;
+    sorting.sortBy = SortByPlaylistOrder;
     break;
   case SORT_METHOD_MPAA_RATING:
-    sortBy = SortByMPAA;
+    sorting.sortBy = SortByMPAA;
     break;
   case SORT_METHOD_STUDIO:
   case SORT_METHOD_STUDIO_IGNORE_THE:
-    sortBy = SortByStudio;
+    sorting.sortBy = SortByStudio;
     break;
   case SORT_METHOD_FULLPATH:
-    sortBy = SortByPath;
+    sorting.sortBy = SortByPath;
     break;
   case SORT_METHOD_LASTPLAYED:
-    sortBy = SortByLastPlayed;
+    sorting.sortBy = SortByLastPlayed;
     break;
   case SORT_METHOD_PLAYCOUNT:
-    sortBy = SortByPlaycount;
+    sorting.sortBy = SortByPlaycount;
     break;
   case SORT_METHOD_LISTENERS:
-    sortBy = SortByListeners;
+    sorting.sortBy = SortByListeners;
     break;    
   case SORT_METHOD_CHANNEL:
-    sortBy = SortByChannel;
+    sorting.sortBy = SortByChannel;
     break;
   default:
     CLog::Log(LOGWARNING, "Unknown sort method %d", sortMethod);
@@ -1919,7 +1907,7 @@ void CFileItemList::Sort(SORT_METHOD sortMethod, SortOrder sortOrder)
       sortMethod == SORT_METHOD_ALBUM_IGNORE_THE ||
       sortMethod == SORT_METHOD_VIDEO_SORT_TITLE_IGNORE_THE ||
       sortMethod == SORT_METHOD_STUDIO_IGNORE_THE)
-    sortAttributes = (SortAttribute)((int)sortAttributes | SortAttributeIgnoreArticle);
+    sorting.sortAttributes = (SortAttribute)((int)sorting.sortAttributes | SortAttributeIgnoreArticle);
 
   if (sortMethod == SORT_METHOD_FILE        ||
       sortMethod == SORT_METHOD_VIDEO_SORT_TITLE ||
@@ -1932,10 +1920,31 @@ void CFileItemList::Sort(SORT_METHOD sortMethod, SortOrder sortOrder)
       sortMethod == SORT_METHOD_LASTPLAYED ||
       sortMethod == SORT_METHOD_PLAYCOUNT ||
       m_sortIgnoreFolders)
-    sortAttributes = (SortAttribute)((int)sortAttributes | SortAttributeIgnoreFolders);
+    sorting.sortAttributes = (SortAttribute)((int)sorting.sortAttributes | SortAttributeIgnoreFolders);
 
-  if (sortBy == SortByNone)
+  Sort(sorting);
+
+  m_sortMethod = sortMethod;
+  m_sortOrder = sortOrder;
+}
+
+void CFileItemList::Sort(SortDescription sortDescription)
+{
+  if (sortDescription.sortBy == SortByNone)
     return;
+
+  if (sortDescription.sortBy == SortByFile ||
+      sortDescription.sortBy == SortBySortTitle ||
+      sortDescription.sortBy == SortByDateAdded ||
+      sortDescription.sortBy == SortByRating ||
+      sortDescription.sortBy == SortByYear ||
+      sortDescription.sortBy == SortByPlaylistOrder ||
+      sortDescription.sortBy == SortByLastPlayed ||
+      sortDescription.sortBy == SortByPlaycount)
+    sortDescription.sortAttributes = (SortAttribute)((int)sortDescription.sortAttributes | SortAttributeIgnoreFolders);
+
+  if (m_sortIgnoreFolders)
+    sortDescription.sortAttributes = (SortAttribute)((int)sortDescription.sortAttributes | SortAttributeIgnoreFolders);
 
   SortItems sortItems((size_t)Size());
   for (int index = 0; index < Size(); index++)
@@ -1945,7 +1954,7 @@ void CFileItemList::Sort(SORT_METHOD sortMethod, SortOrder sortOrder)
   }
 
   // do the sorting
-  SortUtils::Sort(sortBy, sortOrder, sortAttributes, sortItems);
+  SortUtils::Sort(sortDescription, sortItems);
 
   // apply the new order to the existing CFileItems
   VECFILEITEMS sortedFileItems;
@@ -1961,9 +1970,6 @@ void CFileItemList::Sort(SORT_METHOD sortMethod, SortOrder sortOrder)
 
   // replace the current list with the re-ordered one
   m_items.assign(sortedFileItems.begin(), sortedFileItems.end());
-
-  m_sortMethod = sortMethod;
-  m_sortOrder = sortOrder;
 }
 
 void CFileItemList::Randomize()
@@ -2778,16 +2784,10 @@ CStdString CFileItem::GetTBNFile() const
   return thumbFile;
 }
 
-CStdString CFileItem::GetUserVideoThumb() const
+CStdString CFileItem::FindLocalArt(const std::string &artFile, bool useFolder) const
 {
-  if (IsTuxBox())
-  {
-    if (!m_bIsFolder)
-      return g_tuxbox.GetPicon(GetLabel());
-    else return "";
-  }
-
-  if (m_strPath.IsEmpty()
+  // ignore a bunch that are meaningless
+  if (m_strPath.empty()
    || m_bIsShareOrDrive
    || IsInternetStream()
    || URIUtils::IsUPnP(m_strPath)
@@ -2799,46 +2799,71 @@ CStdString CFileItem::GetUserVideoThumb() const
    || IsDVD())
     return "";
 
-
-  // 1. check <filename>.tbn or <foldername>.tbn
-  CStdString fileThumb(GetTBNFile());
-  if (CFile::Exists(fileThumb))
-    return fileThumb;
-
-  if (IsOpticalMediaFile())
-  { // special case for optical media "folders" - check the parent folder (or parent of parent)
-    // TODO: A better way to handle this would be to treat stacked folders as folders rather than files.
-    CFileItem item(GetLocalMetadataPath(), true);
-    CStdString thumb(item.GetUserVideoThumb());
-    if (!thumb.IsEmpty())
-      return thumb;
-  }
-
-  // 2. - check movie.tbn, as long as it's not a folder
+  CStdString thumb;
   if (!m_bIsFolder)
   {
-    CStdString strPath, movietbnFile;
-    URIUtils::GetParentPath(m_strPath, strPath);
-    URIUtils::AddFileToFolder(strPath, "movie.tbn", movietbnFile);
-    if (CFile::Exists(movietbnFile))
-      return movietbnFile;
+    thumb = GetLocalArt(artFile, false);
+    if (!thumb.empty() && CFile::Exists(thumb))
+      return thumb;
+  }
+  if ((useFolder || (m_bIsFolder && !IsFileFolder())) && !artFile.empty())
+  {
+    CStdString thumb2 = GetLocalArt(artFile, true);
+    if (!thumb2.empty() && thumb2 != thumb && CFile::Exists(thumb2))
+      return thumb2;
+  }
+  return "";
+}
+
+CStdString CFileItem::GetLocalArt(const std::string &artFile, bool useFolder) const
+{
+  // no retrieving of empty art files from folders
+  if (useFolder && artFile.empty())
+    return "";
+
+  CStdString strFile = m_strPath;
+  if (IsStack())
+  {
+/*    CFileItem item(CStackDirectory::GetFirstStackedFile(strFile),false);
+    CStdString localArt = item.GetLocalArt(artFile);
+    return localArt;
+    */
+    CStdString strPath;
+    URIUtils::GetParentPath(m_strPath,strPath);
+    URIUtils::AddFileToFolder(strPath,URIUtils::GetFileName(CStackDirectory::GetStackedTitlePath(strFile)),strFile);
   }
 
-  // 3. check folder image in_m_dvdThumbs (folder.jpg)
-  if (m_bIsFolder && !IsFileFolder())
+  if (URIUtils::IsInRAR(strFile) || URIUtils::IsInZIP(strFile))
   {
-    CStdStringArray thumbs;
-    StringUtils::SplitString(g_advancedSettings.m_dvdThumbs, "|", thumbs);
-    for (unsigned int i = 0; i < thumbs.size(); ++i)
-    {
-      CStdString folderThumb(GetFolderThumb(thumbs[i]));
-      if (CFile::Exists(folderThumb))
-      {
-        return folderThumb;
-      }
-    }
+    CStdString strPath, strParent;
+    URIUtils::GetDirectory(strFile,strPath);
+    URIUtils::GetParentPath(strPath,strParent);
+    URIUtils::AddFileToFolder(strParent,URIUtils::GetFileName(strFile),strFile);
   }
-  // No thumb found
+
+  if (IsMultiPath())
+    strFile = CMultiPathDirectory::GetFirstPath(m_strPath);
+
+  if (IsOpticalMediaFile())
+  { // optical media files should be treated like folders
+    useFolder = true;
+    strFile = GetLocalMetadataPath();
+  }
+  else if (useFolder)
+    strFile = URIUtils::GetDirectory(strFile);
+
+  if (strFile.empty()) // empty filepath -> nothing to find
+    return "";
+
+  if (useFolder)
+    return URIUtils::AddFileToFolder(strFile, artFile);
+  else
+  {
+    if (artFile.empty()) // old thumbnail matching
+      return URIUtils::ReplaceExtension(strFile, ".tbn");
+    else
+      return URIUtils::ReplaceExtension(strFile, "-" + artFile);
+  }
   return "";
 }
 
@@ -2903,47 +2928,6 @@ CStdString CFileItem::GetBaseMoviePath(bool bUseFolderNames) const
   return strMovieName;
 }
 
-#ifdef UNIT_TESTING
-bool CFileItem::testGetBaseMoviePath()
-{
-  typedef struct
-  {
-    const char *file;
-    bool use_folder;
-    const char *base;
-  } testfiles;
-
-  const testfiles test_files[] = {{ "c:\\dir\\filename.avi", false, "c:\\dir\\filename.avi" },
-                                  { "c:\\dir\\filename.avi", true,  "c:\\dir\\" },
-                                  { "/dir/filename.avi", false, "/dir/filename.avi" },
-                                  { "/dir/filename.avi", true,  "/dir/" },
-                                  { "smb://somepath/file.avi", false, "smb://somepath/file.avi" },
-                                  { "smb://somepath/file.avi", true, "smb://somepath/" },
-                                  { "stack:///path/to/movie_name/cd1/some_file1.avi , /path/to/movie_name/cd2/some_file2.avi", false, "stack:///path/to/movie_name/cd1/some_file1.avi , /path/to/movie_name/cd2/some_file2.avi" },
-                                  { "stack:///path/to/movie_name/cd1/some_file1.avi , /path/to/movie_name/cd2/some_file2.avi", true,  "/path/to/movie_name/" },
-                                  { "/home/user/TV Shows/Dexter/S1/1x01.avi", false, "/home/user/TV Shows/Dexter/S1/1x01.avi" },
-                                  { "/home/user/TV Shows/Dexter/S1/1x01.avi", true, "/home/user/TV Shows/Dexter/S1/" },
-                                  { "rar://g%3a%5cmultimedia%5cmovies%5cSphere%2erar/Sphere.avi", true, "g:\\multimedia\\movies\\" },
-                                  { "/home/user/movies/movie_name/video_ts/VIDEO_TS.IFO", false, "/home/user/movies/movie_name/" },
-                                  { "/home/user/movies/movie_name/video_ts/VIDEO_TS.IFO", true, "/home/user/movies/movie_name/" },
-                                  { "/home/user/movies/movie_name/BDMV/index.bdmv", false, "/home/user/movies/movie_name/" },
-                                  { "/home/user/movies/movie_name/BDMV/index.bdmv", true, "/home/user/movies/movie_name/" }};
-
-  for (unsigned int i = 0; i < sizeof(test_files) / sizeof(testfiles); i++)
-  {
-    CFileItem item;
-    item.SetPath(test_files[i].file);
-    CStdString path = item.GetBaseMoviePath(test_files[i].use_folder);
-    if (path != test_files[i].base)
-    {
-      CLog::Log(LOGFATAL, "%s failed ('%s' -> '%s' != '%s')", __FUNCTION__, test_files[i].file, path.c_str(), test_files[i].base);
-      return false;
-    }
-  }
-  return true;
-}
-#endif
-
 CStdString CFileItem::GetLocalFanart() const
 {
   if (IsVideoDb())
@@ -2997,7 +2981,7 @@ CStdString CFileItem::GetLocalFanart() const
   CFileItemList items;
   CDirectory::GetDirectory(strDir, items, g_settings.m_pictureExtensions, DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO);
   if (IsOpticalMediaFile())
-  { // grab from the optical media parent folder as well - see GetUserVideoThumb
+  { // grab from the optical media parent folder as well
     CFileItemList moreItems;
     CDirectory::GetDirectory(GetLocalMetadataPath(), moreItems, g_settings.m_pictureExtensions, DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_READ_CACHE | DIR_FLAG_NO_FILE_INFO);
     items.Append(moreItems);
@@ -3060,7 +3044,7 @@ bool CFileItem::LoadMusicTag()
     if (musicDatabase.GetSongByFileName(m_strPath, song))
     {
       GetMusicInfoTag()->SetSong(song);
-      SetThumbnailImage(song.strThumb);
+      SetArt("thumb", song.strThumb);
       return true;
     }
     musicDatabase.Close();

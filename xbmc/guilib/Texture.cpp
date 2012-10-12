@@ -70,11 +70,13 @@ void CBaseTexture::Allocate(unsigned int width, unsigned int height, unsigned in
     while (GetPitch() < g_Windowing.GetMinDXTPitch())
       m_textureWidth += GetBlockSize();
 
+#if !defined(TARGET_RASPBERRY_PI)
   if (!g_Windowing.SupportsNPOT((m_format & XB_FMT_DXT_MASK) != 0))
   {
     m_textureWidth = PadPow2(m_textureWidth);
     m_textureHeight = PadPow2(m_textureHeight);
   }
+#endif
   if (m_format & XB_FMT_DXT_MASK)
   { // DXT textures must be a multiple of 4 in width and height
     m_textureWidth = ((m_textureWidth + 3) / 4) * 4;
@@ -224,8 +226,13 @@ bool CBaseTexture::LoadFromFileInternal(const CStdString& texturePath, unsigned 
 
     if(omx_image.ReadFile(texturePath))
     {
-      // TODO: we only decode as half width and height. this is a workaround for the PI memory limitation
-      if(omx_image.Decode(omx_image.GetWidth() / 2, omx_image.GetHeight() / 2))
+      int width = omx_image.GetWidth();
+      int height = omx_image.GetHeight();
+
+      // We restict textures to the maximum GUI size. This is a workaround for the PI memory limitation
+      g_Windowing.ClampToGUIDisplayLimits(width, height);
+
+      if(omx_image.Decode(width, height))
       {
         Allocate(omx_image.GetDecodedWidth(), omx_image.GetDecodedHeight(), XB_FMT_A8R8G8B8);
 
@@ -244,12 +251,32 @@ bool CBaseTexture::LoadFromFileInternal(const CStdString& texturePath, unsigned 
         if (autoRotate && omx_image.GetOrientation())
           m_orientation = omx_image.GetOrientation() - 1;
 
-        if(omx_image.GetDecodedData())
+        if(m_textureWidth != omx_image.GetDecodedWidth() || m_textureHeight != omx_image.GetDecodedHeight())
         {
-          int size = ( ( GetPitch() * GetRows() ) > omx_image.GetDecodedSize() ) ?
-                           omx_image.GetDecodedSize() : ( GetPitch() * GetRows() );
+          unsigned int imagePitch = GetPitch(m_imageWidth);
+          unsigned int imageRows = GetRows(m_imageHeight);
+          unsigned int texturePitch = GetPitch(m_textureWidth);
+          unsigned int textureRows = GetRows(m_textureHeight);
+          unsigned int blockSize = GetBlockSize();
 
-          memcpy(m_pixels, (unsigned char *)omx_image.GetDecodedData(), size);
+          unsigned char *src = omx_image.GetDecodedData();
+          unsigned char *dst = m_pixels;
+          for (unsigned int y = 0; y < imageRows; y++)
+          {
+            memcpy(dst, src, imagePitch);
+            src += imagePitch;
+            dst += texturePitch;
+          }
+        }
+        else
+        {
+          if(omx_image.GetDecodedData())
+          {
+            int size = ( ( GetPitch() * GetRows() ) > omx_image.GetDecodedSize() ) ?
+                             omx_image.GetDecodedSize() : ( GetPitch() * GetRows() );
+
+            memcpy(m_pixels, (unsigned char *)omx_image.GetDecodedData(), size);
+          }
         }
 
         omx_image.Close();

@@ -33,7 +33,6 @@
 #include <taglib/id3v1genres.h>
 #include "cddb.h"
 #include "network/DNSNameCache.h"
-#include "music/tags/Id3Tag.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -576,7 +575,7 @@ void Xcddb::parseData(const char *buffer)
           if (StringUtils::IsNaturalNumber(strGenre))
           {
             int iGenre = strtol(strGenre, NULL, 10);
-            m_strGenre = TagLib::ID3v1::genre(iGenre).toCString();
+            m_strGenre = TagLib::ID3v1::genre(iGenre).to8Bit(true);
           }
         }
       }

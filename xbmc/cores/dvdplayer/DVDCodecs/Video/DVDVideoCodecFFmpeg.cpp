@@ -263,6 +263,7 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
   // if we don't do this, then some codecs seem to fail.
   m_pCodecContext->coded_height = hints.height;
   m_pCodecContext->coded_width = hints.width;
+  m_pCodecContext->bits_per_coded_sample = hints.bitsperpixel;
 
   if( hints.extradata && hints.extrasize > 0 )
   {
@@ -491,7 +492,8 @@ int CDVDVideoCodecFFmpeg::Decode(BYTE* pData, int iSize, double dts, double pts)
     m_iLastKeyframe = 300;
 
   /* h264 doesn't always have keyframes + won't output before first keyframe anyway */
-  if(m_pCodecContext->codec_id == CODEC_ID_H264)
+  if(m_pCodecContext->codec_id == CODEC_ID_H264
+  || m_pCodecContext->codec_id == CODEC_ID_SVQ3)
     m_started = true;
 
   if(m_pHardware == NULL)

@@ -127,9 +127,6 @@
     <Filter Include="input\windows">
       <UniqueIdentifier>{2f7a07e4-ac48-4e30-beb3-550e50b59c09}</UniqueIdentifier>
     </Filter>
-    <Filter Include="interfaces\http-api">
-      <UniqueIdentifier>{3616033f-20f3-48c8-96bd-b07f2eed008e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="interfaces\json-rpc">
       <UniqueIdentifier>{15fc3844-6b50-4424-ba2c-ac9bd85d3ab0}</UniqueIdentifier>
     </Filter>
@@ -401,6 +398,9 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDCodecs\Video\DXVA.cpp">
       <Filter>cores\dvdplayer\DVDCodecs\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDCodecs\Overlay\DVDOverlayCodec.cpp">
+      <Filter>cores\dvdplayer\DVDCodecs\Overlay</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDCodecs\Overlay\DVDOverlayCodecCC.cpp">
       <Filter>cores\dvdplayer\DVDCodecs\Overlay</Filter>
@@ -1213,12 +1213,6 @@
     <ClCompile Include="..\..\xbmc\input\windows\IrssMessage.cpp">
       <Filter>input\windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\interfaces\http-api\HttpApi.cpp">
-      <Filter>interfaces\http-api</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\interfaces\http-api\XBMChttp.cpp">
-      <Filter>interfaces\http-api</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\AudioLibrary.cpp">
       <Filter>interfaces\json-rpc</Filter>
     </ClCompile>
@@ -1253,9 +1247,6 @@
       <Filter>music\dialogs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\music\dialogs\GUIDialogMusicOverlay.cpp">
-      <Filter>music\dialogs</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\music\dialogs\GUIDialogMusicScan.cpp">
       <Filter>music\dialogs</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\music\dialogs\GUIDialogSongInfo.cpp">
@@ -1293,9 +1284,6 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\music\windows\GUIWindowVisualisation.cpp">
       <Filter>music\windows</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\music\tags\Id3Tag.cpp">
-      <Filter>music\tags</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\music\tags\MusicInfoTag.cpp">
       <Filter>music\tags</Filter>
@@ -1696,9 +1684,6 @@
     <ClCompile Include="..\..\xbmc\video\dialogs\GUIDialogVideoOverlay.cpp">
       <Filter>video\dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\video\dialogs\GUIDialogVideoScan.cpp">
-      <Filter>video\dialogs</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\video\dialogs\GUIDialogVideoSettings.cpp">
       <Filter>video\dialogs</Filter>
     </ClCompile>
@@ -1999,9 +1984,6 @@
     <ClCompile Include="..\..\xbmc\guilib\JpegIO.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\cores\paplayer\BXAcodec.cpp">
-      <Filter>cores\paplayer</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\interfaces\info\SkinVariable.cpp">
       <Filter>interfaces\info</Filter>
     </ClCompile>
@@ -2061,9 +2043,6 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\filesystem\AFPDirectory.cpp">
       <Filter>filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPApiHandler.cpp">
-      <Filter>network\httprequesthandler</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPVfsHandler.cpp">
       <Filter>network\httprequesthandler</Filter>
@@ -2517,6 +2496,9 @@
     <ClCompile Include="..\..\xbmc\video\VideoDatabase.cpp">
       <Filter>video</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\utils\Screenshot.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\ViewDatabase.cpp" />
     <ClCompile Include="..\..\xbmc\ApplicationMessenger.cpp" />
     <ClCompile Include="..\..\xbmc\Autorun.cpp" />
@@ -2604,6 +2586,9 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\dialogs\GUIDialogKeyboardGeneric.cpp">
       <Filter>dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\peripherals\devices\PeripheralImon.cpp">
+      <Filter>peripherals\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\video\VideoDbUrl.cpp">
       <Filter>video</Filter>
@@ -2929,6 +2914,18 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\interfaces\python\test\TestSwig.cpp">
       <Filter>interfaces\python\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\json-rpc\AddonsOperations.cpp">
+      <Filter>interfaces\json-rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\cores\dvdplayer\DVDDemuxers\DVDDemuxBXA.cpp">
+      <Filter>cores\dvdplayer\DVDDemuxers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\dialogs\GUIDialogMediaFilter.cpp">
+      <Filter>dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\test\TestFileItem.cpp">
+      <Filter>test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -4053,12 +4050,6 @@
     <ClInclude Include="..\..\xbmc\input\windows\IrssMessage.h">
       <Filter>input\windows</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\interfaces\http-api\HttpApi.h">
-      <Filter>interfaces\http-api</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\interfaces\http-api\XBMChttp.h">
-      <Filter>interfaces\http-api</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\AudioLibrary.h">
       <Filter>interfaces\json-rpc</Filter>
     </ClInclude>
@@ -4104,9 +4095,6 @@
     <ClInclude Include="..\..\xbmc\music\dialogs\GUIDialogMusicOverlay.h">
       <Filter>music\dialogs</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\music\dialogs\GUIDialogMusicScan.h">
-      <Filter>music\dialogs</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\music\dialogs\GUIDialogSongInfo.h">
       <Filter>music\dialogs</Filter>
     </ClInclude>
@@ -4143,15 +4131,6 @@
     <ClInclude Include="..\..\xbmc\music\windows\GUIWindowVisualisation.h">
       <Filter>music\windows</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\music\tags\DllLibid3tag.h">
-      <Filter>music\tags</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\music\tags\Id3Tag.h">
-      <Filter>music\tags</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\music\tags\id3v1genre.h">
-      <Filter>music\tags</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\music\tags\ImusicInfoTagLoader.h">
       <Filter>music\tags</Filter>
     </ClInclude>
@@ -4183,9 +4162,6 @@
       <Filter>music\tags</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\music\tags\MusicInfoTagLoaderYM.h">
-      <Filter>music\tags</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\music\tags\Tag.h">
       <Filter>music\tags</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\network\cddb.h">
@@ -4593,9 +4569,6 @@
     <ClInclude Include="..\..\xbmc\video\dialogs\GUIDialogVideoOverlay.h">
       <Filter>video\dialogs</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\video\dialogs\GUIDialogVideoScan.h">
-      <Filter>video\dialogs</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\video\dialogs\GUIDialogVideoSettings.h">
       <Filter>video\dialogs</Filter>
     </ClInclude>
@@ -4917,9 +4890,6 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\JpegIO.h">
       <Filter>guilib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\cores\paplayer\BXAcodec.h">
-      <Filter>cores\paplayer</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\interfaces\info\SkinVariable.h">
       <Filter>interfaces\info</Filter>
@@ -5324,9 +5294,6 @@
     <ClInclude Include="..\..\xbmc\network\httprequesthandler\IHTTPRequestHandler.h">
       <Filter>network\httprequesthandler</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\network\httprequesthandler\HTTPApiHandler.h">
-      <Filter>network\httprequesthandler</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\network\httprequesthandler\HTTPVfsHandler.h">
       <Filter>network\httprequesthandler</Filter>
     </ClInclude>
@@ -5574,6 +5541,9 @@
     <ClInclude Include="..\..\xbmc\dialogs\GUIDialogKeyboardGeneric.h">
       <Filter>dialogs</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\peripherals\devices\PeripheralImon.h">
+      <Filter>peripherals\devices</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\xbmc\video\VideoDbUrl.h">
       <Filter>video</Filter>
     </ClInclude>
@@ -5739,6 +5709,18 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\music\tags\MusicInfoTagLoaderWav.h">
       <Filter>music\tags</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\json-rpc\AddonsOperations.h">
+      <Filter>interfaces\json-rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\cores\dvdplayer\DVDDemuxers\DVDDemuxBXA.h">
+      <Filter>cores\dvdplayer\DVDDemuxers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\utils\Screenshot.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\dialogs\GUIDialogMediaFilter.h">
+      <Filter>dialogs</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

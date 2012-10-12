@@ -56,6 +56,7 @@ public:
   int GetMatchingSongsLeft();
   int GetRelaxedSongs();
   int GetRandomSongs();
+  PartyModeContext GetType() const;
 
 private:
   void Process();
@@ -71,6 +72,7 @@ private:
   std::pair<CStdString,CStdString> GetWhereClauseWithHistory() const;
   void AddToHistory(int type, int songID);
   void GetRandomSelection(std::vector< std::pair<int,int> > &in, unsigned int number, std::vector< std::pair<int, int> > &out);
+  void Announce();
 
   // state
   bool m_bEnabled;

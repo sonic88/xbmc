@@ -110,21 +110,28 @@ namespace PERIPHERALS
 
     void PushCecKeypress(const CEC::cec_keypress &key);
 
+    void ActivateSource(void);
+    void StandbyDevices(void);
+
   protected:
     bool OpenConnection(void);
     void SetConfigurationFromSettings(void);
     void SetConfigurationFromLibCEC(const CEC::libcec_configuration &config);
     void SetVersionInfo(const CEC::libcec_configuration &configuration);
     static void ReadLogicalAddresses(const CStdString &strString, CEC::cec_logical_addresses &addresses);
-    static int CecKeyPress(void *cbParam, const CEC::cec_keypress &key);
+    static void ReadLogicalAddresses(int iLocalisedId, CEC::cec_logical_addresses &addresses);
+    bool WriteLogicalAddresses(const CEC::cec_logical_addresses& addresses, const std::string& strSettingName, const std::string& strAdvancedSettingName);
+    static int CecKeyPress(void *cbParam, const CEC::cec_keypress key);
     void PushCecKeypress(const CecButtonPress &key);
-    static int CecLogMessage(void *cbParam, const CEC::cec_log_message &message);
-    static int CecCommand(void *cbParam, const CEC::cec_command &command);
-    static int CecConfiguration(void *cbParam, const CEC::libcec_configuration &config);
-    static int CecAlert(void *cbParam, const CEC::libcec_alert alert, const CEC::libcec_parameter &data);
+    static int CecLogMessage(void *cbParam, const CEC::cec_log_message message);
+    static int CecCommand(void *cbParam, const CEC::cec_command command);
+    static int CecConfiguration(void *cbParam, const CEC::libcec_configuration config);
+    static int CecAlert(void *cbParam, const CEC::libcec_alert alert, const CEC::libcec_parameter data);
     static void CecSourceActivated(void *param, const CEC::cec_logical_address address, const uint8_t activated);
     bool IsRunning(void) const;
     void ReopenConnection(void);
+    void ProcessActivateSource(void);
+    void ProcessStandbyDevices(void);
 
     void GetNextKey(void);
     bool InitialiseFeature(const PeripheralFeature feature);
@@ -133,6 +140,8 @@ namespace PERIPHERALS
     void SetMenuLanguage(const char *strLanguage);
     static bool FindConfigLocation(CStdString &strString);
     static bool TranslateComPort(CStdString &strPort);
+
+    void ResetMembers(void);
 
     DllLibCEC*                        m_dll;
     CEC::ICECAdapter*                 m_cecAdapter;
@@ -156,6 +165,8 @@ namespace PERIPHERALS
     CEC::ICECCallbacks                m_callbacks;
     CCriticalSection                  m_critSection;
     CEC::libcec_configuration         m_configuration;
+    bool                              m_bActiveSourcePending;
+    bool                              m_bStandbyPending;
   };
 
   class CPeripheralCecAdapterUpdateThread : public CThread

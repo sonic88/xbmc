@@ -770,15 +770,6 @@ bool CDVDPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
 
     if(packet)
     {
-      if(packet->iStreamId == DMX_SPECIALID_STREAMCHANGE)
-      {
-        // reset the caching state for pvr streams
-        if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
-          SetCaching(CACHESTATE_PVR);
-        CDVDDemuxUtils::FreeDemuxPacket(packet);
-        return true;
-      }
-
       UpdateCorrection(packet, m_offset_pts);
       if(packet->iStreamId < 0)
         return true;
@@ -804,6 +795,15 @@ bool CDVDPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
 
   if(packet)
   {
+    // stream changed, update and open defaults
+    if(packet->iStreamId == DMX_SPECIALID_STREAMCHANGE)
+    {
+        m_SelectionStreams.Clear(STREAM_NONE, STREAM_SOURCE_DEMUX);
+        m_SelectionStreams.Update(m_pInputStream, m_pDemuxer);
+        OpenDefaultStreams();
+        return true;
+    }
+
     UpdateCorrection(packet, m_offset_pts);
     // this groupId stuff is getting a bit messy, need to find a better way
     // currently it is used to determine if a menu overlay is associated with a picture
@@ -1965,11 +1965,6 @@ void CDVDPlayer::OnExit()
     }
     m_pSubtitleDemuxer = NULL;
 
-    if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && g_PVRManager.IsPlayingRecording())
-    {
-      g_PVRManager.UpdateCurrentLastPlayedPosition(m_State.time / 1000);
-    }
-
     // destroy the inputstream
     if (m_pInputStream)
     {
@@ -2028,6 +2023,9 @@ void CDVDPlayer::HandleMessages()
         }
 
         double start = DVD_NOPTS_VALUE;
+
+        if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && !m_State.canseek)
+          break;
 
         int time = msg.GetRestore() ? (int)m_Edl.RestoreCutTime(msg.GetTime()) : msg.GetTime();
         CLog::Log(LOGDEBUG, "demuxer seek to: %d", time);
@@ -2189,6 +2187,12 @@ void CDVDPlayer::HandleMessages()
         if (speed != DVD_PLAYSPEED_PAUSE && m_playSpeed != DVD_PLAYSPEED_PAUSE && speed != m_playSpeed)
           m_callback.OnPlayBackSpeedChanged(speed / DVD_PLAYSPEED_NORMAL);
 
+        if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && speed != m_playSpeed)
+        {
+          CDVDInputStreamPVRManager* pvrinputstream = static_cast<CDVDInputStreamPVRManager*>(m_pInputStream);
+          pvrinputstream->Pause( speed == 0 );
+        }
+
         // if playspeed is different then DVD_PLAYSPEED_NORMAL or DVD_PLAYSPEED_PAUSE
         // audioplayer, stops outputing audio to audiorendere, but still tries to
         // sleep an correct amount for each packet
@@ -2343,8 +2347,17 @@ void CDVDPlayer::SetPlaySpeed(int speed)
   SynchronizeDemuxer(100);
 }
 
+bool CDVDPlayer::CanPause()
+{
+  CSingleLock lock(m_StateSection);
+  return m_State.canpause;
+}
+
 void CDVDPlayer::Pause()
 {
+  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && !m_State.canpause)
+    return;
+
   if(m_playSpeed != DVD_PLAYSPEED_PAUSE && (m_caching == CACHESTATE_FULL || m_caching == CACHESTATE_PVR))
   {
     SetCaching(CACHESTATE_DONE);
@@ -2388,7 +2401,13 @@ bool CDVDPlayer::IsPassthrough() const
 
 bool CDVDPlayer::CanSeek()
 {
-  return GetTotalTime() > 0;
+  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
+  {
+    CSingleLock lock(m_StateSection);
+    return m_State.canseek;
+  }
+  else
+    return GetTotalTime() > 0;
 }
 
 void CDVDPlayer::Seek(bool bPlus, bool bLargeStep)
@@ -2402,6 +2421,8 @@ void CDVDPlayer::Seek(bool bPlus, bool bLargeStep)
     return;
   }
 #endif
+  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && !m_State.canseek)
+    return;
 
   if(((bPlus && GetChapter() < GetChapterCount())
   || (!bPlus && GetChapter() > 1)) && bLargeStep)
@@ -3808,6 +3829,13 @@ void CDVDPlayer::UpdatePlayState(double timeout)
     {
       state.canrecord = pChannel->CanRecord();
       state.recording = pChannel->IsRecording();
+    }
+
+    if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
+    {
+      CDVDInputStreamPVRManager* pvrinputstream = static_cast<CDVDInputStreamPVRManager*>(m_pInputStream);
+      state.canpause = pvrinputstream->CanPause();
+      state.canseek = pvrinputstream->CanSeek();
     }
 
     CDVDInputStream::IDisplayTime* pDisplayTime = dynamic_cast<CDVDInputStream::IDisplayTime*>(m_pInputStream);

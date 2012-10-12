@@ -20,6 +20,7 @@
 
 #include "system.h"
 #include "utils/AlarmClock.h"
+#include "utils/Screenshot.h"
 #include "Application.h"
 #include "ApplicationMessenger.h"
 #include "Autorun.h"
@@ -30,10 +31,8 @@
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogKaiToast.h"
-#include "music/dialogs/GUIDialogMusicScan.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "dialogs/GUIDialogProgress.h"
-#include "video/dialogs/GUIDialogVideoScan.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "GUIUserMessages.h"
 #include "windows/GUIWindowLoginScreen.h"
@@ -54,6 +53,7 @@
 #include "utils/URIUtils.h"
 #include "Util.h"
 #include "URL.h"
+#include "music/MusicDatabase.h"
 
 #include "filesystem/PluginDirectory.h"
 #ifdef HAS_FILESYSTEM_RAR
@@ -213,6 +213,8 @@ const BUILT_IN commands[] = {
 #endif
   { "VideoLibrary.Search",        false,  "Brings up a search dialog which will search the library" },
   { "ToggleDebug",                false,  "Enables/disables debug mode" },
+  { "StartPVRManager",            false,  "(Re)Starts the PVR manager" },
+  { "StopPVRManager",             false,  "Stops the PVR manager" },
 };
 
 bool CBuiltins::HasCommand(const CStdString& execString)
@@ -321,7 +323,7 @@ int CBuiltins::Execute(const CStdString& execString)
   }
   else if (execute.Equals("takescreenshot"))
   {
-    CUtil::TakeScreenshot();
+    CScreenShot::TakeScreenshot();
   }
   else if (execute.Equals("activatewindow") || execute.Equals("replacewindow"))
   {
@@ -527,7 +529,9 @@ int CBuiltins::Execute(const CStdString& execString)
             cmd.Format("ActivateWindow(Pictures,plugin://%s,return)",params[0]);
         }
         if (addon->Type() == ADDON_SCRIPT)
-          cmd.Format("RunScript(%s)",params[0]);
+          // Pass the script name (params[0]) and all the parameters
+          // (params[1] ... params[x]) separated by a comma to RunScript
+          cmd.Format("RunScript(%s)", StringUtils::JoinString(params, ","));
 
         return Execute(cmd);
       }
@@ -767,13 +771,7 @@ int CBuiltins::Execute(const CStdString& execString)
     else if( parameter.Equals("record") )
     {
       if( g_application.IsPlaying() && g_application.m_pPlayer && g_application.m_pPlayer->CanRecord())
-      {
-#ifdef HAS_WEB_SERVER_BROADCAST
-        if (m_pXbmcHttp && g_settings.m_HttpApiBroadcastLevel>=1)
-          CApplicationMessenger::Get().HttpApi(g_application.m_pPlayer->IsRecording()?"broadcastlevel; RecordStopping;1":"broadcastlevel; RecordStarting;1");
-#endif
         g_application.m_pPlayer->Record(!g_application.m_pPlayer->IsRecording());
-      }
     }
     else if (parameter.Left(9).Equals("partymode"))
     {
@@ -1234,22 +1232,10 @@ int CBuiltins::Execute(const CStdString& execString)
 
     g_application.StopPlaying();
     if (g_application.IsMusicScanning())
-    {
       g_application.StopMusicScan();
-      CGUIDialogMusicScan *musicScan = (CGUIDialogMusicScan *)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_SCAN);
-      if (musicScan)
-        musicScan->Close(true);
-    }
 
     if (g_application.IsVideoScanning())
-    {
       g_application.StopVideoScan();
-      CGUIDialogVideoScan *videoScan = (CGUIDialogVideoScan *)g_windowManager.GetWindow(WINDOW_DIALOG_VIDEO_SCAN);
-      if (videoScan)
-      {
-        videoScan->Close(true);
-      }
-    }
 
     ADDON::CAddonMgr::Get().StopServices(true);
 
@@ -1619,6 +1605,14 @@ int CBuiltins::Execute(const CStdString& execString)
     bool debug = g_guiSettings.GetBool("debug.showloginfo");
     g_guiSettings.SetBool("debug.showloginfo", !debug);
     g_advancedSettings.SetDebugMode(!debug);
+  }
+  else if (execute.Equals("startpvrmanager"))
+  {
+    g_application.StartPVRManager();
+  }
+  else if (execute.Equals("stoppvrmanager"))
+  {
+    g_application.StopPVRManager();
   }
   else
     return -1;

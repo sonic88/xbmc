@@ -172,7 +172,6 @@ NPT_Result
 CUPnPServer::SetupIcons()
 {
     NPT_String file_root = CSpecialProtocol::TranslatePath("special://xbmc/media/").c_str();
-    printf("%s\n", (const char*) file_root);
     AddIcon(
         PLT_DeviceIcon("image/png", 256, 256, 32, "/icon.png"),
         file_root);
@@ -632,11 +631,14 @@ CUPnPServer::BuildResponse(PLT_ActionReference&          action,
     NPT_UInt32 stop_index = min((unsigned long)(starting_index + max_count), (unsigned long)items.Size()); // don't return more than we can
 
     NPT_Cardinal count = 0;
+    NPT_Cardinal total = items.Size();
     NPT_String didl = didl_header;
     PLT_MediaObjectReference object;
     for (unsigned long i=starting_index; i<stop_index; ++i) {
         object = Build(items[i], true, context, thumb_loader, parent_id);
         if (object.IsNull()) {
+            // don't tell the client this item ever existed
+            --total;
             continue;
         }
 
@@ -655,11 +657,11 @@ CUPnPServer::BuildResponse(PLT_ActionReference&          action,
 
     CLog::Log(LOGDEBUG, "Returning UPnP response with %d items out of %d total matches",
         count,
-        items.Size());
+        total);
 
     NPT_CHECK(action->SetArgumentValue("Result", didl));
     NPT_CHECK(action->SetArgumentValue("NumberReturned", NPT_String::FromInteger(count)));
-    NPT_CHECK(action->SetArgumentValue("TotalMatches", NPT_String::FromInteger(items.Size())));
+    NPT_CHECK(action->SetArgumentValue("TotalMatches", NPT_String::FromInteger(total)));
     NPT_CHECK(action->SetArgumentValue("UpdateId", "0"));
     return NPT_SUCCESS;
 }

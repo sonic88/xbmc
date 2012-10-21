@@ -855,21 +855,13 @@ bool CPVRManager::UpdateItem(CFileItem& item)
   }
 
   CSingleLock lock(m_critSection);
-
-  CPVRChannel* channelTag = item.GetPVRChannelInfoTag();
-
-  if (!item.HasArt("thumb"))
-  {
-    item.SetArt("thumb", channelTag->IconPath());
-    return true;
-  }
-
   if (!m_currentFile || *m_currentFile->GetPVRChannelInfoTag() == *item.GetPVRChannelInfoTag())
     return false;
 
   g_application.CurrentFileItem() = *m_currentFile;
   g_infoManager.SetCurrentItem(*m_currentFile);
 
+  CPVRChannel* channelTag = item.GetPVRChannelInfoTag();
   CEpgInfoTag epgTagNow;
   bool bHasTagNow = channelTag->GetEPGNow(epgTagNow);
 

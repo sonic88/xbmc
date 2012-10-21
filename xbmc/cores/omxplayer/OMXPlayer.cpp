@@ -75,7 +75,7 @@
 #include "utils/JobManager.h"
 //#include "cores/AudioEngine/AEFactory.h"
 //#include "cores/AudioEngine/Utils/AEUtil.h"
-#include "xbmc/ThumbLoader.h"
+#include "video/VideoThumbLoader.h"
 
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannel.h"
@@ -1244,6 +1244,18 @@ void COMXPlayer::Process()
           continue;
         }
 
+        // wait for omx components to finish
+        if(HasVideo() && !m_player_video.IsEOS())
+        {
+          Sleep(100);
+          continue;
+        }
+        if(HasAudio() && !m_player_audio.IsEOS())
+        {
+          Sleep(100);
+          continue;
+        }
+
         if (!m_pInputStream->IsEOF())
           CLog::Log(LOGINFO, "%s - eof reading from demuxer", __FUNCTION__);
 
@@ -2048,6 +2060,12 @@ void COMXPlayer::HandleMessages()
       {
         CDVDMsgPlayerSeek &msg(*((CDVDMsgPlayerSeek*)pMsg));
 
+        if (!m_State.canseek)
+        {
+          pMsg->Release();
+          continue;
+        }
+
         if(!msg.GetTrickPlay())
         {
           g_infoManager.SetDisplayAfterSeek(100000);
@@ -2056,9 +2074,6 @@ void COMXPlayer::HandleMessages()
         }
 
         double start = DVD_NOPTS_VALUE;
-
-        if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && !m_State.canseek)
-          break;
 
         int time = msg.GetRestore() ? (int)m_Edl.RestoreCutTime(msg.GetTime()) : msg.GetTime();
         CLog::Log(LOGDEBUG, "demuxer seek to: %d", time);
@@ -2394,8 +2409,10 @@ bool COMXPlayer::CanPause()
 
 void COMXPlayer::Pause()
 {
-  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && !m_State.canpause)
+  CSingleLock lock(m_StateSection);
+  if (!m_State.canpause)
     return;
+  lock.Leave();
 
   if(m_playSpeed != DVD_PLAYSPEED_PAUSE && (m_caching == CACHESTATE_FULL || m_caching == CACHESTATE_PVR))
   {
@@ -2440,18 +2457,13 @@ bool COMXPlayer::IsPassthrough() const
 
 bool COMXPlayer::CanSeek()
 {
-  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
-  {
-    CSingleLock lock(m_StateSection);
-    return m_State.canseek;
-  }
-  else
-    return GetTotalTime() > 0;
+  CSingleLock lock(m_StateSection);
+  return m_State.canseek;
 }
 
 void COMXPlayer::Seek(bool bPlus, bool bLargeStep)
 {
-  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER) && !m_State.canseek)
+  if (!m_State.canseek)
     return;
 
   if(((bPlus && GetChapter() < GetChapterCount())
@@ -3787,6 +3799,11 @@ void COMXPlayer::UpdatePlayState(double timeout)
       CDVDInputStreamPVRManager* pvrinputstream = static_cast<CDVDInputStreamPVRManager*>(m_pInputStream);
       state.canpause = pvrinputstream->CanPause();
       state.canseek = pvrinputstream->CanSeek();
+    }
+    else
+    {
+      state.canseek = GetTotalTime() > 0 ? true : false;
+      state.canpause = true;
     }
 
     CDVDInputStream::IDisplayTime* pDisplayTime = dynamic_cast<CDVDInputStream::IDisplayTime*>(m_pInputStream);

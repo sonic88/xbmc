@@ -3,7 +3,8 @@
 #include "Application.h"
 #include "GUIViewState.h"
 #include "Platinum.h"
-#include "ThumbLoader.h"
+#include "video/VideoThumbLoader.h"
+#include "music/MusicThumbLoader.h"
 #include "interfaces/AnnouncementManager.h"
 #include "filesystem/Directory.h"
 #include "filesystem/MusicDatabaseDirectory.h"
@@ -172,12 +173,11 @@ NPT_Result
 CUPnPServer::SetupIcons()
 {
     NPT_String file_root = CSpecialProtocol::TranslatePath("special://xbmc/media/").c_str();
-    printf("%s\n", (const char*) file_root);
     AddIcon(
-        PLT_DeviceIcon("image/png", 256, 256, 32, "/icon.png"),
+        PLT_DeviceIcon("image/png", 256, 256, 24, "/icon-flat-256x256.png"),
         file_root);
     AddIcon(
-        PLT_DeviceIcon("image/png", 32, 32, 32, "/icon32x32.png"),
+        PLT_DeviceIcon("image/png", 120, 120, 24, "/icon-flat-120x120.png"),
         file_root);
     return NPT_SUCCESS;
 }
@@ -237,10 +237,7 @@ CUPnPServer::Build(CFileItemPtr                  item,
             goto failure;
         }
 
-    } else if (path.StartsWith("addons://"))
-        // don't serve addon listings for now
-        goto failure;
-      else {
+    } else {
         // db path handling
         NPT_String file_path, share_name;
         file_path = item->GetPath();
@@ -539,7 +536,15 @@ CUPnPServer::OnBrowseDirectChildren(PLT_ActionReference&          action,
     CLog::Log(LOGINFO, "UPnP: Received Browse DirectChildren request for object '%s', with sort criteria %s", object_id, sort_criteria);
 
     items.SetPath(CStdString(parent_id));
-    if (!items.Load()) {
+
+    // guard against loading while saving to the same cache file
+    // as CArchive currently performs no locking itself
+    bool load;
+    { NPT_AutoLock lock(m_CacheMutex);
+      load = items.Load();
+    }
+
+    if (!load) {
         // cache anything that takes more than a second to retrieve
         unsigned int time = XbmcThreads::SystemClockMillis();
 
@@ -561,19 +566,13 @@ CUPnPServer::OnBrowseDirectChildren(PLT_ActionReference&          action,
             items.Sort(SORT_METHOD_LABEL, SortOrderAscending);
         } else {
             CDirectory::GetDirectory((const char*)parent_id, items);
-            if(!SortItems(items, sort_criteria))
-              DefaultSortItems(items);
+            DefaultSortItems(items);
         }
 
         if (items.CacheToDiscAlways() || (items.CacheToDiscIfSlow() && (XbmcThreads::SystemClockMillis() - time) > 1000 )) {
+            NPT_AutoLock lock(m_CacheMutex);
             items.Save();
         }
-    }
-    else {
-      // the file list was cached, but this request may use a different
-      // sort_criteria
-      if (SortItems(items, sort_criteria))
-        items.Save();
     }
 
     // Don't pass parent_id if action is Search not BrowseDirectChildren, as
@@ -614,16 +613,22 @@ CUPnPServer::BuildResponse(PLT_ActionReference&          action,
     // we will reuse this ThumbLoader for all items
     NPT_Reference<CThumbLoader> thumb_loader;
 
-    // this isn't ideal, just grabbing first item to identify the content type
-    // of this FileItemList, but there's no other option
-    if (!items.IsEmpty() && items.Get(0)->HasVideoInfoTag()) {
+    if (URIUtils::IsVideoDb(items.GetPath())) {
         thumb_loader = NPT_Reference<CThumbLoader>(new CVideoThumbLoader());
     }
-    else if (!items.IsEmpty() && items.Get(0)->HasMusicInfoTag()) {
+    else if (URIUtils::IsMusicDb(items.GetPath())) {
         thumb_loader = NPT_Reference<CThumbLoader>(new CMusicThumbLoader());
     }
     if (!thumb_loader.IsNull()) {
         thumb_loader->Initialize();
+    }
+
+    // this isn't pretty but needed to properly hide the addons node from clients
+    if (items.GetPath().Left(7) == "library") {
+        for (int i=0; i<items.Size(); i++) {
+            if (items[i]->GetPath().Left(6) == "addons")
+                items.Remove(i);
+        }
     }
 
     // won't return more than UPNP_MAX_RETURNED_ITEMS items at a time to keep things smooth
@@ -632,11 +637,14 @@ CUPnPServer::BuildResponse(PLT_ActionReference&          action,
     NPT_UInt32 stop_index = min((unsigned long)(starting_index + max_count), (unsigned long)items.Size()); // don't return more than we can
 
     NPT_Cardinal count = 0;
+    NPT_Cardinal total = items.Size();
     NPT_String didl = didl_header;
     PLT_MediaObjectReference object;
     for (unsigned long i=starting_index; i<stop_index; ++i) {
         object = Build(items[i], true, context, thumb_loader, parent_id);
         if (object.IsNull()) {
+            // don't tell the client this item ever existed
+            --total;
             continue;
         }
 
@@ -655,11 +663,11 @@ CUPnPServer::BuildResponse(PLT_ActionReference&          action,
 
     CLog::Log(LOGDEBUG, "Returning UPnP response with %d items out of %d total matches",
         count,
-        items.Size());
+        total);
 
     NPT_CHECK(action->SetArgumentValue("Result", didl));
     NPT_CHECK(action->SetArgumentValue("NumberReturned", NPT_String::FromInteger(count)));
-    NPT_CHECK(action->SetArgumentValue("TotalMatches", NPT_String::FromInteger(items.Size())));
+    NPT_CHECK(action->SetArgumentValue("TotalMatches", NPT_String::FromInteger(total)));
     NPT_CHECK(action->SetArgumentValue("UpdateId", "0"));
     return NPT_SUCCESS;
 }

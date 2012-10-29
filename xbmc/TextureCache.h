@@ -26,6 +26,7 @@
 #include "TextureDatabase.h"
 #include "threads/Event.h"
 
+class CURL;
 class CBaseTexture;
 
 /*!
@@ -127,6 +128,19 @@ public:
   static CStdString GetWrappedImageURL(const CStdString &image, const CStdString &type = "", const CStdString &options = "");
   static CStdString GetWrappedThumbURL(const CStdString &image);
 
+  /*! \brief Unwrap an image://<url_encoded_path> style URL
+   Such urls are used for art over the webserver or other users of the VFS
+   \param image url of the image
+   \return the unwrapped URL, or the original URL if unwrapping is inappropriate.
+   */
+  static CStdString UnwrapImageURL(const CStdString &image);
+
+  /*! \brief check whether an image:// URL may be cached
+   \param url the URL to the image
+   \return true if the given URL may be cached, false otherwise
+   */
+  static bool CanCacheImageURL(const CURL &url);
+
   /*! \brief Add this image to the database
    Thread-safe wrapper of CTextureDatabase::AddCachedTexture
    \param image url of the original image
@@ -149,13 +163,6 @@ private:
   CTextureCache(const CTextureCache&);
   CTextureCache const& operator=(CTextureCache const&);
   virtual ~CTextureCache();
-
-  /*! \brief Unwrap an image://<url_encoded_path> style URL
-   Such urls are used for art over the webserver or other users of the VFS
-   \param image url of the image
-   \return the unwrapped URL, or the original URL if unwrapping is inappropriate.
-   */
-  static CStdString UnwrapImageURL(const CStdString &image);
 
   /*! \brief Check if the given image is a cached image
    \param image url of the image

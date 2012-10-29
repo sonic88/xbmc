@@ -48,7 +48,7 @@
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "TextureCache.h"
-#include "ThumbLoader.h"
+#include "music/MusicThumbLoader.h"
 #include "interfaces/AnnouncementManager.h"
 #include "GUIUserMessages.h"
 
@@ -1122,7 +1122,7 @@ void CMusicInfoScanner::GetAlbumArtwork(long id, const CAlbum &album)
 {
   if (album.thumbURL.m_url.size())
   {
-    if (!m_musicDatabase.GetArtForItem(id, "album", "thumb").empty())
+    if (m_musicDatabase.GetArtForItem(id, "album", "thumb").empty())
     {
       string thumb = CScraperUrl::GetThumbURL(album.thumbURL.GetFirstThumb());
       if (!thumb.empty())

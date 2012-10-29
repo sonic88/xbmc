@@ -148,9 +148,6 @@
 #ifdef HAS_EVENT_SERVER
 #include "network/EventServer.h"
 #endif
-#ifdef HAS_JSONRPC
-#include "interfaces/json-rpc/InputOperations.h"
-#endif
 #ifdef HAS_DBUS
 #include <dbus/dbus.h>
 #endif
@@ -177,7 +174,6 @@
 // Windows includes
 #include "guilib/GUIWindowManager.h"
 #include "windows/GUIWindowHome.h"
-#include "guilib/GUIStandardWindow.h"
 #include "settings/GUIWindowSettings.h"
 #include "windows/GUIWindowFileManager.h"
 #include "settings/GUIWindowSettingsCategory.h"
@@ -1233,6 +1229,7 @@ bool CApplication::Initialize()
     g_windowManager.Add(new CGUIWindowVideoPlaylist);            // window id = 28
     g_windowManager.Add(new CGUIWindowLoginScreen);            // window id = 29
     g_windowManager.Add(new CGUIWindowSettingsProfile);          // window id = 34
+    g_windowManager.Add(new CGUIWindow(WINDOW_SKIN_SETTINGS, "SkinSettings.xml")); // window id = 35
     g_windowManager.Add(new CGUIWindowAddonBrowser);          // window id = 40
     g_windowManager.Add(new CGUIWindowScreensaverDim);            // window id = 97
     g_windowManager.Add(new CGUIWindowDebugInfo);            // window id = 98
@@ -2135,7 +2132,7 @@ bool CApplication::LoadUserWindows()
           else if (strType.Equals("buttonmenu"))
             pWindow = new CGUIDialogButtonMenu(id + WINDOW_HOME, skinFile);
           else
-            pWindow = new CGUIStandardWindow(id + WINDOW_HOME, skinFile);
+            pWindow = new CGUIWindow(id + WINDOW_HOME, skinFile);
 
           // Check to make sure the pointer isn't still null
           if (pWindow == NULL)
@@ -2317,8 +2314,6 @@ void CApplication::Render()
 
   g_Windowing.EndRender();
 
-  g_TextureManager.FreeUnusedTextures();
-
   // reset our info cache - we do this at the end of Render so that it is
   // fresh for the next process(), or after a windowclose animation (where process()
   // isn't called)
@@ -2352,6 +2347,8 @@ void CApplication::Render()
   if (flip)
     g_graphicsContext.Flip(dirtyRegions);
   CTimeUtils::UpdateFrameTime(flip);
+
+  g_TextureManager.FreeUnusedTextures();
 
   g_renderManager.UpdateResolution();
   g_renderManager.ManageCaptures();
@@ -2949,7 +2946,6 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
 #endif
 
     // process input actions
-    ProcessJsonRpcButtons();
     ProcessRemote(frameTime);
     ProcessGamepad(frameTime);
     ProcessEventServer(frameTime);
@@ -3142,29 +3138,6 @@ bool CApplication::ProcessMouse()
                           mouseaction.GetName()));
 }
 
-bool CApplication::ProcessJsonRpcButtons()
-{
-#ifdef HAS_JSONRPC
-  CKey tempKey(JSONRPC::CInputOperations::GetKey());
-  if (tempKey.GetButtonCode() == KEY_UNICODE && tempKey.GetUnicode() != 0)
-  {
-    XBMC_Event event = { 0 };
-    event.type = XBMC_KEYDOWN;
-    event.key.type = XBMC_KEYDOWN;
-    event.key.keysym.unicode = (uint16_t)tempKey.GetUnicode();
-    event.key.keysym.sym = (XBMCKey)tempKey.GetUnicode();
-
-    return OnEvent(event);
-  }
-  if (tempKey.GetButtonCode() != KEY_INVALID)
-  {
-    tempKey.SetFromService(true);
-    return OnKey(tempKey);
-  }
-#endif
-  return false;
-}
-
 bool CApplication::ProcessEventServer(float frameTime)
 {
 #ifdef HAS_EVENT_SERVER
@@ -3191,7 +3164,7 @@ bool CApplication::ProcessEventServer(float frameTime)
   es = CEventServer::GetInstance();
   if (!es || !es->Running() || es->GetNumberOfClients()==0)
     return false;
-  WORD wKeyID = es->GetButtonCode(joystickName, isAxis, fAmount);
+  unsigned int wKeyID = es->GetButtonCode(joystickName, isAxis, fAmount);
 
   if (wKeyID)
   {
@@ -3210,6 +3183,12 @@ bool CApplication::ProcessEventServer(float frameTime)
     else
     {
       CKey key;
+      if (wKeyID & ES_FLAG_UNICODE)
+      {
+        key = CKey((uint8_t)0, wKeyID & ~ES_FLAG_UNICODE, 0, 0, 0);
+        return OnKey(key);
+      }
+
       if(wKeyID == KEY_BUTTON_LEFT_ANALOG_TRIGGER)
         key = CKey(wKeyID, (BYTE)(255*fAmount), 0, 0.0, 0.0, 0.0, 0.0, frameTime);
       else if(wKeyID == KEY_BUTTON_RIGHT_ANALOG_TRIGGER)
@@ -3409,6 +3388,7 @@ bool CApplication::Cleanup()
     g_windowManager.Delete(WINDOW_DIALOG_VIDEO_OVERLAY);
     g_windowManager.Delete(WINDOW_SLIDESHOW);
     g_windowManager.Delete(WINDOW_ADDON_BROWSER);
+    g_windowManager.Delete(WINDOW_SKIN_SETTINGS);
 
     g_windowManager.Delete(WINDOW_HOME);
     g_windowManager.Delete(WINDOW_PROGRAMS);
@@ -4878,6 +4858,15 @@ bool CApplication::OnMessage(CGUIMessage& message)
       }
       // ok, grab the next song
       CFileItemPtr item = playlist[iNext];
+
+#ifdef HAS_UPNP
+      if (URIUtils::IsUPnP(item->GetPath()))
+      {
+        if (!XFILE::CUPnPDirectory::GetResource(item->GetPath(), *item))
+          return true;
+      }
+#endif
+
       // ok - send the file to the player if it wants it
       if (m_pPlayer && m_pPlayer->QueueNextFile(*item))
       { // player wants the next file

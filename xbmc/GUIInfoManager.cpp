@@ -75,7 +75,9 @@
 
 #include "addons/AddonManager.h"
 #include "interfaces/info/InfoBool.h"
-#include "ThumbLoader.h"
+#include "video/VideoThumbLoader.h"
+#include "music/MusicThumbLoader.h"
+#include "video/VideoDatabase.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 
 #define SYSHEATUPDATEINTERVAL 60000
@@ -3360,8 +3362,9 @@ const CStdString CGUIInfoManager::GetMusicPlaylistInfo(const GUIInfo& info)
   // try to set a thumbnail
   if (!playlistItem->HasArt("thumb"))
   {
-    CMusicThumbLoader::FillThumb(*playlistItem);
-    // still no thumb? then just the set the default cover TODO: remove me?
+    CMusicThumbLoader loader;
+    loader.LoadItem(playlistItem.get());
+    // still no thumb? then just the set the default cover
     if (!playlistItem->HasArt("thumb"))
       playlistItem->SetArt("thumb", "DefaultAlbumCover.png");
   }
@@ -3874,7 +3877,7 @@ void CGUIInfoManager::SetCurrentItem(CFileItem &item)
     SetCurrentMovie(item);
 
   SetChanged();
-  NotifyObservers(ObservableMessageCurrentItem, true);
+  NotifyObservers(ObservableMessageCurrentItem);
 }
 
 void CGUIInfoManager::SetCurrentAlbumThumb(const CStdString thumbFileName)
@@ -4053,6 +4056,7 @@ CStdString CGUIInfoManager::GetBuild()
 
 void CGUIInfoManager::SetDisplayAfterSeek(unsigned int timeOut, int seekOffset)
 {
+  g_infoManager.m_performingSeek = false;
   if (timeOut>0)
   {
     m_AfterSeekTimeout = CTimeUtils::GetFrameTime() +  timeOut;

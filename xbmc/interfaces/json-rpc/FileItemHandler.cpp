@@ -36,8 +36,10 @@
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "TextureCache.h"
-#include "ThumbLoader.h"
+#include "video/VideoThumbLoader.h"
+#include "music/MusicThumbLoader.h"
 #include "Util.h"
+#include "pvr/channels/PVRChannel.h"
 
 using namespace MUSIC_INFO;
 using namespace JSONRPC;
@@ -95,7 +97,15 @@ bool CFileItemHandler::GetField(const std::string &field, const CVariant &info, 
         fetchedArt = true;
       }
 
-      result["art"] = item->GetArt();
+      CGUIListItem::ArtMap artMap = item->GetArt();
+      CVariant artObj(CVariant::VariantTypeObject);
+      for (CGUIListItem::ArtMap::const_iterator artIt = artMap.begin(); artIt != artMap.end(); artIt++)
+      {
+        if (!artIt->second.empty())
+          artObj[artIt->first] = CTextureCache::GetWrappedImageURL(artIt->second);
+      }
+
+      result["art"] = artObj;
       return true;
     }
     
@@ -173,7 +183,7 @@ void CFileItemHandler::FillDetails(const ISerializable *info, const CFileItemPtr
 
   for (std::set<std::string>::const_iterator fieldIt = originalFields.begin(); fieldIt != originalFields.end(); fieldIt++)
   {
-    if (GetField(*fieldIt, serialization, item, result, fetchedArt, thumbLoader))
+    if (GetField(*fieldIt, serialization, item, result, fetchedArt, thumbLoader) && result.isMember(*fieldIt) && !result[*fieldIt].empty())
       fields.erase(*fieldIt);
   }
 }
@@ -262,14 +272,18 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
 
     if (ID)
     {
-      if (item->HasMusicInfoTag() && item->GetMusicInfoTag()->GetDatabaseId() > 0)
+      if (item->HasPVRChannelInfoTag() && item->GetPVRChannelInfoTag()->ChannelID() > 0)
+         object[ID] = item->GetPVRChannelInfoTag()->ChannelID();
+      else if (item->HasMusicInfoTag() && item->GetMusicInfoTag()->GetDatabaseId() > 0)
         object[ID] = (int)item->GetMusicInfoTag()->GetDatabaseId();
       else if (item->HasVideoInfoTag() && item->GetVideoInfoTag()->m_iDbId > 0)
         object[ID] = item->GetVideoInfoTag()->m_iDbId;
 
       if (stricmp(ID, "id") == 0)
       {
-        if (item->HasMusicInfoTag())
+        if (item->HasPVRChannelInfoTag())
+          object["type"] = "channel";
+        else if (item->HasMusicInfoTag())
         {
           if (item->m_bIsFolder && item->IsAlbum())
             object["type"] = "album";
@@ -305,6 +319,8 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
       }
     }
 
+    if (item->HasPVRChannelInfoTag())
+      FillDetails(item->GetPVRChannelInfoTag(), item, fields, object, thumbLoader);
     if (item->HasVideoInfoTag())
       FillDetails(item->GetVideoInfoTag(), item, fields, object, thumbLoader);
     if (item->HasMusicInfoTag())

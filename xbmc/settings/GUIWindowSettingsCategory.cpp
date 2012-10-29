@@ -783,10 +783,6 @@ void CGUIWindowSettingsCategory::UpdateSettings()
           pControl->SetEnabled(g_guiSettings.GetInt("audiooutput.mode") == AUDIO_HDMI);
       }
     }
-    else if (strSetting.Equals("audiooutput.guisoundmode"))
-    {
-      CAEFactory::SetSoundMode(g_guiSettings.GetInt("audiooutput.guisoundmode"));
-    }
     else if (strSetting.Equals("musicplayer.crossfade"))
     {
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
@@ -974,6 +970,11 @@ void CGUIWindowSettingsCategory::UpdateSettings()
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
       pControl->SetEnabled(g_guiSettings.GetBool("lookandfeel.enablerssfeeds"));
     }
+    else if (strSetting.Equals("lookandfeel.skinsettings"))
+    {
+      CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
+      pControl->SetEnabled(g_SkinInfo->HasSkinFile("SkinSettings.xml"));
+    }
     else if (strSetting.Equals("videoplayer.pauseafterrefreshchange"))
     {
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
@@ -1023,7 +1024,7 @@ void CGUIWindowSettingsCategory::UpdateSettings()
   }
 
   g_guiSettings.SetChanged();
-  g_guiSettings.NotifyObservers(ObservableMessageGuiSettings, true);
+  g_guiSettings.NotifyObservers(ObservableMessageGuiSettings);
 }
 
 void CGUIWindowSettingsCategory::OnClick(CBaseSettingControl *pSettingControl)
@@ -1437,6 +1438,10 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
 
     g_audioManager.Enable(true);
     g_audioManager.Load();
+  }
+  else if (strSetting.Equals("lookandfeel.skinsettings"))
+  {
+    g_windowManager.ActivateWindow(WINDOW_SKIN_SETTINGS);
   }
   else if (strSetting.Equals("input.enablemouse"))
   {
@@ -1962,6 +1967,10 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
       g_guiSettings.SetString("audiooutput.passthroughdevice", m_DigitalAudioSinkMap[pControl->GetCurrentLabel()]);
     }
 #endif
+    else if (strSetting.Equals("audiooutput.guisoundmode"))
+    {
+      CAEFactory::SetSoundMode(g_guiSettings.GetInt("audiooutput.guisoundmode"));
+    }
 
     CAEFactory::OnSettingsChange(strSetting);
   }

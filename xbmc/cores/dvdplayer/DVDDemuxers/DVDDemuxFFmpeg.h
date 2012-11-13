@@ -123,6 +123,8 @@ protected:
 
   double ConvertTimestamp(int64_t pts, int den, int num);
   void UpdateCurrentPTS();
+  bool IsActiveStream(int idx);
+  bool IsProgramChange();
 
   CCriticalSection m_critSection;
   #define MAX_STREAMS 100
@@ -141,5 +143,15 @@ protected:
   unsigned m_program;
   XbmcThreads::EndTime  m_timeout;
 
+
+  // Due to limitations of ffmpeg, we only can detect a program change
+  // with a packet. This struct saves the packet for the next read and
+  // signals STREAMCHANGE to player
+  struct
+  {
+    AVPacket packet;    // packet ffmpeg returned
+    int      result;    // result from av_read_packet
+    double   pts;       // our current pts at the time we got the packet
+  }m_AVPacket;
 };
 

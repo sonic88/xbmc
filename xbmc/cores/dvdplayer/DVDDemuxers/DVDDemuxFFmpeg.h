@@ -123,6 +123,8 @@ protected:
 
   double ConvertTimestamp(int64_t pts, int den, int num);
   void UpdateCurrentPTS();
+  bool IsActiveStream(int idx);
+  bool IsStreamChange();
 
   CCriticalSection m_critSection;
   #define MAX_STREAMS 100

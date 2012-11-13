@@ -483,19 +483,10 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
       if(i != m_program)
         m_pFormatContext->programs[i]->discard = AVDISCARD_ALL;
     }
-    if(m_program != UINT_MAX)
-    {
-      // add streams from selected program
-      for (unsigned int i = 0; i < m_pFormatContext->programs[m_program]->nb_stream_indexes; i++)
-        AddStream(m_pFormatContext->programs[m_program]->stream_index[i]);
-    }
   }
-  // if there were no programs or they were all empty, add all streams
-  if (m_program == UINT_MAX)
-  {
-    for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
-      AddStream(i);
-  }
+  // add all streams, don't allow gaps in m_streams
+  for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
+    AddStream(i);
 
   m_bPtsWrapChecked = false;
   m_bPtsWrap = false;
@@ -806,7 +797,22 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
   // check streams, can we make this a bit more simple?
   if (pPacket && pPacket->iStreamId >= 0 && pPacket->iStreamId < MAX_STREAMS)
   {
-    if (!m_streams[pPacket->iStreamId] ||
+    // stream change
+    if (pPacket && m_pFormatContext->streams[pPacket->iStreamId]->id == 0 &&
+        m_pFormatContext->streams[pPacket->iStreamId]->codec->codec_type == AVMEDIA_TYPE_DATA)
+    {
+      if (IsStreamChange())
+      {
+        for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
+          AddStream(i);
+        pPacket->iStreamId = DMX_SPECIALID_STREAMCHANGE;
+      }
+    }
+    else if (!IsActiveStream(pPacket->iStreamId))
+    {
+      CLog::Log(LOGDEBUG,"CDVDDemuxFFmpeg::Read - got packet of inactive stream");
+    }
+    else if (!m_streams[pPacket->iStreamId] ||
         m_streams[pPacket->iStreamId]->pPrivate != m_pFormatContext->streams[pPacket->iStreamId] ||
         m_streams[pPacket->iStreamId]->codec != m_pFormatContext->streams[pPacket->iStreamId]->codec->codec_id)
     {
@@ -1366,6 +1372,11 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     else
       m_streams[iId]->iPhysicalId = pStream->id;
   }
+  if (!IsActiveStream(iId))
+  {
+    m_streams[iId]->type = STREAM_NONE;
+    m_streams[iId]->codec = CODEC_ID_NONE;
+  }
 }
 
 std::string CDVDDemuxFFmpeg::GetFileName()
@@ -1522,4 +1533,37 @@ void CDVDDemuxFFmpeg::GetStreamCodecName(int iStreamId, CStdString &strName)
     if (codec)
       strName = codec->name;
   }
+}
+
+bool CDVDDemuxFFmpeg::IsActiveStream(int idx)
+{
+  if (m_program == UINT_MAX)
+    return true;
+
+  for (unsigned int i = 0; i < m_pFormatContext->programs[m_program]->nb_stream_indexes; i++)
+  {
+    if (idx ==  m_pFormatContext->programs[m_program]->stream_index[i])
+      return true;
+  }
+
+  return false;
+}
+
+bool CDVDDemuxFFmpeg::IsStreamChange()
+{
+  if (m_program == UINT_MAX)
+    return false;
+
+  bool change(false);
+  int noOfStreams = GetNrOfStreams();
+  for (int i = 0; i < noOfStreams; i++)
+  {
+    if ((m_streams[i]->type == STREAM_NONE && IsActiveStream(i)) ||
+        (m_streams[i]->type != STREAM_NONE && !IsActiveStream(i)))
+      change = true;
+  }
+  if (noOfStreams != m_pFormatContext->nb_streams)
+    change = true;
+
+  return change;
 }

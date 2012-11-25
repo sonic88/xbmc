@@ -843,7 +843,7 @@ if test "x$have_builtin_sync_val_compare_and_swap" = "xyes"; then
 fi
 
 # Add top source directory for all builds so we can use config.h
-INCLUDES="$INCLUDES -I\$(abs_top_srcdir)"
+INCLUDES="-I\$(abs_top_srcdir) $INCLUDES" 
 
 # Check inotify availability
 AC_CHECK_HEADER([sys/inotify.h], AC_DEFINE([HAVE_INOTIFY],[1],[Define if we have inotify]),)
@@ -2376,7 +2376,6 @@ OUTPUT_FILES="Makefile \
     xbmc/visualizations/Goom/Makefile \
     xbmc/visualizations/OpenGLSpectrum/Makefile \
     xbmc/visualizations/WaveForm/Makefile \
-    xbmc/visualizations/iTunes/Makefile \
     lib/addons/library.xbmc.addon/Makefile \
     lib/addons/library.xbmc.gui/Makefile \
     lib/addons/library.xbmc.pvr/Makefile \

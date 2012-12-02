@@ -78,9 +78,6 @@
     <ClInclude Include="..\..\lib\libUPnP\Platinum\Source\Core\PltSsdp.h">
       <Filter>Platinum\Core</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\lib\libUPnP\Platinum\Source\Core\PltSsdpListener.h">
-      <Filter>Platinum\Core</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\lib\libUPnP\Platinum\Source\Core\PltStateVariable.h">
       <Filter>Platinum\Core</Filter>
     </ClInclude>

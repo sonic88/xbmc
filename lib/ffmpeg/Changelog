@@ -3,6 +3,50 @@ releases are sorted from youngest to oldest.
 
 version next:
 
+version 0.10.6:
+
+- many bug fixes that where found with Coverity
+
+- The following CVE fixes where backported:
+  CVE-2012-2796, CVE-2012-2775, CVE-2012-2772, CVE-2012-2776,
+  CVE-2012-2779, CVE-2012-2787, CVE-2012-2794, CVE-2012-2800,
+  CVE-2012-2802, CVE-2012-2801, CVE-2012-2786, CVE-2012-2798,
+  CVE-2012-2793, CVE-2012-2789, CVE-2012-2788, CVE-2012-2790,
+  CVE-2012-2777, CVE-2012-2784
+
+- hundreads of other bug fixes, some possibly security relevant,
+  see the git log for details.
+
+
+version 0.10.5:
+
+- Several bugs and crashes have been fixed as well as build problems
+  with recent mingw64
+
+
+version 0.10.4:
+
+- Several bugs and crashes have been fixed
+  Note, CVE-2012-0851 and CVE-2011-3937 have been fixed in previous releases
+
+version 0.10.3:
+
+- Security fixes in the 4xm demuxer, avi demuxer, cook decoder,
+  mm demuxer, mpegvideo decoder, vqavideo decoder (CVE-2012-0947) and
+  xmv demuxer.
+
+- Several bugs and crashes have been fixed in the following codecs: AAC,
+  APE, H.263, H.264, Indeo 4, Mimic, MJPEG, Motion Pixels Video, RAW,
+  TTA, VC1, VQA, WMA Voice, vqavideo.
+
+- Several bugs and crashes have been fixed in the following formats:
+  ASF, ID3v2, MOV, xWMA
+
+- This release additionally updates the following codecs to the
+  bytestream2 API, and therefore benefit from additional overflow
+  checks: truemotion2, utvideo, vqavideo
+
+
 version 0.10.1
 - Several security fixes, many bugfixes affecting many formats and
   codecs, the list below is not complete.

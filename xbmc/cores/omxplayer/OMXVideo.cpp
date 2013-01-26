@@ -84,7 +84,6 @@ COMXVideo::COMXVideo()
   m_deinterlace       = false;
   m_hdmi_clock_sync   = false;
   m_first_frame       = true;
-  m_contains_valid_pts= false;
 }
 
 COMXVideo::~COMXVideo()
@@ -666,6 +665,9 @@ bool COMXVideo::Open(CDVDStreamInfo &hints, OMXClock *clock, bool deinterlace, b
     m_deinterlace, m_hdmi_clock_sync);
 
   m_first_frame   = true;
+  // start from assuming all recent frames had valid pts
+  m_history_valid_pts = ~0;
+
   return true;
 }
 
@@ -720,6 +722,14 @@ unsigned int COMXVideo::GetSize()
   return m_omx_decoder.GetInputBufferSize();
 }
 
+static unsigned count_bits(int32_t value)
+{
+  unsigned bits = 0;
+  for(;value;++bits)
+    value &= value - 1;
+  return bits;
+}
+
 int COMXVideo::Decode(uint8_t *pData, int iSize, double dts, double pts)
 {
   OMX_ERRORTYPE omx_err;
@@ -754,11 +764,11 @@ int COMXVideo::Decode(uint8_t *pData, int iSize, double dts, double pts)
 
       omx_buffer->nFlags = 0;
       omx_buffer->nOffset = 0;
-
-      // if a stream contains any pts values, then use those with UNKNOWNs. Otherwise try using dts.
-      if(pts != DVD_NOPTS_VALUE)
-        m_contains_valid_pts = true;
-      if(pts == DVD_NOPTS_VALUE && !m_contains_valid_pts)
+      // some packed bitstream AVI files set almost all pts values to DVD_NOPTS_VALUE, but have a scattering of real pts values.
+      // the valid pts values match the dts values.
+      // if a stream has had more than 4 valid pts values in the last 16, the use UNKNOWN, otherwise use dts
+      m_history_valid_pts = (m_history_valid_pts << 1) | (pts != DVD_NOPTS_VALUE);
+      if(pts == DVD_NOPTS_VALUE && count_bits(m_history_valid_pts & 0xffff) < 4)
         pts = dts;
 
       if(m_av_clock->VideoStart())
@@ -766,6 +776,8 @@ int COMXVideo::Decode(uint8_t *pData, int iSize, double dts, double pts)
         // only send dts on first frame to get nearly correct starttime
         if(pts == DVD_NOPTS_VALUE)
           pts = dts;
+        if(pts == DVD_NOPTS_VALUE)
+          omx_buffer->nFlags |= OMX_BUFFERFLAG_TIME_UNKNOWN;
         omx_buffer->nFlags = OMX_BUFFERFLAG_STARTTIME;
         CLog::Log(LOGDEBUG, "OMXVideo::Decode VDec : setStartTime %f\n", (pts == DVD_NOPTS_VALUE ? 0.0 : pts) / DVD_TIME_BASE);
         m_av_clock->VideoStart(false);
@@ -928,14 +940,8 @@ void COMXVideo::SetVideoRect(const CRect& SrcRect, const CRect& DestRect)
     return;
 
   OMX_CONFIG_DISPLAYREGIONTYPE configDisplay;
-  OMX_INIT_STRUCTURE(configDisplay);
-  configDisplay.nPortIndex = m_omx_render.GetInputPort();
-  RESOLUTION res = g_graphicsContext.GetVideoResolution();
-  // DestRect is in GUI coordinates, rather than display coordinates, so we have to scale
-  float xscale = (float)g_settings.m_ResInfo[res].iScreenWidth  / (float)g_settings.m_ResInfo[res].iWidth;
-  float yscale = (float)g_settings.m_ResInfo[res].iScreenHeight / (float)g_settings.m_ResInfo[res].iHeight;
   float sx1 = SrcRect.x1, sy1 = SrcRect.y1, sx2 = SrcRect.x2, sy2 = SrcRect.y2;
-  float dx1 = DestRect.x1*xscale, dy1 = DestRect.y1*yscale, dx2 = DestRect.x2*xscale, dy2 = DestRect.y2*yscale;
+  float dx1 = DestRect.x1, dy1 = DestRect.y1, dx2 = DestRect.x2, dy2 = DestRect.y2;
   float sw = SrcRect.Width() / DestRect.Width();
   float sh = SrcRect.Height() / DestRect.Height();
 
@@ -949,6 +955,8 @@ void COMXVideo::SetVideoRect(const CRect& SrcRect, const CRect& DestRect)
     dy1 -= dy1;
   }
 
+  OMX_INIT_STRUCTURE(configDisplay);
+  configDisplay.nPortIndex = m_omx_render.GetInputPort();
   configDisplay.fullscreen = OMX_FALSE;
   configDisplay.noaspect   = OMX_TRUE;
 

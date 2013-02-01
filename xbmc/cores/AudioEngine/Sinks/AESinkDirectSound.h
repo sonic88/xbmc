@@ -47,8 +47,8 @@ public:
   virtual bool         SoftResume         ();
 #endif
   virtual unsigned int AddPackets         (uint8_t *data, unsigned int frames, bool hasAudio);
-  static  void         EnumerateDevicesEx (AEDeviceInfoList &deviceInfoList);
   static  std::string  GetDefaultDevice   ();
+  static  void         EnumerateDevicesEx (AEDeviceInfoList &deviceInfoList, bool force = false);
 private:
   void          AEChannelsFromSpeakerMask(DWORD speakers);
   DWORD         SpeakerMaskFromAEChannels(const CAEChannelInfo &channels);

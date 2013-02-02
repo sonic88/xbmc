@@ -5,7 +5,8 @@ XBMC_ADDONSDIR=../../../../addons
 
 # lib name, version
 LIBNAME=xbmc-pvr-addons
-VERSION=56a77af4e56da9a2658b3748d19bc2db9c491791
+#VERSION=56a77af4e56da9a2658b3748d19bc2db9c491791
+VERSION=frodo
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
@@ -17,7 +18,7 @@ LIBDYLIB=$(SOURCE)/addons/pvr.demo/.libs/libpvrdemo-addon.dylib
 all: $(LIBDYLIB) .installed
 
 $(TARBALLS_LOCATION)/$(ARCHIVE):
-	git clone git://github.com/opdenkamp/xbmc-pvr-addons.git $(SOURCE)
+	git clone git://github.com/margro/xbmc-pvr-addons.git $(SOURCE)
 	cd $(SOURCE); git archive --format=tar --prefix=$(SOURCE)/ $(VERSION) | gzip -9 > $(TARBALLS_LOCATION)/$(ARCHIVE)
 
 $(SOURCE): $(TARBALLS_LOCATION)/$(ARCHIVE)

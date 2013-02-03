@@ -57,7 +57,6 @@ HWND g_hWnd = NULL;
 #define EXTKEYPAD(keypad) ((scancode & 0x100)?(mvke):(keypad))
 
 static XBMCKey VK_keymap[XBMCK_LAST];
-static HKL hLayoutUS = NULL;
 
 static GUID USB_HID_GUID = { 0x4D1E55B2, 0xF16F, 0x11CF, { 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 } };
 
@@ -79,10 +78,6 @@ void DIB_InitOSKeymap()
   char current_layout[KL_NAMELENGTH];
 
   GetKeyboardLayoutName(current_layout);
-
-  hLayoutUS = LoadKeyboardLayout("00000409", KLF_NOTELLSHELL);
-  if (!hLayoutUS)
-    hLayoutUS = GetKeyboardLayout(0);
 
   LoadKeyboardLayout(current_layout, KLF_ACTIVATE);
 
@@ -237,10 +232,6 @@ void DIB_InitOSKeymap()
 
 static int XBMC_MapVirtualKey(int scancode, int vkey)
 {
-// It isn't clear why the US keyboard layout was being used. This causes
-// problems with e.g. the \ key. I have provisionally switched the code
-// to use the Windows layout.
-// int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, hLayoutUS);
   int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, NULL);
 
   switch(vkey)
@@ -464,6 +455,8 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
           CLog::Log(LOGDEBUG, __FUNCTION__": Focus switched to process %s", procfile.c_str());
       }
       break;
+    /* needs to be reviewed after frodo. we reset the system idle timer
+       and the display timer directly now (see m_screenSaverTimer).
     case WM_SYSCOMMAND:
       switch( wParam&0xFFF0 )
       {
@@ -476,7 +469,7 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
         case SC_SCREENSAVE:
           return 0;
       }
-      break;
+      break;*/
     case WM_SYSKEYDOWN:
       switch (wParam)
       {

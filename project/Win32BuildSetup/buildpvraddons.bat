@@ -9,7 +9,7 @@ SET DEPS_DIR=..\BuildDependencies
 SET TMP_DIR=%DEPS_DIR%\tmp
 
 SET LIBNAME=xbmc-pvr-addons
-REM SET VERSION=5f97406cffb412ac5161c3dc51205caca009fcc7
+REM SET VERSION=96774c4f775b156a46fb58151379dece3e773c96
 SET VERSION=development
 SET SOURCE=%LIBNAME%
 SET GIT_URL=git://github.com/margro/%LIBNAME%.git

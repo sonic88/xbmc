@@ -97,8 +97,12 @@ bool CVideoDatabase::CreateTables()
     CDatabase::CreateTables();
 
     CLog::Log(LOGINFO, "create bookmark table");
-    m_pDS->exec("CREATE TABLE bookmark ( idBookmark integer primary key, idFile integer, timeInSeconds double, totalTimeInSeconds double, thumbNailImage text, player text, playerState text, type integer)\n");
-    m_pDS->exec("CREATE INDEX ix_bookmark ON bookmark (idFile, type)");
+#ifdef HAS_DS_PLAYER
+	m_pDS->exec("CREATE TABLE bookmark ( idBookmark integer primary key, idFile integer, timeInSeconds double, totalTimeInSeconds double, thumbNailImage text, edition text, editionNumber integer, player text, playerState text, type integer)\n");
+#else
+	m_pDS->exec("CREATE TABLE bookmark ( idBookmark integer primary key, idFile integer, timeInSeconds double, totalTimeInSeconds double, thumbNailImage text, player text, playerState text, type integer)\n");
+#endif
+	m_pDS->exec("CREATE INDEX ix_bookmark ON bookmark (idFile, type)");
 
     CLog::Log(LOGINFO, "create settings table");
     m_pDS->exec("CREATE TABLE settings ( idFile integer, Deinterlace bool,"
@@ -383,6 +387,10 @@ void CVideoDatabase::CreateViews()
                                       "  tvshow.c%02d AS strShowPath, "
                                       "  bookmark.timeInSeconds AS resumeTimeInSeconds, "
                                       "  bookmark.totalTimeInSeconds AS totalTimeInSeconds, "
+#ifdef HAS_DS_PLAYER
+									  "  bookmark.edition AS edition, "
+									  "  bookmark.editionNumber AS editionNumber, "
+#endif
                                       "  seasons.idSeason AS idSeason "
                                       "FROM episode"
                                       "  JOIN files ON"
@@ -429,7 +437,11 @@ void CVideoDatabase::CreateViews()
               "  files.lastPlayed as lastPlayed,"
               "  files.dateAdded as dateAdded, "
               "  bookmark.timeInSeconds AS resumeTimeInSeconds, "
-              "  bookmark.totalTimeInSeconds AS totalTimeInSeconds "
+              "  bookmark.totalTimeInSeconds AS totalTimeInSeconds, "
+#ifdef HAS_DS_PLAYER
+			  "  bookmark.edition AS edition, "
+			  "  bookmark.editionNumber AS editionNumber "
+#endif
               "FROM musicvideo"
               "  JOIN files ON"
               "    files.idFile=musicvideo.idFile"
@@ -440,6 +452,7 @@ void CVideoDatabase::CreateViews()
 
   CLog::Log(LOGINFO, "create movieview");
   m_pDS->exec("DROP VIEW IF EXISTS movieview");
+
   m_pDS->exec("CREATE VIEW movieview AS SELECT"
               "  movie.*,"
               "  sets.strSet AS strSet,"
@@ -449,7 +462,11 @@ void CVideoDatabase::CreateViews()
               "  files.lastPlayed AS lastPlayed, "
               "  files.dateAdded AS dateAdded, "
               "  bookmark.timeInSeconds AS resumeTimeInSeconds, "
-              "  bookmark.totalTimeInSeconds AS totalTimeInSeconds "
+              "  bookmark.totalTimeInSeconds AS totalTimeInSeconds, "
+#ifdef HAS_DS_PLAYER
+			  "  bookmark.edition AS edition, "
+			  "  bookmark.editionNumber AS editionNumber "
+#endif
               "FROM movie"
               "  LEFT JOIN sets ON"
               "    sets.idSet = movie.idSet"
@@ -1889,6 +1906,10 @@ bool CVideoDatabase::GetFileInfo(const CStdString& strFilenameAndPath, CVideoInf
     {
       details.m_resumePoint.timeInSeconds = m_pDS->fv("bookmark.timeInSeconds").get_asInt();
       details.m_resumePoint.totalTimeInSeconds = m_pDS->fv("bookmark.totalTimeInSeconds").get_asInt();
+#ifdef HAS_DS_PLAYER
+	  details.m_resumePoint.edition = m_pDS->fv("bookmark.edition").get_asString();
+	  details.m_resumePoint.editionNumber = m_pDS->fv("bookmark.editionNumber").get_asInt();
+#endif
       details.m_resumePoint.type = CBookmark::RESUME;
     }
 
@@ -2464,6 +2485,10 @@ void CVideoDatabase::GetBookMarksForFile(const CStdString& strFilenameAndPath, V
         bookmark.playerState = m_pDS->fv("playerState").get_asString();
         bookmark.player = m_pDS->fv("player").get_asString();
         bookmark.type = type;
+#ifdef HAS_DS_PLAYER
+		bookmark.edition = m_pDS->fv("edition").get_asString();
+		bookmark.editionNumber = m_pDS->fv("editionNumber").get_asInt();
+#endif
         if (type == CBookmark::EPISODE)
         {
           CStdString strSQL2=PrepareSQL("select c%02d, c%02d from episode where c%02d=%i order by c%02d, c%02d", VIDEODB_ID_EPISODE_EPISODE, VIDEODB_ID_EPISODE_SEASON, VIDEODB_ID_EPISODE_BOOKMARK, m_pDS->fv("idBookmark").get_asInt(), VIDEODB_ID_EPISODE_SORTSEASON, VIDEODB_ID_EPISODE_SORTEPISODE);
@@ -2570,10 +2595,16 @@ void CVideoDatabase::AddBookMarkToFile(const CStdString& strFilenameAndPath, con
       m_pDS->close();
     }
     // update or insert depending if it existed before
-    if (idBookmark >= 0 )
-      strSQL=PrepareSQL("update bookmark set timeInSeconds = %f, totalTimeInSeconds = %f, thumbNailImage = '%s', player = '%s', playerState = '%s' where idBookmark = %i", bookmark.timeInSeconds, bookmark.totalTimeInSeconds, bookmark.thumbNailImage.c_str(), bookmark.player.c_str(), bookmark.playerState.c_str(), idBookmark);
-    else
-      strSQL=PrepareSQL("insert into bookmark (idBookmark, idFile, timeInSeconds, totalTimeInSeconds, thumbNailImage, player, playerState, type) values(NULL,%i,%f,%f,'%s','%s','%s', %i)", idFile, bookmark.timeInSeconds, bookmark.totalTimeInSeconds, bookmark.thumbNailImage.c_str(), bookmark.player.c_str(), bookmark.playerState.c_str(), (int)type);
+	if (idBookmark >= 0 )
+#ifdef HAS_DS_PLAYER
+		strSQL=PrepareSQL("update bookmark set timeInSeconds = %f, totalTimeInSeconds = %f, thumbNailImage = '%s', edition = '%s', editionNumber = '%i', player = '%s', playerState = '%s' where idBookmark = %i", bookmark.timeInSeconds, bookmark.totalTimeInSeconds, bookmark.thumbNailImage.c_str(), bookmark.edition.c_str(), bookmark.editionNumber, bookmark.player.c_str(), bookmark.playerState.c_str(), idBookmark);
+	else
+		strSQL=PrepareSQL("insert into bookmark (idBookmark, idFile, timeInSeconds, totalTimeInSeconds, thumbNailImage, edition, editionNumber, player, playerState, type) values(NULL,%i,%f,%f,'%s', '%s', %i, '%s','%s', %i)", idFile, bookmark.timeInSeconds, bookmark.totalTimeInSeconds, bookmark.thumbNailImage.c_str(), bookmark.edition.c_str(), bookmark.editionNumber, bookmark.player.c_str(), bookmark.playerState.c_str(), (int)type);
+#else
+		strSQL=PrepareSQL("update bookmark set timeInSeconds = %f, totalTimeInSeconds = %f, thumbNailImage = '%s', player = '%s', playerState = '%s' where idBookmark = %i", bookmark.timeInSeconds, bookmark.totalTimeInSeconds, bookmark.thumbNailImage.c_str(), bookmark.player.c_str(), bookmark.playerState.c_str(), idBookmark);
+	else
+		strSQL=PrepareSQL("insert into bookmark (idBookmark, idFile, timeInSeconds, totalTimeInSeconds, thumbNailImage, player, playerState, type) values(NULL,%i,%f,%f,'%s','%s','%s', %i)", idFile, bookmark.timeInSeconds, bookmark.totalTimeInSeconds, bookmark.thumbNailImage.c_str(), bookmark.player.c_str(), bookmark.playerState.c_str(), (int)type);
+#endif
 
     m_pDS->exec(strSQL.c_str());
   }
@@ -2658,6 +2689,10 @@ bool CVideoDatabase::GetBookMarkForEpisode(const CVideoInfoTag& tag, CBookmark& 
       bookmark.playerState = m_pDS->fv("playerState").get_asString();
       bookmark.player = m_pDS->fv("player").get_asString();
       bookmark.type = (CBookmark::EType)m_pDS->fv("type").get_asInt();
+#ifdef HAS_DS_PLAYER
+	  bookmark.edition = m_pDS->fv("edition").get_asString();
+	  bookmark.editionNumber = m_pDS->fv("editionNumber").get_asInt();
+#endif
     }
     else
     {
@@ -3200,18 +3235,26 @@ bool CVideoDatabase::GetResumePoint(CVideoInfoTag& tag)
     }
     else
     {
-      CStdString strSQL=PrepareSQL("select timeInSeconds, totalTimeInSeconds from bookmark where idFile=%i and type=%i order by timeInSeconds", tag.m_iFileId, CBookmark::RESUME);
-      m_pDS2->query( strSQL.c_str() );
-      if (!m_pDS2->eof())
-      {
-        tag.m_resumePoint.timeInSeconds = m_pDS2->fv(0).get_asDouble();
-        tag.m_resumePoint.totalTimeInSeconds = m_pDS2->fv(1).get_asDouble();
-        tag.m_resumePoint.partNumber = 0; // regular files or non-iso stacks don't need partNumber
-        tag.m_resumePoint.type = CBookmark::RESUME;
-        match = true;
-      }
-      m_pDS2->close();
-    }
+#ifdef HAS_DS_PLAYER
+		CStdString strSQL=PrepareSQL("select timeInSeconds, totalTimeInSeconds, edition, editionNumber, from bookmark where idFile=%i and type=%i order by timeInSeconds", tag.m_iFileId, CBookmark::RESUME);
+#else
+		CStdString strSQL=PrepareSQL("select timeInSeconds, totalTimeInSeconds from bookmark where idFile=%i and type=%i order by timeInSeconds", tag.m_iFileId, CBookmark::RESUME);
+#endif
+		m_pDS2->query( strSQL.c_str() );
+		if (!m_pDS2->eof())
+		{
+			tag.m_resumePoint.timeInSeconds = m_pDS2->fv(0).get_asDouble();
+			tag.m_resumePoint.totalTimeInSeconds = m_pDS2->fv(1).get_asDouble();
+#ifdef HAS_DS_PLAYER
+			tag.m_resumePoint.edition = m_pDS2->fv(2).get_asString();
+			tag.m_resumePoint.editionNumber = m_pDS2->fv(3).get_asInt();
+#endif
+			tag.m_resumePoint.partNumber = 0; // regular files or non-iso stacks don't need partNumber
+			tag.m_resumePoint.type = CBookmark::RESUME;
+			match = true;
+		}
+		m_pDS2->close();
+	}
   }
   catch (...)
   {
@@ -3252,6 +3295,10 @@ CVideoInfoTag CVideoDatabase::GetDetailsForMovie(const dbiplus::sql_record* cons
   details.m_dateAdded.SetFromDBDateTime(record->at(VIDEODB_DETAILS_MOVIE_DATEADDED).get_asString());
   details.m_resumePoint.timeInSeconds = record->at(VIDEODB_DETAILS_MOVIE_RESUME_TIME).get_asInt();
   details.m_resumePoint.totalTimeInSeconds = record->at(VIDEODB_DETAILS_MOVIE_TOTAL_TIME).get_asInt();
+#ifdef HAS_DS_PLAYER
+  details.m_resumePoint.edition = record->at(VIDEODB_DETAILS_MOVIE_RESUME_EDITION).get_asString();
+  details.m_resumePoint.editionNumber = record->at(VIDEODB_DETAILS_MOVIE_RESUME_EDITION_NUMBER).get_asInt();
+#endif
   details.m_resumePoint.type = CBookmark::RESUME;
 
   movieTime += XbmcThreads::SystemClockMillis() - time; time = XbmcThreads::SystemClockMillis();
@@ -3373,6 +3420,10 @@ CVideoInfoTag CVideoDatabase::GetDetailsForEpisode(const dbiplus::sql_record* co
 
   details.m_resumePoint.timeInSeconds = record->at(VIDEODB_DETAILS_EPISODE_RESUME_TIME).get_asInt();
   details.m_resumePoint.totalTimeInSeconds = record->at(VIDEODB_DETAILS_EPISODE_TOTAL_TIME).get_asInt();
+#ifdef HAS_DS_PLAYER
+  details.m_resumePoint.edition = record->at(VIDEODB_DETAILS_MOVIE_RESUME_EDITION).get_asString();
+  details.m_resumePoint.editionNumber = record->at(VIDEODB_DETAILS_MOVIE_RESUME_EDITION_NUMBER).get_asInt();
+#endif
   details.m_resumePoint.type = CBookmark::RESUME;
 
   movieTime += XbmcThreads::SystemClockMillis() - time; time = XbmcThreads::SystemClockMillis();
@@ -3421,6 +3472,10 @@ CVideoInfoTag CVideoDatabase::GetDetailsForMusicVideo(const dbiplus::sql_record*
   details.m_dateAdded.SetFromDBDateTime(record->at(VIDEODB_DETAILS_MUSICVIDEO_DATEADDED).get_asString());
   details.m_resumePoint.timeInSeconds = record->at(VIDEODB_DETAILS_MUSICVIDEO_RESUME_TIME).get_asInt();
   details.m_resumePoint.totalTimeInSeconds = record->at(VIDEODB_DETAILS_MUSICVIDEO_TOTAL_TIME).get_asInt();
+#ifdef HAS_DS_PLAYER
+  details.m_resumePoint.edition = record->at(VIDEODB_DETAILS_MOVIE_RESUME_EDITION).get_asString();
+  details.m_resumePoint.editionNumber = record->at(VIDEODB_DETAILS_MOVIE_RESUME_EDITION_NUMBER).get_asInt();
+#endif
   details.m_resumePoint.type = CBookmark::RESUME;
 
   movieTime += XbmcThreads::SystemClockMillis() - time; time = XbmcThreads::SystemClockMillis();
@@ -4317,6 +4372,13 @@ bool CVideoDatabase::UpdateOldVersion(int iVersion)
     m_pDS->exec("CREATE INDEX ix_path ON path ( strPath(255) )");
     m_pDS->exec("CREATE INDEX ix_files ON files ( idPath, strFilename(255) )");
   }
+#ifdef HAS_DS_PLAYER
+  if(iVersion < 76)
+  {
+	  m_pDS->exec("ALTER TABLE bookmark ADD edition text");
+	  m_pDS->exec("ALTER TABLE bookmark ADD editionNumber integer");
+  }
+#endif
   // always recreate the view after any table change
   CreateViews();
   return true;
@@ -4324,7 +4386,7 @@ bool CVideoDatabase::UpdateOldVersion(int iVersion)
 
 int CVideoDatabase::GetMinVersion() const
 {
-  return 75;
+  return 76;
 }
 
 bool CVideoDatabase::LookupByFolders(const CStdString &path, bool shows)
@@ -4425,7 +4487,10 @@ bool CVideoDatabase::GetPlayCounts(const CStdString &strPath, CFileItemList &ite
     CStdString sql = PrepareSQL(
       "SELECT"
       "  files.strFilename, files.playCount,"
-      "  bookmark.timeInSeconds, bookmark.totalTimeInSeconds "
+      "  bookmark.timeInSeconds, bookmark.totalTimeInSeconds, "
+#ifdef HAS_DS_PLAYER
+	  "  bookmark.edition, bookmark.editionNumber "
+#endif
       "FROM files"
       "  LEFT JOIN bookmark ON"
       "    files.idFile = bookmark.idFile AND bookmark.type = %i"
@@ -4446,9 +4511,13 @@ bool CVideoDatabase::GetPlayCounts(const CStdString &strPath, CFileItemList &ite
         if (!item->GetVideoInfoTag()->m_resumePoint.IsSet())
         {
           item->GetVideoInfoTag()->m_resumePoint.timeInSeconds = m_pDS->fv(2).get_asInt();
-          item->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds = m_pDS->fv(3).get_asInt();
-          item->GetVideoInfoTag()->m_resumePoint.type = CBookmark::RESUME;
-        }
+		  item->GetVideoInfoTag()->m_resumePoint.totalTimeInSeconds = m_pDS->fv(3).get_asInt();
+#ifdef HAS_DS_PLAYER
+		  item->GetVideoInfoTag()->m_resumePoint.edition = m_pDS->fv(4).get_asString();
+		  item->GetVideoInfoTag()->m_resumePoint.editionNumber = m_pDS->fv(5).get_asInt();
+#endif
+		  item->GetVideoInfoTag()->m_resumePoint.type = CBookmark::RESUME;
+		}
       }
       m_pDS->next();
     }

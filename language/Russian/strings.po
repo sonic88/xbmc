@@ -10757,3 +10757,154 @@ msgstr "Неподдерживаемая версия интерфейса libCE
 msgctxt "#36041"
 msgid "* Item folder"
 msgstr "* Папка объекта"
+
+#. 55000-55100 reserved for DSPlayer
+msgctxt "#55000"
+msgid "DSPlayer"
+msgstr "DSPlayer"
+
+msgctxt "#55001"
+msgid "Use VMR9 instead of EVR Renderer"
+msgstr "Использовать обработчик VMR9 вместо EVR"
+
+msgctxt "#55002"
+msgid "Use EVR instead of VMR9 Renderer"
+msgstr "Использовать обработчик EVR вместо VMR9"
+
+msgctxt "#55003"
+msgid "Audio Renderer"
+msgstr "Обработчик аудио"
+
+msgctxt "#55004"
+msgid "Set all stable formats to libavcodec (ffdshow)"
+msgstr "Декодировать все стабильные форматы с помощью libavcodec (ffdshow)"
+
+msgctxt "#55005"
+msgid "Nearest neighbor"
+msgstr "Nearest neighbor"
+
+msgctxt "#55006"
+msgid "Bilinear"
+msgstr "Bilinear"
+
+msgctxt "#55007"
+msgid "Bilinear (PS 2.0)"
+msgstr "Bilinear (PS 2.0)"
+
+msgctxt "#55008"
+msgid "Bicubic A=-0.60 (PS 2.0)"
+msgstr "Bicubic A=-0.60 (PS 2.0)"
+
+msgctxt "#55009"
+msgid "Bicubic A=-0.75 (PS 2.0)"
+msgstr "Bicubic A=-0.75 (PS 2.0)"
+
+msgctxt "#55010"
+msgid "Bicubic A=-1.00 (PS 2.0)"
+msgstr "Bicubic A=-1.00 (PS 2.0)"
+
+msgctxt "#55011"
+msgid "Stats hidden"
+msgstr "Скрыть"
+
+msgctxt "#55012"
+msgid "Stats minimal"
+msgstr "Минимальная"
+
+msgctxt "#55013"
+msgid "Stats medium"
+msgstr "Базовая"
+
+msgctxt "#55014"
+msgid "Stats large"
+msgstr "Расширенная"
+
+msgctxt "#55015"
+msgid "Renderer stats"
+msgstr "Статистика обработчика"
+
+msgctxt "#55016"
+msgid "Shaders"
+msgstr "Шейдеры"
+
+msgctxt "#55017"
+msgid "Shaders list"
+msgstr "Список шейдеров"
+
+msgctxt "#55018"
+msgid "There is no shader loaded"
+msgstr "Шейдеры не загружены"
+
+msgctxt "#55021"
+msgid "Use system filters (DirectShow merits)"
+msgstr "Использовать системные фильтры (приоритеты DirectShow)"
+
+msgctxt "#55022"
+msgid "Min. Blu-ray title length (min.)"
+msgstr "Мин. длительность тайтла Blu-ray (мин.)"
+
+msgctxt "#55023"
+msgid "Matroska Editions"
+msgstr "Версии видео MKV"
+
+msgctxt "#55024"
+msgid "Blu-ray Titles"
+msgstr "Тайтлы Blu-ray"
+
+msgctxt "#55025"
+msgid "Select Matroska Editions"
+msgstr "Выберите версию видео MKV"
+
+msgctxt "#55026"
+msgid "Select Blu-ray Titles"
+msgstr "Выберите тайтл Blu-ray"
+
+msgctxt "#55027"
+msgid "Show all Blu-ray Titles"
+msgstr "Показать все тайтлы Blu-ray"
+
+msgctxt "#55030"
+msgid "Auto start .bdmv in Blu-ray folders"
+msgstr "Автоматический запуск .bdmv в папках Blu-ray"
+
+msgctxt "#55031"
+msgid "Use as the default video player"
+msgstr "Использовать как проигрыватель видео по умолчанию"
+
+msgctxt "#55032"
+msgid ""
+"Show Blu-ray titles and Matroska Editions choice dialog (AVSplitter only)"
+msgstr "Показывать тайтлы Blu-ray и версии видео MKV (только AVSplitter)"
+
+#. 55050-55100 Directshow Subtitles
+msgctxt "#55050"
+msgid "- Border line"
+msgstr "- Граница"
+
+msgctxt "#55051"
+msgid "Outline"
+msgstr "Время показа"
+
+msgctxt "#55052"
+msgid "Opaque"
+msgstr "Прозрачность"
+
+msgctxt "#55053"
+msgid "- Outline width"
+msgstr "- Ширина контура"
+
+msgctxt "#55054"
+msgid "- Shadow depth"
+msgstr "- Глубина тени"
+
+msgctxt "#55055"
+msgid "- Alpha"
+msgstr "- Альфа-канал"
+
+msgctxt "#55056"
+msgid "Font to use for text subtitles (dsplayer only) : %s"
+msgstr "Шрифт текстовых субтитров (только dsplayer): %s"
+
+msgctxt "#55057"
+msgid "Choose a font"
+msgstr "Выберите шрифт"

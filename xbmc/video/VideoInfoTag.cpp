@@ -244,6 +244,10 @@ bool CVideoInfoTag::Save(TiXmlNode *node, const CStdString &tag, bool savePathIn
   TiXmlElement resume("resume");
   XMLUtils::SetFloat(&resume, "position", (float)m_resumePoint.timeInSeconds);
   XMLUtils::SetFloat(&resume, "total", (float)m_resumePoint.totalTimeInSeconds);
+#ifdef HAS_DS_PLAYER
+  XMLUtils::SetString(&resume, "edition", m_resumePoint.edition);
+  XMLUtils::SetInt(&resume, "editionNumber", m_resumePoint.editionNumber);
+#endif
   movie->InsertEndChild(resume);
 
   XMLUtils::SetString(movie, "dateadded", m_dateAdded.GetAsDBDateTime());
@@ -331,6 +335,10 @@ void CVideoInfoTag::Archive(CArchive& ar)
     ar << m_parentPathID;
     ar << m_resumePoint.timeInSeconds;
     ar << m_resumePoint.totalTimeInSeconds;
+#ifdef HAS_DS_PLAYER
+	ar << m_resumePoint.edition;
+	ar << m_resumePoint.editionNumber;
+#endif
     ar << m_iIdShow;
     ar << m_strShowPath;
     ar << m_dateAdded.GetAsDBDateTime();
@@ -409,6 +417,10 @@ void CVideoInfoTag::Archive(CArchive& ar)
     ar >> m_parentPathID;
     ar >> m_resumePoint.timeInSeconds;
     ar >> m_resumePoint.totalTimeInSeconds;
+#ifdef HAS_DS_PLAYER
+	ar >> m_resumePoint.edition;
+	ar >> m_resumePoint.editionNumber;
+#endif
     ar >> m_iIdShow;
     ar >> m_strShowPath;
 
@@ -478,6 +490,10 @@ void CVideoInfoTag::Serialize(CVariant& value) const
   CVariant resume = CVariant(CVariant::VariantTypeObject);
   resume["position"] = (float)m_resumePoint.timeInSeconds;
   resume["total"] = (float)m_resumePoint.totalTimeInSeconds;
+#ifdef HAS_DS_PLAYER
+  resume["edition"] = m_resumePoint.edition;
+  resume["editionNumber"] = m_resumePoint.editionNumber;
+#endif
   value["resume"] = resume;
   value["tvshowid"] = m_iIdShow;
   value["tvshowpath"] = m_strShowPath;
@@ -768,6 +784,10 @@ void CVideoInfoTag::ParseNative(const TiXmlElement* movie, bool prioritise)
   {
     XMLUtils::GetDouble(resume, "position", m_resumePoint.timeInSeconds);
     XMLUtils::GetDouble(resume, "total", m_resumePoint.totalTimeInSeconds);
+#ifdef HAS_DS_PLAYER
+	XMLUtils::GetString(resume, "edition", m_resumePoint.edition);
+	XMLUtils::GetInt(resume, "editionNumber", m_resumePoint.editionNumber);
+#endif
   }
 
   // dateAdded

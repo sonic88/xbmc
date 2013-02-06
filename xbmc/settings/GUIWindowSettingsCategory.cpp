@@ -88,6 +88,10 @@
 
 #ifdef _WIN32
 #include "WIN32Util.h"
+#ifdef HAS_DS_PLAYER
+#include "Utils/AudioEnumerator.h"
+#include "dialogs/GUIDialogSelect.h"
+#endif
 #endif
 #include <map>
 #include "Settings.h"
@@ -139,6 +143,32 @@ using namespace PERIPHERALS;
 #define CONTROL_DEFAULT_EDIT            12
 #define CONTROL_START_BUTTONS           -100
 #define CONTROL_START_CONTROL           -80
+
+#ifdef HAS_DS_PLAYER
+int CALLBACK EnumFontCallback(ENUMLOGFONTEXW *lpelfe, NEWTEXTMETRICEXW *lpntme, DWORD FontType, LPARAM lParam)
+{
+	if (! lParam)
+		return 0;
+
+	// Exclude font starting with an @
+	if (lpelfe->elfFullName[0] == L'@')
+		return 1;
+
+	// Exclude Bold, Italic...
+	if (lpelfe->elfStyle[0] != 0 && lpelfe->elfStyle[0] != L'R' && lpelfe->elfStyle[0] != L'N')
+		return 1;
+
+	CStdString label;
+	g_charsetConverter.wToUTF8(lpelfe->elfFullName, label);
+	std::vector<CStdString> *fonts = ((std::vector<CStdString> *) lParam);
+
+	if (std::find(fonts->begin(), fonts->end(), label) != fonts->end())
+		return 1;
+
+	fonts->push_back(label);
+	return 1;
+}
+#endif
 
 CGUIWindowSettingsCategory::CGUIWindowSettingsCategory(void)
     : CGUIWindow(WINDOW_SETTINGS_MYPICTURES, "SettingsCategory.xml")
@@ -443,12 +473,49 @@ void CGUIWindowSettingsCategory::CreateSettings()
       control->SetDelayed();
       continue;
     }
+#ifdef HAS_DS_PLAYER
+	else if (strSetting.Equals("subtitles.border"))
+	{
+		CSettingInt *pSettingInt = (CSettingInt*)pSetting;
+		CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(GetSetting(strSetting)->GetID());
+		pControl->AddLabel(g_localizeStrings.Get(55051), SUBTITLE_BORDER_OUTLINE);
+		pControl->AddLabel(g_localizeStrings.Get(55052), SUBTITLE_BORDER_OPAQUE);
+		pControl->SetValue(pSettingInt->GetData());
+	}
+	else if (strSetting.Equals("subtitles.style"))
+	{
+		CSettingInt *pSettingInt = (CSettingInt*)pSetting;
+		CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(GetSetting(strSetting)->GetID());
+		pControl->AddLabel(g_localizeStrings.Get(738), FONT_STYLE_NORMAL);
+		pControl->AddLabel(g_localizeStrings.Get(739), FONT_STYLE_BOLD);
+		pControl->AddLabel(g_localizeStrings.Get(740), FONT_STYLE_ITALICS);
+		pControl->AddLabel(g_localizeStrings.Get(741), FONT_STYLE_BOLD_ITALICS);
+		pControl->SetValue(pSettingInt->GetData());
+	}
+	else if (strSetting.Equals("subtitles.outline.width") || strSetting.Equals("subtitles.alpha")
+		|| strSetting.Equals("subtitles.shadow.depth"))
+	{
+		CSettingInt *pSettingInt = (CSettingInt*)pSetting;
+		CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(GetSetting(strSetting)->GetID());
+		pControl->SetValue(pSettingInt->GetData());
+	}
+#endif
     else if (strSetting.Equals("subtitles.font") || strSetting.Equals("karaoke.font") )
     {
       AddSetting(pSetting, group->GetWidth(), iControlID);
       FillInSubtitleFonts(pSetting);
       continue;
     }
+#ifdef HAS_DS_PLAYER
+	else if (strSetting.Equals("subtitles.dsfont"))
+	{
+ 		AddSetting(pSetting, group->GetWidth(), iControlID);
+		CGUIButtonControl *pButtonControl = (CGUIButtonControl *)GetControl(GetSetting(strSetting)->GetID());
+		CStdString label; label.Format(g_localizeStrings.Get(pSetting->GetLabel()), ((CSettingString*)pSetting)->GetData());
+		pButtonControl->SetLabel(label); 
+		continue;
+	}
+#endif
     else if (strSetting.Equals("subtitles.charset") || strSetting.Equals("locale.charset") || strSetting.Equals("karaoke.charset"))
     {
       AddSetting(pSetting, group->GetWidth(), iControlID);
@@ -564,6 +631,14 @@ void CGUIWindowSettingsCategory::CreateSettings()
       FillInAudioDevices(pSetting);
       continue;
     }
+#ifdef HAS_DS_PLAYER
+	else if (strSetting.Equals("dsplayer.audiorenderer"))
+	{
+		AddSetting(pSetting, group->GetWidth(), iControlID);
+		FillInDirectShowAudioRenderers(pSetting);
+		continue;
+	}
+#endif
     else if (strSetting.Equals("audiooutput.passthroughdevice"))
     {
       AddSetting(pSetting, group->GetWidth(), iControlID);
@@ -598,7 +673,15 @@ void CGUIWindowSettingsCategory::UpdateSettings()
     }
     else
 #endif
-    if (strSetting.Equals("videoscreen.resolution"))
+#ifdef HAS_DS_PLAYER
+		if (strSetting.Equals("dsplayer.mintitlelength"))
+		{
+			CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
+			if (pControl)
+				pControl->SetEnabled(g_guiSettings.GetBool("dsplayer.showbdtitlechoice"));
+		}else
+#endif
+	if (strSetting.Equals("videoscreen.resolution"))
     {
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
       if (pControl)
@@ -1040,6 +1123,53 @@ void CGUIWindowSettingsCategory::OnClick(BaseSettingControlPtr pSettingControl)
       g_weatherManager.Refresh();
     }
   }
+#ifdef HAS_DS_PLAYER
+  else if (strSetting.Equals("subtitles.dsfont"))
+  {
+	  CSettingString *pSettingString = (CSettingString *)pSettingControl->GetSetting();
+	  CGUIButtonControl *pControl = (CGUIButtonControl *)GetControl(pSettingControl->GetID());
+
+	  CGUIDialogSelect *dialog = (CGUIDialogSelect *) g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
+
+	  HDC dc = GetDC(0);
+	  LOGFONTW lf = {0};
+	  lf.lfCharSet = DEFAULT_CHARSET; // g_charsetConverter.getCharsetIdByName(g_langInfo.GetSubtitleCharSet());
+	  lf.lfFaceName[0] = '\0';
+
+	  std::vector<CStdString> fonts;
+	  EnumFontFamiliesExW(dc, &lf, (FONTENUMPROCW) EnumFontCallback, (LPARAM) &fonts, 0);
+
+	  ReleaseDC(0, dc);
+
+	  // Sort
+	  std::sort(fonts.begin(), fonts.end());
+
+	  int i = 0;
+	  int iSelected = -1;
+	  for (std::vector<CStdString>::const_iterator it = fonts.begin();
+		  it != fonts.end(); ++it, i++)
+	  {
+		  if ((*it).Equals(pSettingString->GetData()))
+			  iSelected = i;
+
+		  dialog->Add(*it);
+	  }
+
+	  if (iSelected >= 0)
+		  dialog->SetSelected(iSelected);
+
+	  dialog->SetHeading(55057);
+	  dialog->DoModal();
+
+	  if(dialog->GetSelectedLabel() > 0)
+	  {
+		  CStdString label;
+		  label.Format(g_localizeStrings.Get(55056), dialog->GetSelectedLabelText());
+		  pSettingString->SetData(dialog->GetSelectedLabelText());
+		  pControl->SetLabel(label);
+	  }
+  }
+#endif
   else if (strSetting.Equals("lookandfeel.rssedit"))
   {
     AddonPtr addon;
@@ -1256,6 +1386,13 @@ void CGUIWindowSettingsCategory::OnSettingChanged(BaseSettingControlPtr pSetting
     g_guiSettings.m_replayGain.iNoGainPreAmp = g_guiSettings.GetInt("musicplayer.replaygainnogainpreamp");
     g_guiSettings.m_replayGain.bAvoidClipping = g_guiSettings.GetBool("musicplayer.replaygainavoidclipping");
   }
+#ifdef HAS_DS_PLAYER
+  else if (strSetting.Equals("dsplayer.audiorenderer"))
+  {
+	  CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(pSettingControl->GetID());
+	  g_guiSettings.SetString("dsplayer.audiorenderer", pControl->GetCurrentLabel());
+  }
+#endif
 #ifdef HAS_LCD
   else if (strSetting.Equals("videoscreen.haslcd"))
   {
@@ -2933,6 +3070,28 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
   else
     pControl->SetValue(selectedValue);
 }
+
+#ifdef HAS_DS_PLAYER
+void CGUIWindowSettingsCategory::FillInDirectShowAudioRenderers(CSetting* pSetting)
+{
+	//in case dsplayer didnt do it yet
+	CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(GetSetting(pSetting->GetSetting())->GetID());
+	pControl->Clear();
+	pControl->AddLabel("System Default", 0);
+	CAudioEnumerator p_dsound;
+	std::vector<DSFilterInfo> deviceList;
+	p_dsound.GetAudioRenderers(deviceList);
+	std::vector<DSFilterInfo>::const_iterator iter = deviceList.begin();
+	for (int i = 1; iter != deviceList.end(); i++)
+	{
+		DSFilterInfo dev = *iter;
+		pControl->AddLabel(dev.lpstrName, i);
+		if (g_guiSettings.GetString("dsplayer.audiorenderer").Equals(dev.lpstrName))
+			pControl->SetValue(i);
+		++iter;
+	}
+}
+#endif
 
 void CGUIWindowSettingsCategory::NetworkInterfaceChanged(void)
 {

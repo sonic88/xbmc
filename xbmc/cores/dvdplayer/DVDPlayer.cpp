@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -684,8 +684,9 @@ bool CDVDPlayer::OpenDemuxStream()
 
 void CDVDPlayer::OpenDefaultStreams(bool reset)
 {
-  // bypass for DVDs. The DVD Navigator has already dictated which streams to open.
-  if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD))
+  // if input stream dictate, we will open later
+  if(m_dvd.iSelectedAudioStream >= 0
+  || m_dvd.iSelectedSPUStream   >= 0)
     return;
 
   SelectionStreams streams;
@@ -866,6 +867,9 @@ bool CDVDPlayer::IsBetterStream(CCurrentStream& current, CDemuxStream* stream)
   if(m_PlayerOptions.video_only && current.type != STREAM_VIDEO)
     return false;
 
+  if(stream->disabled)
+    return false;
+
   if (m_pInputStream && ( m_pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD)
                        || m_pInputStream->IsStreamType(DVDSTREAM_TYPE_BLURAY) ) )
   {
@@ -893,9 +897,6 @@ bool CDVDPlayer::IsBetterStream(CCurrentStream& current, CDemuxStream* stream)
   {
     if(stream->source == current.source
     && stream->iId    == current.id)
-      return false;
-
-    if(stream->disabled)
       return false;
 
     if(stream->type != current.type)
@@ -1061,6 +1062,10 @@ void CDVDPlayer::Process()
 
       OpenDefaultStreams();
 
+      // never allow first frames after open to be skipped
+      if( m_dvdPlayerVideo.IsInited() )
+        m_dvdPlayerVideo.SendMessage(new CDVDMsg(CDVDMsg::VIDEO_NOSKIP));
+
       if (CachePVRStream())
         SetCaching(CACHESTATE_PVR);
 
@@ -1110,10 +1115,8 @@ void CDVDPlayer::Process()
         continue;
 
       // check for a still frame state
-      if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD))
+      if (CDVDInputStream::IMenus* pStream = dynamic_cast<CDVDInputStream::IMenus*>(m_pInputStream))
       {
-        CDVDInputStreamNavigator* pStream = static_cast<CDVDInputStreamNavigator*>(m_pInputStream);
-
         // stills will be skipped
         if(m_dvd.state == DVDSTATE_STILL)
         {
@@ -3243,6 +3246,29 @@ int CDVDPlayer::OnDVDNavResult(void* pData, int iMessage)
       m_dvd.iSelectedSPUStream   = *(int*)pData;
     else if(iMessage == 4)
       m_dvdPlayerVideo.EnableSubtitle(*(int*)pData ? true: false);
+    else if(iMessage == 5)
+    {
+      if (m_dvd.state != DVDSTATE_STILL)
+      {
+        // else notify the player we have received a still frame
+
+        m_dvd.iDVDStillTime      = *(int*)pData;
+        m_dvd.iDVDStillStartTime = XbmcThreads::SystemClockMillis();
+
+        /* adjust for the output delay in the video queue */
+        unsigned int time = 0;
+        if( m_CurrentVideo.stream && m_dvd.iDVDStillTime > 0 )
+        {
+          time = (unsigned int)(m_dvdPlayerVideo.GetOutputDelay() / ( DVD_TIME_BASE / 1000 ));
+          if( time < 10000 && time > 0 )
+            m_dvd.iDVDStillTime += time;
+        }
+        m_dvd.state = DVDSTATE_STILL;
+        CLog::Log(LOGDEBUG,
+                  "DVDNAV_STILL_FRAME - waiting %i sec, with delay of %d sec",
+                  m_dvd.iDVDStillTime, time / 1000);
+      }
+    }
 
     return 0;
   }

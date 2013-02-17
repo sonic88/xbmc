@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -884,10 +884,10 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("setvolume"))
   {
     int oldVolume = g_application.GetVolume();
-    int volume = atoi(parameter.c_str());
+    float volume = (float)strtod(parameter.c_str(), NULL);
 
-    g_application.SetVolume((float)volume);
-    if(oldVolume != volume)
+    g_application.SetVolume(volume);
+    if(oldVolume != (int)volume)
     {
       if(params.size() > 1 && params[1].Equals("showVolumeBar"))    
       {
@@ -983,7 +983,9 @@ int CBuiltins::Execute(const CStdString& execString)
 
     if( g_alarmClock.IsRunning() )
       g_alarmClock.Stop(params[0],silent);
-
+    // no negative times not allowed, loop must have a positive time
+    if (seconds < 0 || (seconds == 0 && loop))
+      return false;
     g_alarmClock.Start(params[0], seconds, params[1], silent, loop);
   }
   else if (execute.Equals("notification"))

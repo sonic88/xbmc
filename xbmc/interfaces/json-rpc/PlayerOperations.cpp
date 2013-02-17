@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -1361,10 +1361,11 @@ JSONRPC_STATUS CPlayerOperations::GetPropertyValue(PlayerType player, const CStd
             value.Empty();
             g_application.m_pPlayer->GetAudioStreamLanguage(index, value);
             result["language"] = value;
+
+            result["codec"] = g_application.m_pPlayer->GetAudioCodecName();
+            result["bitrate"] = g_application.m_pPlayer->GetAudioBitrate();
+            result["channels"] = g_application.m_pPlayer->GetChannels();
           }
-          result["codec"] = g_application.m_pPlayer->GetAudioCodecName();
-          result["bitrate"] = g_application.m_pPlayer->GetAudioBitrate();
-          result["channels"] = g_application.m_pPlayer->GetChannels();
         }
         else
           result = CVariant(CVariant::VariantTypeNull);

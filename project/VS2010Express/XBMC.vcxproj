@@ -397,6 +397,7 @@
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\DSGraph.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\DSInputStreamPVRManager.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\DSPlayer.cpp" />
+    <ClCompile Include="..\..\xbmc\cores\DSPlayer\DSPlayerDatabase.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\DSPropertyPage.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\ExternalPixelShader.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\FGFilter.cpp" />
@@ -1065,6 +1066,7 @@
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\DSInputStreamPVRManager.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\DSMessage.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\DSPlayer.h" />
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\DSPlayerDatabase.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\DSPropertyPage.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\ExternalPixelShader.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\FGFilter.h" />

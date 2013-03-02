@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,6 +24,7 @@
 #include "XBDateTime.h"
 #include "utils/ScraperUrl.h"
 #include "utils/Fanart.h"
+#include "utils/ISortable.h"
 #include "utils/StreamDetails.h"
 #include "video/Bookmark.h"
 #include "XBDateTime.h"
@@ -38,9 +38,10 @@ struct SActorInfo
   CStdString strName;
   CStdString strRole;
   CScraperUrl thumbUrl;
+  CStdString thumb;
 };
 
-class CVideoInfoTag : public IArchivable, public ISerializable
+class CVideoInfoTag : public IArchivable, public ISerializable, public ISortable
 {
 public:
   CVideoInfoTag() { Reset(); };
@@ -61,9 +62,10 @@ public:
    \sa ParseNative
    */
   bool Load(const TiXmlElement *element, bool append = false, bool prioritise = false);
-  bool Save(TiXmlNode *node, const CStdString &tag, bool savePathInfo = true);
+  bool Save(TiXmlNode *node, const CStdString &tag, bool savePathInfo = true, const TiXmlElement *additionalNode = NULL);
   virtual void Archive(CArchive& ar);
-  virtual void Serialize(CVariant& value);
+  virtual void Serialize(CVariant& value) const;
+  virtual void ToSortable(SortItem& sortable);
   const CStdString GetCast(bool bIncludeRole = false) const;
   bool HasStreamDetails() const;
   bool IsEmpty() const;
@@ -74,6 +76,17 @@ public:
       return m_strPath;
     return m_strFileNameAndPath;
   };
+
+  /*! \brief retrieve the duration in seconds.
+   Prefers the duration from stream details if available.
+   */
+  unsigned int GetDuration() const;
+
+  /*! \brief get the duration in seconds from a minute string
+   \param runtime the runtime string from a scraper or similar
+   \return the time in seconds, if decipherable.
+   */
+  static unsigned int GetDurationFromMinuteString(const std::string &runtime);
 
   CStdString m_basePath; // the base path of the video, for folder-based lookups
   int m_parentPathID;      // the parent path id where the base path of the video lies
@@ -89,12 +102,12 @@ public:
   CStdString m_strTitle;
   CStdString m_strSortTitle;
   CStdString m_strVotes;
-  CStdString m_strArtist;
+  std::vector<std::string> m_artist;
   std::vector< SActorInfo > m_cast;
   typedef std::vector< SActorInfo >::const_iterator iCast;
-  std::vector<std::string> m_set;
-  std::vector<int> m_setId;
-  CStdString m_strRuntime;
+  CStdString m_strSet;
+  int m_iSetId;
+  std::vector<std::string> m_tags;
   CStdString m_strFile;
   CStdString m_strPath;
   CStdString m_strIMDBNumber;
@@ -117,6 +130,7 @@ public:
   int m_iYear;
   int m_iSeason;
   int m_iEpisode;
+  CStdString m_strUniqueId;
   int m_iDbId;
   int m_iFileId;
   int m_iSpecialSortSeason;
@@ -126,10 +140,13 @@ public:
   float m_fEpBookmark;
   int m_iBookmarkId;
   int m_iIdShow;
+  int m_iIdSeason;
   CFanart m_fanart;
   CStreamDetails m_streamDetails;
   CBookmark m_resumePoint;
   CDateTime m_dateAdded;
+  CStdString m_type;
+  int m_duration; ///< duration in seconds
 
 private:
   /* \brief Parse our native XML format for video info.

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,14 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "MusicInfoLoader.h"
 #include "MusicDatabase.h"
+#include "music/infoscanner/MusicInfoScanner.h"
 #include "music/tags/MusicInfoTagLoaderFactory.h"
 #include "filesystem/DirectoryCache.h"
 #include "filesystem/MusicDatabaseDirectory.h"
@@ -34,6 +34,7 @@
 #include "utils/log.h"
 #include "Artist.h"
 #include "Album.h"
+#include "MusicThumbLoader.h"
 
 using namespace std;
 using namespace XFILE;
@@ -43,12 +44,15 @@ using namespace MUSIC_INFO;
 CMusicInfoLoader::CMusicInfoLoader() : CBackgroundInfoLoader(1)
 {
   m_mapFileItems = new CFileItemList;
+
+  m_thumbLoader = new CMusicThumbLoader();
 }
 
 CMusicInfoLoader::~CMusicInfoLoader()
 {
   StopThread();
   delete m_mapFileItems;
+  delete m_thumbLoader;
 }
 
 void CMusicInfoLoader::OnLoaderStart()
@@ -63,9 +67,6 @@ void CMusicInfoLoader::OnLoaderStart()
     m_mapFileItems->SetFastLookup(true);
   }
 
-  // Precache album thumbs
-  g_directoryCache.InitMusicThumbCache();
-
   m_strPrevPath.Empty();
 
   m_databaseHits = m_tagReads = 0;
@@ -74,6 +75,9 @@ void CMusicInfoLoader::OnLoaderStart()
     m_pProgressCallback->SetProgressMax(m_pVecItems->GetFileCount());
 
   m_musicDatabase.Open();
+
+  if (m_thumbLoader)
+    m_thumbLoader->Initialize();
 }
 
 bool CMusicInfoLoader::LoadAdditionalTagInfo(CFileItem* pItem)
@@ -127,67 +131,72 @@ bool CMusicInfoLoader::LoadItem(CFileItem* pItem)
   if (pItem->m_bIsFolder || pItem->IsPlayList() || pItem->IsNFO() || pItem->IsInternetStream())
     return false;
 
-  if (pItem->HasMusicInfoTag() && pItem->GetMusicInfoTag()->Loaded())
-    return true;
-
-  // first check the cached item
-  CFileItemPtr mapItem = (*m_mapFileItems)[pItem->GetPath()];
-  if (mapItem && mapItem->m_dateTime==pItem->m_dateTime && mapItem->HasMusicInfoTag() && mapItem->GetMusicInfoTag()->Loaded())
-  { // Query map if we previously cached the file on HD
-    *pItem->GetMusicInfoTag() = *mapItem->GetMusicInfoTag();
-    pItem->SetThumbnailImage(mapItem->GetThumbnailImage());
-    return true;
-  }
-
-  CStdString strPath;
-  URIUtils::GetDirectory(pItem->GetPath(), strPath);
-  URIUtils::AddSlashAtEnd(strPath);
-  if (strPath!=m_strPrevPath)
+  if (!pItem->HasMusicInfoTag() || !pItem->GetMusicInfoTag()->Loaded())
   {
-    // The item is from another directory as the last one,
-    // query the database for the new directory...
-    m_musicDatabase.GetSongsByPath(strPath, m_songsMap);
-    m_databaseHits++;
-  }
-
-  CSong *song=NULL;
-
-  if ((song=m_songsMap.Find(pItem->GetPath()))!=NULL)
-  {  // Have we loaded this item from database before
-    pItem->GetMusicInfoTag()->SetSong(*song);
-    pItem->SetThumbnailImage(song->strThumb);
-  }
-  else if (pItem->IsMusicDb())
-  { // a music db item that doesn't have tag loaded - grab details from the database
-    XFILE::MUSICDATABASEDIRECTORY::CQueryParams param;
-    XFILE::MUSICDATABASEDIRECTORY::CDirectoryNode::GetDatabaseInfo(pItem->GetPath(),param);
-    CSong song;
-    if (m_musicDatabase.GetSongById(param.GetSongId(), song))
+    // first check the cached item
+    CFileItemPtr mapItem = (*m_mapFileItems)[pItem->GetPath()];
+    if (mapItem && mapItem->m_dateTime==pItem->m_dateTime && mapItem->HasMusicInfoTag() && mapItem->GetMusicInfoTag()->Loaded())
+    { // Query map if we previously cached the file on HD
+      *pItem->GetMusicInfoTag() = *mapItem->GetMusicInfoTag();
+      if (mapItem->HasArt("thumb"))
+        pItem->SetArt("thumb", mapItem->GetArt("thumb"));
+    }
+    else
     {
-      pItem->GetMusicInfoTag()->SetSong(song);
-      pItem->SetThumbnailImage(song.strThumb);
+      CStdString strPath;
+      URIUtils::GetDirectory(pItem->GetPath(), strPath);
+      URIUtils::AddSlashAtEnd(strPath);
+      if (strPath!=m_strPrevPath)
+      {
+        // The item is from another directory as the last one,
+        // query the database for the new directory...
+        m_musicDatabase.GetSongsByPath(strPath, m_songsMap);
+        m_databaseHits++;
+      }
+
+      CSong *song=NULL;
+
+      if ((song=m_songsMap.Find(pItem->GetPath()))!=NULL)
+      {  // Have we loaded this item from database before
+        pItem->GetMusicInfoTag()->SetSong(*song);
+        if (!song->strThumb.empty())
+          pItem->SetArt("thumb", song->strThumb);
+      }
+      else if (pItem->IsMusicDb())
+      { // a music db item that doesn't have tag loaded - grab details from the database
+        XFILE::MUSICDATABASEDIRECTORY::CQueryParams param;
+        XFILE::MUSICDATABASEDIRECTORY::CDirectoryNode::GetDatabaseInfo(pItem->GetPath(),param);
+        CSong song;
+        if (m_musicDatabase.GetSongById(param.GetSongId(), song))
+        {
+          pItem->GetMusicInfoTag()->SetSong(song);
+          if (!song.strThumb.empty())
+            pItem->SetArt("thumb", song.strThumb);
+        }
+      }
+      else if (g_guiSettings.GetBool("musicfiles.usetags") || pItem->IsCDDA())
+      { // Nothing found, load tag from file,
+        // always try to load cddb info
+        // get correct tag parser
+        auto_ptr<IMusicInfoTagLoader> pLoader (CMusicInfoTagLoaderFactory::CreateLoader(pItem->GetPath()));
+        if (NULL != pLoader.get())
+          // get tag
+          pLoader->Load(pItem->GetPath(), *pItem->GetMusicInfoTag());
+        m_tagReads++;
+      }
+
+      m_strPrevPath = strPath;
     }
   }
-  else if (g_guiSettings.GetBool("musicfiles.usetags") || pItem->IsCDDA())
-  { // Nothing found, load tag from file,
-    // always try to load cddb info
-    // get correct tag parser
-    auto_ptr<IMusicInfoTagLoader> pLoader (CMusicInfoTagLoaderFactory::CreateLoader(pItem->GetPath()));
-    if (NULL != pLoader.get())
-      // get tag
-      pLoader->Load(pItem->GetPath(), *pItem->GetMusicInfoTag());
-    m_tagReads++;
-  }
 
-  m_strPrevPath = strPath;
+  // Get thumb for item
+  m_thumbLoader->LoadItem(pItem);
+
   return true;
 }
 
 void CMusicInfoLoader::OnLoaderFinish()
 {
-  // clear precached album thumbs
-  g_directoryCache.ClearMusicThumbCache();
-
   // cleanup last loaded songs from database
   m_songsMap.Clear();
 
@@ -201,6 +210,9 @@ void CMusicInfoLoader::OnLoaderFinish()
     m_pVecItems->Save();
 
   m_musicDatabase.Close();
+
+  if (m_thumbLoader)
+    m_thumbLoader->Deinitialize();
 }
 
 void CMusicInfoLoader::UseCacheOnHD(const CStdString& strFileName)

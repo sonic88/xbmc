@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,31 +14,58 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "guilib/GUIDialog.h"
 
+class CGUIDialogProgressBarHandle
+{
+public:
+  CGUIDialogProgressBarHandle(const std::string &strTitle) :
+    m_fPercentage(0),
+    m_strTitle(strTitle),
+    m_bFinished(false) {}
+  virtual ~CGUIDialogProgressBarHandle(void) {}
+
+  const std::string &Title(void) { return m_strTitle; }
+  void SetTitle(const std::string &strTitle);
+
+  std::string Text(void) const;
+  void SetText(const std::string &strText);
+
+  bool IsFinished(void) const { return m_bFinished; }
+  void MarkFinished(void)     { m_bFinished = true; }
+
+  float Percentage(void) const          { return m_fPercentage;}
+  void SetPercentage(float fPercentage) { m_fPercentage = fPercentage; }
+  void SetProgress(int currentItem, int itemCount);
+
+private:
+  CCriticalSection  m_critSection;
+  float             m_fPercentage;
+  std::string       m_strTitle;
+  std::string       m_strText;
+  bool              m_bFinished;
+};
+
 class CGUIDialogExtendedProgressBar : public CGUIDialog
 {
 public:
   CGUIDialogExtendedProgressBar(void);
-  virtual ~CGUIDialogExtendedProgressBar(void) {}
+  virtual ~CGUIDialogExtendedProgressBar(void) {};
   virtual bool OnMessage(CGUIMessage& message);
-  virtual void Render();
-  void SetProgress(int currentItem, int itemCount);
-  void SetHeader(const CStdString& strHeader);
-  void SetTitle(const CStdString& strTitle);
-  void UpdateState();
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+
+  CGUIDialogProgressBarHandle *GetHandle(const std::string &strTitle);
 
 protected:
-  CStdString        m_strTitle;
-  CStdString        m_strHeader;
-  CCriticalSection  m_critical;
-  float             m_fPercentDone;
-  int               m_currentItem;
-  int               m_itemCount;
+  void UpdateState(unsigned int currentTime);
+
+  CCriticalSection                           m_critSection;
+  unsigned int                               m_iCurrentItem;
+  unsigned int                               m_iLastSwitchTime;
+  std::vector<CGUIDialogProgressBarHandle *> m_handles;
 };

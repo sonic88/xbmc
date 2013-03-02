@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,14 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "SFTPDirectory.h"
 #ifdef HAS_FILESYSTEM_SFTP
+#include "utils/log.h"
 #include "URL.h"
 
 using namespace XFILE;
@@ -39,5 +39,19 @@ bool CSFTPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &item
 
   CSFTPSessionPtr session = CSFTPSessionManager::CreateSession(url);
   return session->GetDirectory(url.GetWithoutFilename().c_str(), url.GetFileName().c_str(), items);
+}
+
+bool CSFTPDirectory::Exists(const char* strPath)
+{
+  CURL url(strPath);
+
+  CSFTPSessionPtr session = CSFTPSessionManager::CreateSession(url);
+  if (session)
+    return session->DirectoryExists(url.GetFileName().c_str());
+  else
+  {
+    CLog::Log(LOGERROR, "SFTPDirectory: Failed to create session to check exists");
+    return false;
+  }
 }
 #endif

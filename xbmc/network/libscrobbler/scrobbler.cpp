@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -36,6 +35,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "filesystem/File.h"
 #include "filesystem/CurlFile.h"
+#include "URL.h"
 
 #define SCROBBLER_CLIENT              "xbm"
 //#define SCROBBLER_CLIENT              "tst"     // For testing ONLY!
@@ -48,7 +48,7 @@
 #define SCROBBLER_ACTION_NOWPLAYING   2
 
 CScrobbler::CScrobbler(const CStdString &strHandshakeURL, const CStdString &strLogPrefix)
-  : CThread()
+  : CThread("CScrobbler")
 { 
   m_bBanned         = false;
   m_bBadAuth        = false;
@@ -69,7 +69,7 @@ void CScrobbler::Init()
   ResetState();
   LoadCredentials();
   LoadJournal();
-  if (!ThreadHandle())
+  if (!IsRunning())
     Create();
 }
 
@@ -110,7 +110,7 @@ void CScrobbler::AddSong(const MUSIC_INFO::CMusicInfoTag &tag, bool lastfmradio)
   CURL::Encode(m_CurrentTrack.strMusicBrainzID);
 
   m_bNotified = false;
-  m_bSubmitted = !((lastfmradio && g_guiSettings.GetBool("scrobbler.lastfmsubmitradio")) ||
+  m_bSubmitted = !(lastfmradio ||
       (!lastfmradio && g_guiSettings.GetBool("scrobbler.lastfmsubmit") && (m_CurrentTrack.length > SCROBBLER_MIN_DURATION || !m_CurrentTrack.strMusicBrainzID.IsEmpty())));
 }
 
@@ -279,7 +279,7 @@ bool CScrobbler::LoadJournal()
 {
   int                     journalVersion  = 0;
   SubmissionJournalEntry  entry;
-  TiXmlDocument           xmlDoc;
+  CXBMCTinyXML            xmlDoc;
   CStdString              JournalFileName = GetJournalFileName();
   CSingleLock             lock(m_queueLock);
 
@@ -357,7 +357,7 @@ bool CScrobbler::SaveJournal()
     return true;
   }
   CStdString        strJournalVersion;
-  TiXmlDocument     xmlDoc;
+  CXBMCTinyXML      xmlDoc;
   TiXmlDeclaration  decl("1.0", "utf-8", "yes");
   TiXmlElement      xmlRootElement("asjournal");
   xmlDoc.InsertEndChild(decl);

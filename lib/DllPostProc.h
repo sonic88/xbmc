@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -87,7 +87,7 @@ public:
   virtual void pp_free_context(pp_context *ppContext)=0;
 };
 
-#if (defined USE_EXTERNAL_FFMPEG)
+#if (defined USE_EXTERNAL_FFMPEG) || (defined TARGET_DARWIN) 
 
 // We call directly.
 class DllPostProc : public DllDynamic, DllPostProcInterface

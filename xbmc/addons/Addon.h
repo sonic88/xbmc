@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,22 +14,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "IAddon.h"
 #include "addons/AddonVersion.h"
-#include "tinyXML/tinyxml.h"
-#include "Util.h"
-#include "URL.h"
+#include "utils/XBMCTinyXML.h"
 #include "guilib/LocalizeStrings.h"
-#include "addons/AddonCallbacksAddon.h"
+#include "utils/ISerializable.h"
 
-class CURL;
 class TiXmlElement;
+class CAddonCallbacksAddon;
 
 typedef struct cp_plugin_info_t cp_plugin_info_t;
 typedef struct cp_extension_t cp_extension_t;
@@ -46,7 +43,7 @@ const CStdString    GetIcon(const TYPE &type);
 const CStdString    UpdateVideoScraper(const CStdString &scraper);
 const CStdString    UpdateMusicScraper(const CStdString &scraper);
 
-class AddonProps
+class AddonProps : public ISerializable
 {
 public:
   AddonProps(const CStdString &id, TYPE type, const CStdString &versionstr, const CStdString &minversionstr)
@@ -67,6 +64,8 @@ public:
            && (*this).type == rhs.type
            && (*this).version == rhs.version;
   }
+  
+  void Serialize(CVariant &variant) const;
 
   CStdString id;
   TYPE type;
@@ -171,6 +170,8 @@ public:
   bool MeetsVersion(const AddonVersion &version) const;
   virtual bool ReloadSettings();
 
+  void MarkAsDisabled() { m_enabled = false; }
+
 protected:
   friend class CAddonCallbacksAddon;
 
@@ -198,15 +199,15 @@ protected:
    \return true if settings are loaded, false otherwise
    \sa SettingsToXML
    */
-  bool SettingsFromXML(const TiXmlDocument &doc, bool loadDefaults = false);
+  bool SettingsFromXML(const CXBMCTinyXML &doc, bool loadDefaults = false);
 
   /*! \brief Parse settings into an XML document
    \param doc XML document to receive the settings
    \sa SettingsFromXML
    */
-  void SettingsToXML(TiXmlDocument &doc) const;
+  void SettingsToXML(CXBMCTinyXML &doc) const;
 
-  TiXmlDocument     m_addonXmlDoc;
+  CXBMCTinyXML      m_addonXmlDoc;
   CStdString        m_strLibName;
   bool              m_settingsLoaded;
   bool              m_userSettingsLoaded;

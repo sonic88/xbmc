@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,12 +13,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
+#include "network/Network.h"
 #include "threads/SystemClock.h"
 #include "RssReader.h"
 #include "utils/HTMLUtil.h"
@@ -27,8 +27,8 @@
 #include "URL.h"
 #include "filesystem/File.h"
 #include "filesystem/CurlFile.h"
-#ifdef __APPLE__
-#include "CocoaInterface.h"
+#if defined(TARGET_DARWIN)
+#include "osx/CocoaInterface.h"
 #endif
 #include "settings/Settings.h"
 #include "guilib/LocalizeStrings.h"
@@ -44,12 +44,14 @@ using namespace XFILE;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CRssReader::CRssReader() : CThread()
+CRssReader::CRssReader() : CThread("CRssReader")
 {
   m_pObserver = NULL;
   m_spacesBetweenFeeds = 0;
   m_bIsRunning = false;
   m_SavedScrollPos = 0;
+  m_rtlText = false;
+  m_requestRefresh = false;
 }
 
 CRssReader::~CRssReader()

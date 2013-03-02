@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -86,7 +85,7 @@ void CTCPServer::StopServer(bool bWait)
   }
 }
 
-CTCPServer::CTCPServer(int port, bool nonlocal)
+CTCPServer::CTCPServer(int port, bool nonlocal) : CThread("CTCPServer")
 {
   m_port = port;
   m_nonlocal = nonlocal;
@@ -135,6 +134,7 @@ void CTCPServer::Process()
           char buffer[RECEIVEBUFFER] = {};
           int  nread = 0;
           nread = recv(socket, (char*)&buffer, RECEIVEBUFFER, 0);
+          bool close = false;
           if (nread > 0)
           {
             std::string response;
@@ -158,8 +158,12 @@ void CTCPServer::Process()
             if (response.size() <= 0)
               m_connections[i]->PushBuffer(this, buffer, nread);
 
+            close = m_connections[i]->Closing();
           }
-          if (nread <= 0)
+          else
+            close = true;
+
+          if (close)
           {
             CLog::Log(LOGINFO, "JSONRPC Server: Disconnection detected");
             m_connections[i]->Disconnect();
@@ -178,7 +182,15 @@ void CTCPServer::Process()
           newconnection->m_socket = accept(*it, (sockaddr*)&newconnection->m_cliaddr, &newconnection->m_addrlen);
 
           if (newconnection->m_socket == INVALID_SOCKET)
-            CLog::Log(LOGERROR, "JSONRPC Server: Accept of new connection failed");
+          {
+            CLog::Log(LOGERROR, "JSONRPC Server: Accept of new connection failed: %d", errno);
+            if (EBADF == errno)
+            {
+              Sleep(1000);
+              Initialize();
+              break;
+            }
+          }
           else
           {
             CLog::Log(LOGINFO, "JSONRPC Server: New connection added");
@@ -604,9 +616,7 @@ CTCPServer::CWebSocketClient::CWebSocketClient(CWebSocket *websocket)
 
 CTCPServer::CWebSocketClient::CWebSocketClient(const CWebSocketClient& client)
 {
-  Copy(client);
-
-  m_websocket = client.m_websocket; // TODO
+  *this = client;
 }
 
 CTCPServer::CWebSocketClient::CWebSocketClient(CWebSocket *websocket, const CTCPClient& client)
@@ -625,7 +635,7 @@ CTCPServer::CWebSocketClient& CTCPServer::CWebSocketClient::operator=(const CWeb
 {
   Copy(client);
 
-  m_websocket = client.m_websocket; // TODO
+  m_websocket = client.m_websocket;
 
   return *this;
 }
@@ -659,11 +669,11 @@ void CTCPServer::CWebSocketClient::PushBuffer(CTCPServer *host, const char *buff
         CTCPClient::PushBuffer(host, frames.at(index)->GetApplicationData(), (int)frames.at(index)->GetLength());
     }
 
-    if (m_websocket->GetState() == WebSocketStateClosed)
-      Disconnect();
-
     delete msg;
   }
+
+  if (m_websocket->GetState() == WebSocketStateClosed)
+    Disconnect();
 }
 
 void CTCPServer::CWebSocketClient::Disconnect()

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -23,15 +22,63 @@
 #include "guilib/GUIProgressControl.h"
 #include "guilib/GUISliderControl.h"
 #include "threads/SingleLock.h"
+#include "threads/SystemClock.h"
 
 #define CONTROL_LABELHEADER       30
 #define CONTROL_LABELTITLE        31
 #define CONTROL_PROGRESS          32
 
+#define ITEM_SWITCH_TIME_MS       2000
+
+using namespace std;
+
+string CGUIDialogProgressBarHandle::Text(void) const
+{
+  CSingleLock lock(m_critSection);
+  string retVal(m_strText);
+  return retVal;
+}
+
+void CGUIDialogProgressBarHandle::SetText(const string &strText)
+{
+  CSingleLock lock(m_critSection);
+  m_strText = strText;
+}
+
+void CGUIDialogProgressBarHandle::SetTitle(const string &strTitle)
+{
+  CSingleLock lock(m_critSection);
+  m_strTitle = strTitle;
+}
+
+void CGUIDialogProgressBarHandle::SetProgress(int currentItem, int itemCount)
+{
+  float fPercentage = (float)((currentItem*100)/itemCount);
+  if (fPercentage > 100.0F)
+    fPercentage = 100.0F;
+
+  m_fPercentage = fPercentage;
+}
+
 CGUIDialogExtendedProgressBar::CGUIDialogExtendedProgressBar(void)
   : CGUIDialog(WINDOW_DIALOG_EXT_PROGRESS, "DialogExtendedProgressBar.xml")
 {
-  m_loadOnDemand = false;
+  m_loadType        = LOAD_ON_GUI_INIT;
+  m_iLastSwitchTime = 0;
+  m_iCurrentItem    = 0;
+}
+
+CGUIDialogProgressBarHandle *CGUIDialogExtendedProgressBar::GetHandle(const string &strTitle)
+{
+  CGUIDialogProgressBarHandle *handle = new CGUIDialogProgressBarHandle(strTitle);
+  {
+    CSingleLock lock(m_critSection);
+    m_handles.push_back(handle);
+  }
+
+  Show();
+
+  return handle;
 }
 
 bool CGUIDialogExtendedProgressBar::OnMessage(CGUIMessage& message)
@@ -40,13 +87,11 @@ bool CGUIDialogExtendedProgressBar::OnMessage(CGUIMessage& message)
   {
   case GUI_MSG_WINDOW_INIT:
     {
+      m_iLastSwitchTime = XbmcThreads::SystemClockMillis();
+      m_iCurrentItem = 0;
       CGUIDialog::OnMessage(message);
 
-      m_strTitle.Empty();
-      m_strHeader.Empty();
-      m_fPercentDone = -1.0f;
-
-      UpdateState();
+      UpdateState(0);
       return true;
     }
     break;
@@ -55,49 +100,70 @@ bool CGUIDialogExtendedProgressBar::OnMessage(CGUIMessage& message)
   return CGUIDialog::OnMessage(message);
 }
 
-void CGUIDialogExtendedProgressBar::Render()
+void CGUIDialogExtendedProgressBar::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
   if (m_active)
-    UpdateState();
+    UpdateState(currentTime);
 
-  CGUIDialog::Render();
+  CGUIDialog::Process(currentTime, dirtyregions);
 }
 
-void CGUIDialogExtendedProgressBar::SetHeader(const CStdString& strHeader)
+void CGUIDialogExtendedProgressBar::UpdateState(unsigned int currentTime)
 {
-  CSingleLock lock (m_critical);
+  string strHeader;
+  string strTitle;
+  float  fProgress(-1.0f);
 
-  m_strHeader = strHeader;
-}
+  {
+    CSingleLock lock(m_critSection);
 
-void CGUIDialogExtendedProgressBar::SetTitle(const CStdString& strTitle)
-{
-  CSingleLock lock (m_critical);
+    // delete finished items
+    for (int iPtr = m_handles.size() - 1; iPtr >= 0; iPtr--)
+    {
+      if (m_handles.at(iPtr)->IsFinished())
+      {
+        delete m_handles.at(iPtr);
+        m_handles.erase(m_handles.begin() + iPtr);
+      }
+    }
 
-  m_strTitle = strTitle;
-}
+    if (!m_handles.size())
+    {
+      Close(false, 0, true, false);
+      return;
+    }
 
-void CGUIDialogExtendedProgressBar::SetProgress(int currentItem, int itemCount)
-{
-  CSingleLock lock (m_critical);
+    // ensure the current item is in our range
+    if (m_iCurrentItem >= m_handles.size())
+      m_iCurrentItem = m_handles.size() - 1;
 
-  m_fPercentDone = (float)((currentItem*100)/itemCount);
-  if (m_fPercentDone > 100.0F)
-    m_fPercentDone = 100.0F;
-}
+    // update the current item ptr
+    if (currentTime > m_iLastSwitchTime &&
+        currentTime - m_iLastSwitchTime >= ITEM_SWITCH_TIME_MS)
+    {
+      m_iLastSwitchTime = currentTime;
 
-void CGUIDialogExtendedProgressBar::UpdateState()
-{
-  CSingleLock lock (m_critical);
+      // select next item
+      if (++m_iCurrentItem > m_handles.size() - 1)
+        m_iCurrentItem = 0;
+    }
 
-  SET_CONTROL_LABEL(CONTROL_LABELHEADER, m_strHeader);
-  SET_CONTROL_LABEL(CONTROL_LABELTITLE, m_strTitle);
+    CGUIDialogProgressBarHandle *handle = m_handles.at(m_iCurrentItem);
+    if (handle)
+    {
+      strTitle  = handle->Text();
+      strHeader = handle->Title();
+      fProgress = handle->Percentage();
+    }
+  }
 
-  if (m_fPercentDone > -1.0f)
+  SET_CONTROL_LABEL(CONTROL_LABELHEADER, strHeader);
+  SET_CONTROL_LABEL(CONTROL_LABELTITLE, strTitle);
+
+  if (fProgress > -1.0f)
   {
     SET_CONTROL_VISIBLE(CONTROL_PROGRESS);
     CGUIProgressControl* pProgressCtrl=(CGUIProgressControl*)GetControl(CONTROL_PROGRESS);
-    if (pProgressCtrl) pProgressCtrl->SetPercentage(m_fPercentDone);
+    if (pProgressCtrl) pProgressCtrl->SetPercentage(fProgress);
   }
 }
-

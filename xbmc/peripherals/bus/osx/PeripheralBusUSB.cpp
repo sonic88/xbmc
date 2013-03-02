@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,15 +13,17 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "PeripheralBusUSB.h"
 #include "peripherals/Peripherals.h"
 #include "utils/log.h"
+#include "osx/DarwinUtils.h"
+
+#include <sys/param.h>
 
 using namespace PERIPHERALS;
 
@@ -127,7 +129,7 @@ void CPeripheralBusUSB::DeviceDetachCallback(void *refCon, io_service_t service,
     while(it != privateDataRef->refCon->m_scan_results.m_results.end())
     {
       if (privateDataRef->result.m_strLocation == it->m_strLocation)
-        privateDataRef->refCon->m_scan_results.m_results.erase(it);
+        it = privateDataRef->refCon->m_scan_results.m_results.erase(it);
       else
         it++;
     }
@@ -223,7 +225,7 @@ void CPeripheralBusUSB::DeviceAttachCallback(CPeripheralBusUSB* refCon, io_itera
       result = (*interfaceInterface)->GetInterfaceClass(interfaceInterface, &bInterfaceClass);
       if (bInterfaceClass == kUSBHIDInterfaceClass || bInterfaceClass == kUSBCommunicationDataInterfaceClass)
       {
-        char ttlDeviceFilePath[MAXPATHLEN] = {0};
+        std::string ttlDeviceFilePath;
         CFStringRef deviceFilePathAsCFString;
         USBDevicePrivateData *privateDataRef;
         privateDataRef = new USBDevicePrivateData;
@@ -247,16 +249,16 @@ void CPeripheralBusUSB::DeviceAttachCallback(CPeripheralBusUSB* refCon, io_itera
               kIOServicePlane, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, kIORegistryIterateRecursively);
             if (deviceFilePathAsCFString)
             {
-              // Convert the path from a CFString to a NULL-terminated C string
-              CFStringGetCString((CFStringRef)deviceFilePathAsCFString,
-                ttlDeviceFilePath, MAXPATHLEN - 1, kCFStringEncodingASCII);
+              // Convert the path from a CFString to a std::string
+              if (!DarwinCFStringRefToString(deviceFilePathAsCFString, ttlDeviceFilePath))
+                CLog::Log(LOGWARNING, "CPeripheralBusUSB::DeviceAttachCallback failed to convert CFStringRef");
               CFRelease(deviceFilePathAsCFString);
             }
             IOObjectRelease(parent);
           }
         }
-        if (strlen(ttlDeviceFilePath))
-          privateDataRef->result.m_strLocation.Format("%s", ttlDeviceFilePath);
+        if (!ttlDeviceFilePath.empty())
+          privateDataRef->result.m_strLocation.Format("%s", ttlDeviceFilePath.c_str());
         else
           privateDataRef->result.m_strLocation.Format("%d", locationId);
 

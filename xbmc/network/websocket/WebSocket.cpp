@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -159,8 +158,7 @@ CWebSocketFrame::CWebSocketFrame(WebSocketFrameOpcode opcode, const char* data /
   m_free = true;
   m_opcode = opcode;
 
-  if (length >= 0)
-    m_length = length;
+  m_length = length;
 
   m_masked = masked;
   m_mask = mask;
@@ -233,7 +231,7 @@ CWebSocketFrame::CWebSocketFrame(WebSocketFrameOpcode opcode, const char* data /
   // Get the whole data
   m_lengthFrame = buffer.size();
   m_data = new char[(uint32_t)m_lengthFrame];
-  strncpy((char *)m_data, buffer.c_str(), (uint32_t)m_lengthFrame);
+  memcpy((char *)m_data, buffer.c_str(), (uint32_t)m_lengthFrame);
 
   if (data)
   {

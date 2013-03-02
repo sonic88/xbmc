@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *      Initial code sponsored by: Voddler Inc (voddler.com)
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 #include "system.h"
@@ -25,10 +24,10 @@
 #include "OverlayRendererUtil.h"
 #include "OverlayRendererGL.h"
 #ifdef HAS_GL
-#include "LinuxRendererGL.h"
+  #include "LinuxRendererGL.h"
 #elif HAS_GLES == 2
-#include "LinuxRendererGLES.h"
-#include "guilib/MatrixGLES.h"
+  #include "LinuxRendererGLES.h"
+  #include "guilib/MatrixGLES.h"
 #endif
 #include "RenderManager.h"
 #include "cores/dvdplayer/DVDCodecs/Overlay/DVDOverlayImage.h"
@@ -125,7 +124,20 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlayImage* o)
 {
   m_texture = 0;
 
-  uint32_t* rgba = convert_rgba(o, USE_PREMULTIPLIED_ALPHA);
+  uint32_t* rgba;
+  int stride;
+  if(o->palette)
+  {
+    m_pma  = !!USE_PREMULTIPLIED_ALPHA;
+    rgba   = convert_rgba(o, m_pma);
+    stride = o->width * 4;
+  }
+  else
+  {
+    m_pma  = false;
+    rgba   = (uint32_t*)o->data;
+    stride = o->linesize;
+  }
 
   if(!rgba)
   {
@@ -145,7 +157,7 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlayImage* o)
   LoadTexture(GL_TEXTURE_2D
             , o->width
             , o->height
-            , o->width * 4
+            , stride
             , &m_u, &m_v
             , GL_RGBA
 #ifdef HAS_GLES
@@ -154,7 +166,8 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlayImage* o)
             , GL_BGRA
 #endif
             , rgba);
-  free(rgba);
+  if((BYTE*)rgba != o->data)
+    free(rgba);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -244,13 +257,11 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlaySpu* o)
   m_y      = (float)(min_y + o->y);
   m_width  = (float)(max_x - min_x);
   m_height = (float)(max_y - min_y);
+  m_pma    = !!USE_PREMULTIPLIED_ALPHA;
 }
 
-COverlayGlyphGL::COverlayGlyphGL(CDVDOverlaySSA* o, double pts)
+COverlayGlyphGL::COverlayGlyphGL(ASS_Image* images, int width, int height)
 {
-  CRect src, dst;
-  g_renderManager.GetVideoRect(src, dst);
-
   m_vertex = NULL;
   m_width  = 1.0;
   m_height = 1.0;
@@ -258,24 +269,15 @@ COverlayGlyphGL::COverlayGlyphGL(CDVDOverlaySSA* o, double pts)
   m_pos    = POSITION_RELATIVE;
   m_x      = 0.0f;
   m_y      = 0.0f;
-
-  int width  = MathUtils::round_int(dst.Width());
-  int height = MathUtils::round_int(dst.Height());
-
   m_texture = 0;
 
   SQuads quads;
-  if(!convert_quad(o, pts, width, height, quads))
+  if(!convert_quad(images, quads))
     return;
 
   glGenTextures(1, &m_texture);
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, m_texture);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
   LoadTexture(GL_TEXTURE_2D
             , quads.size_x
@@ -380,6 +382,12 @@ void COverlayGlyphGL::Render(SRenderState& state)
 
   glBindTexture(GL_TEXTURE_2D, m_texture);
   glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
 #ifdef HAS_GL
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
@@ -468,11 +476,15 @@ void COverlayTextureGL::Render(SRenderState& state)
   glEnable(GL_BLEND);
 
   glBindTexture(GL_TEXTURE_2D, m_texture);
-#if USE_PREMULTIPLIED_ALPHA
-  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-#else
-  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-#endif
+  if(m_pma)
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  else
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
 #if defined(HAS_GL)
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

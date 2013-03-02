@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -38,12 +37,19 @@
 using namespace PVR;
 
 CGUIWindowPVR::CGUIWindowPVR(void) :
-  CGUIMediaWindow(WINDOW_PVR, "MyPVR.xml")
+  CGUIMediaWindow(WINDOW_PVR, "MyPVR.xml"),
+  m_guideGrid(NULL),
+  m_currentSubwindow(NULL),
+  m_savedSubwindow(NULL),
+  m_windowChannelsTV(NULL),
+  m_windowChannelsRadio(NULL),
+  m_windowGuide(NULL),
+  m_windowRecordings(NULL),
+  m_windowSearch(NULL),
+  m_windowTimers(NULL),
+  m_bWasReset(false)
 {
-  m_guideGrid        = NULL;
-  m_bViewsCreated    = false;
-  m_currentSubwindow = NULL;
-  m_savedSubwindow   = NULL;
+  m_loadType = LOAD_EVERY_TIME;
 }
 
 CGUIWindowPVR::~CGUIWindowPVR(void)
@@ -54,19 +60,46 @@ CGUIWindowPVR::~CGUIWindowPVR(void)
 CGUIWindowPVRCommon *CGUIWindowPVR::GetActiveView(void) const
 {
   CSingleLock lock(m_critSection);
-  if (!m_bViewsCreated)
-    return NULL;
-
   return m_currentSubwindow;
 }
 
 void CGUIWindowPVR::SetActiveView(CGUIWindowPVRCommon *window)
 {
   CSingleLock lock(m_critSection);
-  if (!m_bViewsCreated)
-    return;
 
+  if ((!window && m_currentSubwindow) || (window && !m_currentSubwindow) ||
+      (window->GetWindowId() != m_currentSubwindow->GetWindowId()))
+  {
+    // switched views, save current history
+    if (m_currentSubwindow)
+    {
+      m_currentSubwindow->m_history = m_history;
+      m_currentSubwindow->m_iSelected = m_viewControl.GetSelectedItem();
+    }
+
+    // update m_history
+    if (window)
+      m_history = window->m_history;
+    else
+      m_history.ClearPathHistory();
+  }
   m_currentSubwindow = window;
+}
+
+bool CGUIWindowPVR::Update(const CStdString &strDirectory, bool updateFilterPath)
+{
+  CGUIWindowPVRCommon *view = GetActiveView();
+
+  if(view)
+    view->BeforeUpdate(strDirectory);
+
+  if(!CGUIMediaWindow::Update(strDirectory))
+    return false;
+
+  if(view)
+    view->AfterUpdate(*m_unfilteredItems);
+
+  return true;
 }
 
 void CGUIWindowPVR::GetContextButtons(int itemNumber, CContextButtons &buttons)
@@ -81,9 +114,6 @@ void CGUIWindowPVR::GetContextButtons(int itemNumber, CContextButtons &buttons)
 CGUIWindowPVRCommon *CGUIWindowPVR::GetSavedView(void) const
 {
   CSingleLock lock(m_critSection);
-  if (!m_bViewsCreated)
-    return NULL;
-
   return m_savedSubwindow;
 }
 
@@ -120,10 +150,19 @@ void CGUIWindowPVR::OnInitWindow(void)
   CSingleLock lock(m_critSection);
   if (m_savedSubwindow)
     m_savedSubwindow->OnInitWindow();
+
+  bool bReset(m_bWasReset);
+  m_bWasReset = false;
   lock.Leave();
   graphicsLock.Leave();
 
   CGUIMediaWindow::OnInitWindow();
+
+  if (bReset)
+  {
+    CGUIMessage msg(GUI_MSG_FOCUSED, GetID(), CONTROL_BTNCHANNELS_TV, 0, 0);
+    OnMessageFocus(msg);
+  }
 }
 
 bool CGUIWindowPVR::OnMessage(CGUIMessage& message)
@@ -230,17 +269,23 @@ bool CGUIWindowPVR::OnMessageClick(CGUIMessage &message)
 void CGUIWindowPVR::CreateViews(void)
 {
   CSingleLock lock(m_critSection);
-  if (!m_bViewsCreated)
-  {
-    m_bViewsCreated = true;
-
+  if (!m_windowChannelsRadio)
     m_windowChannelsRadio = new CGUIWindowPVRChannels(this, true);
-    m_windowChannelsTV    = new CGUIWindowPVRChannels(this, false);
-    m_windowGuide         = new CGUIWindowPVRGuide(this);
-    m_windowRecordings    = new CGUIWindowPVRRecordings(this);
-    m_windowSearch        = new CGUIWindowPVRSearch(this);
-    m_windowTimers        = new CGUIWindowPVRTimers(this);
-  }
+
+  if (!m_windowChannelsTV)
+    m_windowChannelsTV = new CGUIWindowPVRChannels(this, false);
+
+  if (!m_windowGuide)
+    m_windowGuide = new CGUIWindowPVRGuide(this);
+
+  if (!m_windowRecordings)
+    m_windowRecordings = new CGUIWindowPVRRecordings(this);
+
+  if (!m_windowSearch)
+    m_windowSearch = new CGUIWindowPVRSearch(this);
+
+  if (!m_windowTimers)
+    m_windowTimers = new CGUIWindowPVRTimers(this);
 }
 
 void CGUIWindowPVR::Reset(void)
@@ -257,32 +302,36 @@ void CGUIWindowPVR::Reset(void)
   m_windowRecordings->ResetObservers();
   m_windowTimers->ResetObservers();
 
-  m_currentSubwindow = NULL;
-  m_savedSubwindow = NULL;
-  ClearFileItems();
-  FreeResources();
+  m_bWasReset = true;
 }
 
 void CGUIWindowPVR::Cleanup(void)
 {
-  if (m_bViewsCreated)
-  {
+  if (m_windowChannelsRadio)
     m_windowChannelsRadio->UnregisterObservers();
-    delete m_windowChannelsRadio;
+  SAFE_DELETE(m_windowChannelsRadio);
 
+  if (m_windowChannelsTV)
     m_windowChannelsTV->UnregisterObservers();
-    delete m_windowChannelsTV;
+  SAFE_DELETE(m_windowChannelsTV);
 
+  if (m_windowGuide)
     m_windowGuide->UnregisterObservers();
-    delete m_windowGuide;
+  SAFE_DELETE(m_windowGuide);
 
+  if (m_windowRecordings)
     m_windowRecordings->UnregisterObservers();
-    delete m_windowRecordings;
+  SAFE_DELETE(m_windowRecordings);
 
-    delete m_windowSearch;
+  SAFE_DELETE(m_windowSearch);
 
+  if (m_windowTimers)
     m_windowTimers->UnregisterObservers();
-    delete m_windowTimers;
-    m_bViewsCreated = false;
-  }
+  SAFE_DELETE(m_windowTimers);
+
+  m_currentSubwindow = NULL;
+  m_savedSubwindow = NULL;
+
+  ClearFileItems();
+  FreeResources();
 }

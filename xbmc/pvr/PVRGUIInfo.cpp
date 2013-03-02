@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -33,6 +32,7 @@
 #include "pvr/channels/PVRChannel.h"
 #include "epg/EpgInfoTag.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/GUISettings.h"
 
 using namespace PVR;
 using namespace EPG;
@@ -93,15 +93,9 @@ void CPVRGUIInfo::ResetProperties(void)
 
 void CPVRGUIInfo::ClearQualityInfo(PVR_SIGNAL_STATUS &qualityInfo)
 {
-  strncpy(qualityInfo.strAdapterName, g_localizeStrings.Get(13106).c_str(), 1024);
-  strncpy(qualityInfo.strAdapterStatus, g_localizeStrings.Get(13106).c_str(), 1024);
-  qualityInfo.iSNR          = 0;
-  qualityInfo.iSignal       = 0;
-  qualityInfo.iSNR          = 0;
-  qualityInfo.iUNC          = 0;
-  qualityInfo.dVideoBitrate = 0;
-  qualityInfo.dAudioBitrate = 0;
-  qualityInfo.dDolbyBitrate = 0;
+  memset(&qualityInfo, 0, sizeof(qualityInfo));
+  strncpy(qualityInfo.strAdapterName, g_localizeStrings.Get(13106).c_str(), PVR_ADDON_NAME_STRING_LENGTH - 1);
+  strncpy(qualityInfo.strAdapterStatus, g_localizeStrings.Get(13106).c_str(), PVR_ADDON_NAME_STRING_LENGTH - 1);
 }
 
 void CPVRGUIInfo::Start(void)
@@ -118,9 +112,9 @@ void CPVRGUIInfo::Stop(void)
     g_PVRTimers->UnregisterObserver(this);
 }
 
-void CPVRGUIInfo::Notify(const Observable &obs, const CStdString& msg)
+void CPVRGUIInfo::Notify(const Observable &obs, const ObservableMessage msg)
 {
-  if (msg.Equals("timers") || msg.Equals("timers-reset"))
+  if (msg == ObservableMessageTimers || msg == ObservableMessageTimersReset)
     UpdateTimersCache();
 }
 
@@ -242,18 +236,15 @@ void CPVRGUIInfo::UpdateQualityData(void)
 {
   PVR_SIGNAL_STATUS qualityInfo;
   ClearQualityInfo(qualityInfo);
-  g_PVRClients->GetQualityData(&qualityInfo);
 
-  CSingleLock lock(m_critSection);
-  m_qualityInfo.dAudioBitrate = qualityInfo.dAudioBitrate;
-  m_qualityInfo.dDolbyBitrate = qualityInfo.dDolbyBitrate;
-  m_qualityInfo.dVideoBitrate = qualityInfo.dVideoBitrate;
-  m_qualityInfo.iBER          = qualityInfo.iBER;
-  m_qualityInfo.iSNR          = qualityInfo.iSNR;
-  m_qualityInfo.iSignal       = qualityInfo.iSignal;
-  m_qualityInfo.iUNC          = qualityInfo.iUNC;
-  strncpy(m_qualityInfo.strAdapterName, qualityInfo.strAdapterName, 1024);
-  strncpy(m_qualityInfo.strAdapterStatus, qualityInfo.strAdapterStatus, 1024);
+  PVR_CLIENT client;
+  if (g_guiSettings.GetBool("pvrplayback.signalquality") &&
+      g_PVRClients->GetPlayingClient(client))
+  {
+    client->SignalQuality(qualityInfo);
+  }
+
+  memcpy(&m_qualityInfo, &qualityInfo, sizeof(m_qualityInfo));
 }
 
 void CPVRGUIInfo::UpdateMisc(void)
@@ -622,9 +613,9 @@ void CPVRGUIInfo::CharInfoPlayingClientName(CStdString &strValue) const
 
 void CPVRGUIInfo::CharInfoEncryption(CStdString &strValue) const
 {
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   if (g_PVRClients->GetPlayingChannel(channel))
-    strValue.Format("%s", channel.EncryptionName());
+    strValue.Format("%s", channel->EncryptionName().c_str());
   else
     strValue = StringUtils::EmptyString;
 }
@@ -644,11 +635,11 @@ void CPVRGUIInfo::UpdateBackendCache(void)
     return;
 
   CPVRClients *clients = g_PVRClients;
-  CLIENTMAP activeClients;
-  iActiveClients = clients->GetConnectedClients(&activeClients);
+  PVR_CLIENTMAP activeClients;
+  iActiveClients = clients->GetConnectedClients(activeClients);
   if (iActiveClients > 0)
   {
-    CLIENTMAPITR activeClient = activeClients.begin();
+    PVR_CLIENTMAP_CITR activeClient = activeClients.begin();
     /* safe to read unlocked */
     for (unsigned int i = 0; i < m_iAddonInfoToggleCurrent; i++)
       activeClient++;
@@ -704,8 +695,8 @@ void CPVRGUIInfo::UpdateBackendCache(void)
 
 void CPVRGUIInfo::UpdateTimersCache(void)
 {
-  int iTimerAmount          = g_PVRTimers->GetNumActiveTimers();
-  int iRecordingTimerAmount = g_PVRTimers->GetNumActiveRecordings();
+  int iTimerAmount          = g_PVRTimers->AmountActiveTimers();
+  int iRecordingTimerAmount = g_PVRTimers->AmountActiveRecordings();
 
   {
     CSingleLock lock(m_critSection);
@@ -725,19 +716,20 @@ void CPVRGUIInfo::UpdateNextTimer(void)
   CStdString strNextRecordingTime;
   CStdString strNextTimerInfo;
 
-  CPVRTimerInfoTag tag;
-  if (g_PVRTimers->GetNextActiveTimer(&tag))
+  CFileItemPtr tag = g_PVRTimers->GetNextActiveTimer();
+  if (tag && tag->HasPVRTimerInfoTag())
   {
-    strNextRecordingTitle.Format("%s",       tag.m_strTitle);
-    strNextRecordingChannelName.Format("%s", tag.ChannelName());
-    strNextRecordingChannelIcon.Format("%s", tag.ChannelIcon());
-    strNextRecordingTime.Format("%s",        tag.StartAsLocalTime().GetAsLocalizedDateTime(false, false));
+    CPVRTimerInfoTag *timer = tag->GetPVRTimerInfoTag();
+    strNextRecordingTitle.Format("%s",       timer->Title());
+    strNextRecordingChannelName.Format("%s", timer->ChannelName());
+    strNextRecordingChannelIcon.Format("%s", timer->ChannelIcon());
+    strNextRecordingTime.Format("%s",        timer->StartAsLocalTime().GetAsLocalizedDateTime(false, false));
 
     strNextTimerInfo.Format("%s %s %s %s",
         g_localizeStrings.Get(19106),
-        tag.StartAsLocalTime().GetAsLocalizedDate(true),
+        timer->StartAsLocalTime().GetAsLocalizedDate(true),
         g_localizeStrings.Get(19107),
-        tag.StartAsLocalTime().GetAsLocalizedTime("HH:mm", false));
+        timer->StartAsLocalTime().GetAsLocalizedTime("HH:mm", false));
   }
 
   CSingleLock lock(m_critSection);
@@ -759,17 +751,16 @@ void CPVRGUIInfo::UpdateTimersToggle(void)
   CStdString strActiveTimerTime;
 
   /* safe to fetch these unlocked, since they're updated from the same thread as this one */
-  unsigned int iBoundary = m_iRecordingTimerAmount > 0 ? m_iRecordingTimerAmount : m_iTimerAmount;
-  if (m_iTimerInfoToggleCurrent < iBoundary)
+  if (m_iRecordingTimerAmount > 0)
   {
-    vector<CPVRTimerInfoTag *> activeTags;
-    g_PVRTimers->GetActiveTimers(&activeTags);
-    if (activeTags.at(m_iTimerInfoToggleCurrent) != 0)
+    vector<CFileItemPtr> activeTags = g_PVRTimers->GetActiveRecordings();
+    if (m_iTimerInfoToggleCurrent < activeTags.size() && activeTags.at(m_iTimerInfoToggleCurrent)->HasPVRTimerInfoTag())
     {
-      strActiveTimerTitle.Format("%s",       activeTags.at(m_iTimerInfoToggleCurrent)->m_strTitle);
-      strActiveTimerChannelName.Format("%s", activeTags.at(m_iTimerInfoToggleCurrent)->ChannelName());
-      strActiveTimerChannelIcon.Format("%s", activeTags.at(m_iTimerInfoToggleCurrent)->ChannelIcon());
-      strActiveTimerTime.Format("%s",        activeTags.at(m_iTimerInfoToggleCurrent)->StartAsLocalTime().GetAsLocalizedDateTime(false, false));
+      CPVRTimerInfoTag *tag = activeTags.at(m_iTimerInfoToggleCurrent)->GetPVRTimerInfoTag();
+      strActiveTimerTitle.Format("%s",       tag->Title());
+      strActiveTimerChannelName.Format("%s", tag->ChannelName());
+      strActiveTimerChannelIcon.Format("%s", tag->ChannelIcon());
+      strActiveTimerTime.Format("%s",        tag->StartAsLocalTime().GetAsLocalizedDateTime(false, false));
     }
   }
 
@@ -811,10 +802,8 @@ int CPVRGUIInfo::GetStartTime(void) const
 void CPVRGUIInfo::ResetPlayingTag(void)
 {
   CSingleLock lock(m_critSection);
-  if (m_playingEpgTag)
-    delete m_playingEpgTag;
-  m_playingEpgTag = NULL;
-  m_iDuration     = 0;
+  SAFE_DELETE(m_playingEpgTag);
+  m_iDuration = 0;
 }
 
 bool CPVRGUIInfo::GetPlayingTag(CEpgInfoTag &tag) const
@@ -833,22 +822,24 @@ bool CPVRGUIInfo::GetPlayingTag(CEpgInfoTag &tag) const
 
 void CPVRGUIInfo::UpdatePlayingTag(void)
 {
-  CPVRChannel currentChannel;
+  CPVRChannelPtr currentChannel;
   CPVRRecording recording;
   if (g_PVRManager.GetCurrentChannel(currentChannel))
   {
     CEpgInfoTag epgTag;
     bool bHasEpgTag  = GetPlayingTag(epgTag);
-    const CPVRChannel *channel = bHasEpgTag ? epgTag.ChannelTag() : NULL;
+    CPVRChannelPtr channel;
+    if (bHasEpgTag)
+      channel = epgTag.ChannelTag();
 
     if (!bHasEpgTag || !epgTag.IsActive() ||
-        !channel || *channel != currentChannel)
+        !channel || *channel != *currentChannel)
     {
       CEpgInfoTag newTag;
       {
         CSingleLock lock(m_critSection);
         ResetPlayingTag();
-        if (currentChannel.GetEPGNow(newTag))
+        if (currentChannel->GetEPGNow(newTag))
         {
           m_playingEpgTag = new CEpgInfoTag(newTag);
           m_iDuration     = m_playingEpgTag->GetDuration() * 1000;

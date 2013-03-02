@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -78,6 +77,7 @@ namespace PVR
 
     virtual const char *GetName(void) const;
     virtual PVRWindow GetWindowId(void) const { return m_window; }
+    virtual bool IsFocused(void) const;
     virtual bool IsVisible(void) const;
     virtual bool IsActive(void) const;
     virtual bool IsSavedView(void) const;
@@ -89,7 +89,7 @@ namespace PVR
     virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
 
     virtual void GetContextButtons(int itemNumber, CContextButtons &buttons) const = 0;
-    virtual void UpdateData(void) = 0;
+    virtual void UpdateData(bool bUpdateSelectedFile = true) = 0;
     virtual void SetInvalid(void);
 
     virtual void OnInitWindow(void);
@@ -116,8 +116,10 @@ namespace PVR
     virtual bool StopRecordFile(CFileItem *item);
     virtual void ShowEPGInfo(CFileItem *item);
     virtual void ShowRecordingInfo(CFileItem *item);
+    virtual bool UpdateEpgForChannel(CFileItem *item);
     virtual bool ShowTimerSettings(CFileItem *item);
     virtual bool ShowNewTimerDialog(void);
+    virtual void ShowBusyItem(void);
 
     virtual bool OnContextButtonMenuHooks(CFileItem *item, CONTEXT_BUTTON button);
     virtual bool OnContextButtonSortAsc(CFileItem *item, CONTEXT_BUTTON button);
@@ -127,14 +129,18 @@ namespace PVR
     virtual bool OnContextButtonSortByChannel(CFileItem *item, CONTEXT_BUTTON button);
     virtual bool OnContextButtonFind(CFileItem *item, CONTEXT_BUTTON button);
 
+    virtual void BeforeUpdate(const CStdString &strDirectory) {}
+    virtual void AfterUpdate(CFileItemList& items) {}
+
     CGUIWindowPVR *  m_parent;
     PVRWindow        m_window;
     unsigned int     m_iControlButton;
     unsigned int     m_iControlList;
     bool             m_bUpdateRequired;
     int              m_iSelected;
-    SORT_ORDER       m_iSortOrder;
+    SortOrder        m_iSortOrder;
     SORT_METHOD      m_iSortMethod;
     CCriticalSection m_critSection;
+    CDirectoryHistory m_history;
   };
 }

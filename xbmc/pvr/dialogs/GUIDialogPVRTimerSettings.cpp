@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,14 +13,13 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "GUIDialogPVRTimerSettings.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "settings/GUISettings.h"
 #include "guilib/LocalizeStrings.h"
@@ -50,6 +49,7 @@ CGUIDialogPVRTimerSettings::CGUIDialogPVRTimerSettings(void)
 {
   m_cancelled = true;
   m_tmp_day   = 11;
+  m_loadType = LOAD_EVERY_TIME;
 }
 
 void CGUIDialogPVRTimerSettings::AddChannelNames(CFileItemList &channelsList, SETTINGSTRINGS &channelNames, bool bRadio)
@@ -240,47 +240,31 @@ void CGUIDialogPVRTimerSettings::OnSettingChanged(SettingInfo &setting)
 
   if (setting.id == CONTROL_TMR_NAME)
   {
-    if (CGUIDialogKeyboard::ShowAndGetInput(tag->m_strTitle, g_localizeStrings.Get(19097), false))
+    if (CGUIKeyboardFactory::ShowAndGetInput(tag->m_strTitle, g_localizeStrings.Get(19097), false))
     {
       UpdateSetting(CONTROL_TMR_NAME);
     }
   }
-  if (setting.id == CONTROL_TMR_DIR && CGUIDialogKeyboard::ShowAndGetInput(tag->m_strDirectory, g_localizeStrings.Get(19104), false))
+  if (setting.id == CONTROL_TMR_DIR && CGUIKeyboardFactory::ShowAndGetInput(tag->m_strDirectory, g_localizeStrings.Get(19104), false))
       UpdateSetting(CONTROL_TMR_DIR);
-  else if (setting.id == CONTROL_TMR_RADIO)
+  else if (setting.id == CONTROL_TMR_RADIO || setting.id == CONTROL_TMR_CHNAME_TV || setting.id == CONTROL_TMR_CHNAME_RADIO)
   {
-    const CPVRChannel* channeltag = NULL;
-    if (!tag->m_bIsRadio)
+    if (setting.id == CONTROL_TMR_RADIO)
     {
-      EnableSettings(CONTROL_TMR_CHNAME_TV, true);
-      EnableSettings(CONTROL_TMR_CHNAME_RADIO, false);
-      channeltag = g_PVRChannelGroups->GetGroupAllTV()->GetByChannelNumber(tag->m_iChannelNumber);
-    }
-    else
-    {
-      EnableSettings(CONTROL_TMR_CHNAME_TV, false);
-      EnableSettings(CONTROL_TMR_CHNAME_RADIO, true);
-      channeltag = g_PVRChannelGroups->GetGroupAllRadio()->GetByChannelNumber(tag->m_iChannelNumber);
+      EnableSettings(CONTROL_TMR_CHNAME_TV, !tag->m_bIsRadio);
+      EnableSettings(CONTROL_TMR_CHNAME_RADIO, tag->m_bIsRadio);
     }
 
-    if (channeltag)
+    CFileItemPtr channel = g_PVRChannelGroups->GetGroupAll(tag->m_bIsRadio)->GetByChannelNumber(tag->m_iChannelNumber);
+    if (channel && channel->HasPVRChannelInfoTag())
     {
-      tag->m_iClientChannelUid = channeltag->UniqueID();
-      tag->m_iClientId         = channeltag->ClientID();
-      tag->m_bIsRadio          = channeltag->IsRadio();
-      tag->m_iChannelNumber    = channeltag->ChannelNumber();
-    }
-  }
-  else if (setting.id == CONTROL_TMR_CHNAME_TV || setting.id == CONTROL_TMR_CHNAME_RADIO)
-  {
-    const CPVRChannel* channeltag = g_PVRChannelGroups->GetGroupAll(tag->m_bIsRadio)->GetByChannelNumber(tag->m_iChannelNumber);
+      tag->m_iClientChannelUid = channel->GetPVRChannelInfoTag()->UniqueID();
+      tag->m_iClientId         = channel->GetPVRChannelInfoTag()->ClientID();
+      tag->m_bIsRadio          = channel->GetPVRChannelInfoTag()->IsRadio();
+      tag->m_iChannelNumber    = channel->GetPVRChannelInfoTag()->ChannelNumber();
 
-    if (channeltag)
-    {
-      tag->m_iClientChannelUid = channeltag->UniqueID();
-      tag->m_iClientId         = channeltag->ClientID();
-      tag->m_bIsRadio          = channeltag->IsRadio();
-      tag->m_iChannelNumber    = channeltag->ChannelNumber();
+      // Update channel pointer from above values
+      tag->UpdateChannel();
     }
   }
   else if (setting.id == CONTROL_TMR_DAY && m_tmp_day > 10)
@@ -379,8 +363,14 @@ void CGUIDialogPVRTimerSettings::OnOkay()
 {
   m_cancelled = false;
   CPVRTimerInfoTag* tag = m_timerItem->GetPVRTimerInfoTag();
-  if (tag->m_strTitle == g_localizeStrings.Get(19056))
-    tag->m_strTitle = g_PVRChannelGroups->GetByUniqueID(tag->m_iClientChannelUid, tag->m_iClientId)->ChannelName();
+
+  // Set the timer's title to the channel name if it's 'New Timer' or empty
+  if (tag->m_strTitle == g_localizeStrings.Get(19056) || tag->m_strTitle.IsEmpty())
+  {
+    CPVRChannelPtr channel = g_PVRChannelGroups->GetByUniqueID(tag->m_iClientChannelUid, tag->m_iClientId);
+    if (channel)
+      tag->m_strTitle = channel->ChannelName();
+  }
 
   if (m_bTimerActive)
     tag->m_state = PVR_TIMER_STATE_SCHEDULED;

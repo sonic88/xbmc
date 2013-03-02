@@ -19,7 +19,6 @@
 */
 
 #include "DAAPFile.h"
-#include "SectionLoader.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include <sys/stat.h>
@@ -79,8 +78,6 @@ void CDaapClient::Release()
 
 DAAP_SClientHost* CDaapClient::GetHost(const CStdString &strHost)
 {
-  //We need this section from now on
-  if( !CSectionLoader::IsLoaded("LIBXDAAP") ) CSectionLoader::Load("LIBXDAAP");
   try
   {
 
@@ -125,12 +122,16 @@ void CDaapClient::StatusCallback(DAAP_SClient *pClient, DAAP_Status status, int 
   {
     case DAAP_STATUS_connecting:
       CLog::Log(LOGINFO, "CDaapClient::Callback - Connecting");
+      break;
     case DAAP_STATUS_downloading:
       CLog::Log(LOGINFO, "CDaapClient::Callback - Downlading");
+      break;
     case DAAP_STATUS_idle:
       CLog::Log(LOGINFO, "CDaapClient::Callback - Idle");
+      break;
     default:
       CLog::Log(LOGINFO, "CDaapClient::Callback - Status %d", status);
+      break;
   }
 }
 

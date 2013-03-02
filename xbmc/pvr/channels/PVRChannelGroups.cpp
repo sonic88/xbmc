@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,24 +13,21 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
+
+#include "PVRChannelGroups.h"
 
 #include "FileItem.h"
 #include "settings/GUISettings.h"
 #include "guilib/GUIWindowManager.h"
-#include "dialogs/GUIDialogYesNo.h"
-#include "dialogs/GUIDialogOK.h"
-#include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "URL.h"
 #include "filesystem/File.h"
-#include "music/tags/MusicInfoTag.h"
 
-#include "PVRChannelGroupsContainer.h"
+#include "PVRChannelGroupInternal.h"
 #include "pvr/PVRDatabase.h"
 #include "pvr/PVRManager.h"
 #include "pvr/addons/PVRClients.h"
@@ -38,8 +35,7 @@
 using namespace PVR;
 
 CPVRChannelGroups::CPVRChannelGroups(bool bRadio) :
-    m_bRadio(bRadio),
-    m_iSelectedGroup(0)
+    m_bRadio(bRadio)
 {
 }
 
@@ -51,10 +47,7 @@ CPVRChannelGroups::~CPVRChannelGroups(void)
 void CPVRChannelGroups::Clear(void)
 {
   CSingleLock lock(m_critSection);
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
-    delete at(iGroupPtr);
-
-  clear();
+  m_groups.clear();
 }
 
 bool CPVRChannelGroups::GetGroupsFromClients(void)
@@ -62,185 +55,158 @@ bool CPVRChannelGroups::GetGroupsFromClients(void)
   if (! g_guiSettings.GetBool("pvrmanager.syncchannelgroups"))
     return true;
 
-  /* get new groups from add-ons */
-  PVR_ERROR error;
-  CPVRChannelGroups groupsTmp(m_bRadio);
-  g_PVRClients->GetChannelGroups(&groupsTmp, &error);
-  return UpdateGroupsEntries(groupsTmp);
-}
-
-bool CPVRChannelGroups::UpdateFromClient(const CPVRChannelGroup &group)
-{
-  CSingleLock lock(m_critSection);
-  CPVRChannelGroup *newGroup = new CPVRChannelGroup(group.IsRadio(), 0, group.GroupName());
-  push_back(newGroup);
-
-  return true;
+  return g_PVRClients->GetChannelGroups(this) == PVR_ERROR_NO_ERROR;
 }
 
 bool CPVRChannelGroups::Update(const CPVRChannelGroup &group, bool bSaveInDb)
 {
-  CSingleLock lock(m_critSection);
+  if (group.GroupName().IsEmpty() && group.GroupID() <= 0)
+    return true;
 
-  int iIndex = -1;
-  /* try to find the group by id */
-  if (group.GroupID() > 0)
-    iIndex = GetIndexForGroupID(group.GroupID());
-  /* try to find the group by name if we didn't find it yet */
-  if (iIndex < 0)
-    iIndex = GetIndexForGroupName(group.GroupName());
-
-  if (iIndex < 0)
+  CPVRChannelGroupPtr updateGroup;
   {
-    CPVRChannelGroup *newGroup = new CPVRChannelGroup(m_bRadio, group.GroupID(), group.GroupName());
-    if (bSaveInDb)
-      newGroup->Persist();
+    CSingleLock lock(m_critSection);
+    // try to find the group by id
+    if (group.GroupID() > 0)
+      updateGroup = GetById(group.GroupID());
 
-    push_back(newGroup);
-  }
-  else
-  {
-    at(iIndex)->SetGroupID(group.GroupID());
-    at(iIndex)->SetGroupName(group.GroupName());
+    // try to find the group by name if we didn't find it yet
+    if (!updateGroup)
+      updateGroup = GetByName(group.GroupName());
 
-    if (bSaveInDb)
-      at(iIndex)->Persist();
+    if (!updateGroup)
+    {
+      // create a new group if none was found
+      updateGroup = CPVRChannelGroupPtr(new CPVRChannelGroup(m_bRadio, group.GroupID(), group.GroupName()));
+      updateGroup->SetGroupType(group.GroupType());
+      m_groups.push_back(updateGroup);
+    }
+    else
+    {
+      // update existing group
+      updateGroup->SetGroupID(group.GroupID());
+      updateGroup->SetGroupName(group.GroupName());
+      updateGroup->SetGroupType(group.GroupType());
+    }
   }
+
+  // persist changes
+  if (bSaveInDb && updateGroup)
+    return updateGroup->Persist();
 
   return true;
 }
 
-CPVRChannelGroup *CPVRChannelGroups::GetById(int iGroupId) const
+CFileItemPtr CPVRChannelGroups::GetByPath(const CStdString &strPath) const
 {
-  CPVRChannelGroup *group = NULL;
+  // get the filename from curl
+  CURL url(strPath);
+  CStdString strFileName = url.GetFileName();
+  URIUtils::RemoveSlashAtEnd(strFileName);
 
-  if (iGroupId == (m_bRadio ? XBMC_INTERNAL_GROUP_RADIO : XBMC_INTERNAL_GROUP_TV))
+  CStdString strCheckPath;
+  for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
   {
-    group = GetGroupAll();
-  }
-  else if (iGroupId > -1)
-  {
-    int iGroupIndex = GetIndexForGroupID(iGroupId);
-    if (iGroupIndex != -1)
-      group = at(iGroupIndex);
-  }
-
-  return group;
-}
-
-CPVRChannelGroup *CPVRChannelGroups::GetByName(const CStdString &strName) const
-{
-  CPVRChannelGroup *group = NULL;
-  CSingleLock lock(m_critSection);
-
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
-  {
-    if (at(iGroupPtr)->GroupName().Equals(strName))
+    // check if the path matches
+    strCheckPath.Format("channels/%s/%s/", (*it)->IsRadio() ? "radio" : "tv", (*it)->GroupName().c_str());
+    if (strFileName.Left(strCheckPath.length()) == strCheckPath)
     {
-      group = at(iGroupPtr);
-      break;
+      strFileName.erase(0, strCheckPath.length());
+      return (*it)->GetByIndex(atoi(strFileName.c_str()));
     }
   }
 
-  return group;
+  // no match
+  CFileItemPtr retVal(new CFileItem);
+  return retVal;
 }
 
-int CPVRChannelGroups::GetIndexForGroupID(int iGroupId) const
+CPVRChannelGroupPtr CPVRChannelGroups::GetById(int iGroupId) const
 {
-  int iReturn = -1;
   CSingleLock lock(m_critSection);
-
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
+  for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
   {
-    if (at(iGroupPtr)->GroupID() == iGroupId)
-    {
-      iReturn = iGroupPtr;
-      break;
-    }
+    if ((*it)->GroupID() == iGroupId)
+      return *it;
   }
 
-  return iReturn;
+  CPVRChannelGroupPtr empty;
+  return empty;
 }
 
-int CPVRChannelGroups::GetIndexForGroupName(const CStdString &strName) const
+CPVRChannelGroupPtr CPVRChannelGroups::GetByName(const CStdString &strName) const
 {
-  int iReturn = -1;
   CSingleLock lock(m_critSection);
-
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
+  for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
   {
-    if (at(iGroupPtr)->GroupName().Equals(strName))
-    {
-      iReturn = iGroupPtr;
-      break;
-    }
+    if ((*it)->GroupName().Equals(strName))
+      return *it;
   }
 
-  return iReturn;
+  CPVRChannelGroupPtr empty;
+  return empty;
 }
 
-void CPVRChannelGroups::RemoveFromAllGroups(CPVRChannel *channel)
+void CPVRChannelGroups::RemoveFromAllGroups(const CPVRChannel &channel)
 {
   CSingleLock lock(m_critSection);
-  /* start at position 2 because channels are only deleted from non-system groups.
-   system groups are entries 0 and 1 */
-  for (unsigned int iGroupPtr = 2; iGroupPtr < size(); iGroupPtr++)
+  for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
   {
-    CPVRChannelGroup *group = (CPVRChannelGroup *) at(iGroupPtr);
-    group->RemoveFromGroup(*channel);
+    // only delete the channel from non-system groups
+    if (!(*it)->IsInternalGroup())
+      (*it)->RemoveFromGroup(channel);
   }
 }
 
 bool CPVRChannelGroups::Update(bool bChannelsOnly /* = false */)
 {
-  bool bReturn = true;
+  bool bUpdateAllGroups = !bChannelsOnly && g_guiSettings.GetBool("pvrmanager.syncchannelgroups");
+  bool bReturn(true);
 
-  if (!bChannelsOnly)
+  // sync groups
+  if (bUpdateAllGroups)
     GetGroupsFromClients();
 
-  CSingleLock lock(m_critSection);
+  // sync channels in groups
+  {
+    CSingleLock lock(m_critSection);
+    for (std::vector<CPVRChannelGroupPtr>::iterator it = m_groups.begin(); it != m_groups.end(); it++)
+    {
+      if (bUpdateAllGroups || (*it)->IsInternalGroup())
+        bReturn = (*it)->Update() && bReturn;
+    }
+  }
 
-  /* only update the internal group if group syncing is disabled */
-  unsigned int iUpdateGroups = !bChannelsOnly && g_guiSettings.GetBool("pvrmanager.syncchannelgroups") ? size() : 1;
-
-  /* system groups are updated first, so new channels are added before anything is done with user defined groups */
-  for (unsigned int iGroupPtr = 0; iGroupPtr < iUpdateGroups; iGroupPtr++)
-    bReturn = at(iGroupPtr)->Update() && bReturn;
-
-  if (bReturn)
-    PersistAll();
-
-  return bReturn;
+  // persist changes
+  return PersistAll() && bReturn;
 }
 
 bool CPVRChannelGroups::UpdateGroupsEntries(const CPVRChannelGroups &groups)
 {
   CSingleLock lock(m_critSection);
-  /* go through groups list and check for deleted groups */
-  for (int iGroupPtr = size() - 1; iGroupPtr > 0; iGroupPtr--)
+
+  // go through groups list and check for deleted groups
+  for (int iGroupPtr = m_groups.size() - 1; iGroupPtr > 0; iGroupPtr--)
   {
-    CPVRChannelGroup existingGroup(*at(iGroupPtr));
-    CPVRChannelGroup *group = (CPVRChannelGroup *) groups.GetByName(existingGroup.GroupName());
-    if (group == NULL)
+    CPVRChannelGroup existingGroup(*m_groups.at(iGroupPtr));
+    CPVRChannelGroupPtr group = groups.GetByName(existingGroup.GroupName());
+    // user defined group wasn't found
+    if (existingGroup.GroupType() == PVR_GROUP_TYPE_DEFAULT && !group)
     {
-      CLog::Log(LOGDEBUG, "PVRChannelGroups - %s - user defined group %s with ID '%u' does not exist on the client anymore. deleting",
-          __FUNCTION__, existingGroup.GroupName().c_str(), existingGroup.GroupID());
-      DeleteGroup(*at(iGroupPtr));
+      CLog::Log(LOGDEBUG, "PVR - %s - user defined group %s with id '%u' does not exist on the client anymore; deleting it", __FUNCTION__, existingGroup.GroupName().c_str(), existingGroup.GroupID());
+      DeleteGroup(*m_groups.at(iGroupPtr));
     }
   }
-  /* go through the groups list and check for new groups */
-  for (unsigned int iGroupPtr = 0; iGroupPtr < groups.size(); iGroupPtr++)
-  {
-    CPVRChannelGroup *group = groups.at(iGroupPtr);
 
-    /* check if this group is present in this container */
-    CPVRChannelGroup *existingGroup = (CPVRChannelGroup *) GetByName(group->GroupName());
-    if (existingGroup == NULL)
-    {
-      CPVRChannelGroup *newGroup = new CPVRChannelGroup(m_bRadio);
-      newGroup->SetGroupName(group->GroupName());
-      push_back(newGroup);
-    }
+  // go through the groups list and check for new groups
+  for (std::vector<CPVRChannelGroupPtr>::const_iterator it = groups.m_groups.begin(); it != groups.m_groups.end(); it++)
+  {
+    // check if this group is present in this container
+    CPVRChannelGroupPtr existingGroup = GetByName((*it)->GroupName());
+
+    // add it if not
+    if (!existingGroup)
+      m_groups.push_back(CPVRChannelGroupPtr(new CPVRChannelGroup(m_bRadio, -1, (*it)->GroupName())));
   }
 
   return true;
@@ -252,88 +218,141 @@ bool CPVRChannelGroups::LoadUserDefinedChannelGroups(void)
   if (!database)
     return false;
 
+  bool bSyncWithBackends = g_guiSettings.GetBool("pvrmanager.syncchannelgroups");
+
   CSingleLock lock(m_critSection);
 
-  /* load the other groups from the database */
-  int iSize = size();
+  // load the other groups from the database
+  int iSize = m_groups.size();
   database->Get(*this);
-  CLog::Log(LOGDEBUG, "PVRChannelGroups - %s - %d user defined %s channel groups fetched from the database",
-      __FUNCTION__, (int) (size() - iSize), m_bRadio ? "radio" : "TV");
+  CLog::Log(LOGDEBUG, "PVR - %s - %d user defined %s channel groups fetched from the database", __FUNCTION__, (int) (m_groups.size() - iSize), m_bRadio ? "radio" : "TV");
 
-  iSize = size();
-  if (g_guiSettings.GetBool("pvrmanager.syncchannelgroups"))
+  // load groups from the backends if the option is enabled
+  iSize = m_groups.size();
+  if (bSyncWithBackends)
   {
     GetGroupsFromClients();
-    CLog::Log(LOGDEBUG, "PVRChannelGroups - %s - %d new user defined %s channel groups fetched from clients",
-        __FUNCTION__, (int) (size() - iSize), m_bRadio ? "radio" : "TV");
+    CLog::Log(LOGDEBUG, "PVR - %s - %d new user defined %s channel groups fetched from clients", __FUNCTION__, (int) (m_groups.size() - iSize), m_bRadio ? "radio" : "TV");
   }
   else
-    CLog::Log(LOGDEBUG, "PVRChannelGroups - %s - 'synchannelgroups' is disabled; skipping groups from clients",
-        __FUNCTION__);
+    CLog::Log(LOGDEBUG, "PVR - %s - 'synchannelgroups' is disabled; skipping groups from clients", __FUNCTION__);
 
-  /* load group members */
-  for (unsigned int iGroupPtr = 1; iGroupPtr < size(); iGroupPtr++)
-    at(iGroupPtr)->Load();
+  std::vector<CPVRChannelGroupPtr> emptyGroups;
 
-  return PersistAll();
+  // load group members
+  for (std::vector<CPVRChannelGroupPtr>::iterator it = m_groups.begin(); it != m_groups.end(); it++)
+  {
+    // load only user defined groups, as internal group is already loaded
+    if (!(*it)->IsInternalGroup())
+    {
+      if (!(*it)->Load())
+      {
+        CLog::Log(LOGDEBUG, "PVR - %s - failed to load channel group '%s'", __FUNCTION__, (*it)->GroupName().c_str());
+        return false;
+      }
+
+      // remove empty groups when sync with backend is enabled
+      if (bSyncWithBackends && (*it)->Size() == 0)
+        emptyGroups.push_back(*it);
+    }
+  }
+
+  for (std::vector<CPVRChannelGroupPtr>::iterator it = emptyGroups.begin(); it != emptyGroups.end(); it++)
+  {
+    CLog::Log(LOGDEBUG, "PVR - %s - deleting empty group '%s'", __FUNCTION__, (*it)->GroupName().c_str());
+    DeleteGroup(*(*it));
+  }
+
+  // persist changes if we fetched groups from the backends
+  return bSyncWithBackends ? PersistAll() : true;
 }
 
 bool CPVRChannelGroups::Load(void)
 {
   CSingleLock lock(m_critSection);
-  CLog::Log(LOGDEBUG, "PVRChannelGroups - %s - loading all %s channel groups",
-      __FUNCTION__, m_bRadio ? "radio" : "TV");
 
+  // remove previous contents
   Clear();
 
-  /* create and load the internal channel group */
-  CPVRChannelGroupInternal *internalChannels = new CPVRChannelGroupInternal(m_bRadio);
-  push_back(internalChannels);
-  internalChannels->Load();
+  CLog::Log(LOGDEBUG, "PVR - %s - loading all %s channel groups", __FUNCTION__, m_bRadio ? "radio" : "TV");
 
-  /* load the other groups from the database */
-  LoadUserDefinedChannelGroups();
+  // create and load the internal channel group
+  CPVRChannelGroupPtr internalChannels = CPVRChannelGroupPtr(new CPVRChannelGroupInternal(m_bRadio));
+  m_groups.push_back(internalChannels);
+  if (!internalChannels->Load())
+  {
+    CLog::Log(LOGERROR, "PVR - %s - failed to load channels", __FUNCTION__);
+    return false;
+  }
 
-  SetSelectedGroup(internalChannels);
+  // load the other groups from the database
+  if (!LoadUserDefinedChannelGroups())
+  {
+    CLog::Log(LOGERROR, "PVR - %s - failed to load channel groups", __FUNCTION__);
+    return false;
+  }
 
-  CLog::Log(LOGDEBUG, "PVRChannelGroups - %s - %d %s channel groups loaded",
-      __FUNCTION__, (int) size(), m_bRadio ? "radio" : "TV");
+  // set the internal group as selected at startup
+  internalChannels->SetSelectedGroup(true);
+  m_selectedGroup = internalChannels;
 
-  return size() > 0;
+  CLog::Log(LOGDEBUG, "PVR - %s - %d %s channel groups loaded", __FUNCTION__, (int) m_groups.size(), m_bRadio ? "radio" : "TV");
+
+  // need at least 1 group
+  return m_groups.size() > 0;
 }
 
 bool CPVRChannelGroups::PersistAll(void)
 {
-  bool bReturn = true;
-  CSingleLock lock(m_critSection);
-  CLog::Log(LOGDEBUG, "CPVRChannelGroups - %s - persisting all changes in channel groups", __FUNCTION__);
+  bool bReturn(true);
+  CLog::Log(LOGDEBUG, "PVR - %s - persisting all changes in channel groups", __FUNCTION__);
 
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
-    bReturn = at(iGroupPtr)->Persist() && bReturn;
+  CSingleLock lock(m_critSection);
+  for (std::vector<CPVRChannelGroupPtr>::iterator it = m_groups.begin(); it != m_groups.end(); it++)
+    bReturn &= (*it)->Persist();
 
   return bReturn;
 }
 
-CPVRChannelGroupInternal *CPVRChannelGroups::GetGroupAll(void) const
+CPVRChannelGroupPtr CPVRChannelGroups::GetGroupAll(void) const
 {
-  if (size() > 0)
-    return (CPVRChannelGroupInternal *) at(0);
-  else
-    return NULL;
+  CSingleLock lock(m_critSection);
+  if (m_groups.size() > 0)
+    return m_groups.at(0);
+
+  CPVRChannelGroupPtr empty;
+  return empty;
+}
+
+CPVRChannelGroupPtr CPVRChannelGroups::GetLastGroup(void) const
+{
+  CSingleLock lock(m_critSection);
+  if (m_groups.size() > 0)
+    return m_groups.at(m_groups.size() - 1);
+
+  CPVRChannelGroupPtr empty;
+  return empty;
+}
+
+std::vector<CPVRChannelGroupPtr> CPVRChannelGroups::GetMembers() const
+{
+  CSingleLock lock(m_critSection);
+  std::vector<CPVRChannelGroupPtr> groups(m_groups.begin(), m_groups.end());
+  return groups;
 }
 
 int CPVRChannelGroups::GetGroupList(CFileItemList* results) const
 {
-  int iReturn = 0;
+  int iReturn(0);
   CSingleLock lock(m_critSection);
 
   CStdString strPath;
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
+  for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
   {
-    CFileItemPtr group(new CFileItem(at(iGroupPtr)->GroupName()));
-    group->m_strTitle = at(iGroupPtr)->GroupName();
-    strPath.Format("%i", at(iGroupPtr)->GroupID());
-    group->SetPath(strPath);
+    strPath.Format("channels/%s/%i", m_bRadio ? "radio" : "tv", (*it)->GroupID());
+    CFileItemPtr group(new CFileItem(strPath, true));
+    group->m_strTitle = (*it)->GroupName();
+    group->SetLabel((*it)->GroupName());
     results->Add(group);
     ++iReturn;
   }
@@ -341,167 +360,162 @@ int CPVRChannelGroups::GetGroupList(CFileItemList* results) const
   return iReturn;
 }
 
-int CPVRChannelGroups::GetPreviousGroupID(int iGroupId) const
+CPVRChannelGroupPtr CPVRChannelGroups::GetPreviousGroup(const CPVRChannelGroup &group) const
 {
-  const CPVRChannelGroup *currentGroup = GetById(iGroupId);
-  if (!currentGroup)
-    currentGroup = GetGroupAll();
+  bool bReturnNext(false);
 
-  return GetPreviousGroup(*currentGroup)->GroupID();
+  {
+    CSingleLock lock(m_critSection);
+    for (std::vector<CPVRChannelGroupPtr>::const_reverse_iterator it = m_groups.rbegin(); it != m_groups.rend(); it++)
+    {
+      // return this entry
+      if (bReturnNext)
+        return *it;
+
+      // return the next entry
+      if ((*it)->GroupID() == group.GroupID())
+        bReturnNext = true;
+    }
+  }
+
+  // no match
+  return GetLastGroup();
 }
 
-CPVRChannelGroup *CPVRChannelGroups::GetPreviousGroup(const CPVRChannelGroup &group) const
+CPVRChannelGroupPtr CPVRChannelGroups::GetNextGroup(const CPVRChannelGroup &group) const
 {
-  CPVRChannelGroup *returnGroup = NULL;
-  CSingleLock lock(m_critSection);
+  bool bReturnNext(false);
 
-  int iCurrentGroupIndex = GetIndexForGroupID(group.GroupID());
-  if (iCurrentGroupIndex - 1 < 0)
-    returnGroup = at(size() - 1);
-  else
-    returnGroup = at(iCurrentGroupIndex - 1);
+  {
+    CSingleLock lock(m_critSection);
+    for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
+    {
+      // return this entry
+      if (bReturnNext)
+        return *it;
 
-  if (!returnGroup)
-    returnGroup = GetGroupAll();
+      // return the next entry
+      if ((*it)->GroupID() == group.GroupID())
+        bReturnNext = true;
+    }
+  }
 
-  return returnGroup;
+  // no match
+  return GetFirstGroup();
 }
 
-int CPVRChannelGroups::GetNextGroupID(int iGroupId) const
-{
-  const CPVRChannelGroup *currentGroup = GetById(iGroupId);
-  if (!currentGroup)
-    currentGroup = GetGroupAll();
-
-  return GetNextGroup(*currentGroup)->GroupID();
-}
-
-CPVRChannelGroup *CPVRChannelGroups::GetNextGroup(const CPVRChannelGroup &group) const
-{
-  CPVRChannelGroup *returnGroup = NULL;
-  CSingleLock lock(m_critSection);
-
-  int iCurrentGroupIndex = GetIndexForGroupID(group.GroupID());
-  if (iCurrentGroupIndex + 1 >= (int)size())
-    returnGroup = at(0);
-  else
-    returnGroup = at(iCurrentGroupIndex + 1);
-
-  if (!returnGroup)
-    returnGroup = GetGroupAll();
-
-  return returnGroup;
-}
-
-CPVRChannelGroup *CPVRChannelGroups::GetSelectedGroup(void) const
-{
-  CPVRChannelGroup *returnGroup = NULL;
-  CSingleLock lock(m_critSection);
-  if (m_iSelectedGroup > -1)
-    returnGroup = at(m_iSelectedGroup);
-
-  return returnGroup;
-}
-
-void CPVRChannelGroups::SetSelectedGroup(CPVRChannelGroup *group)
+CPVRChannelGroupPtr CPVRChannelGroups::GetSelectedGroup(void) const
 {
   CSingleLock lock(m_critSection);
+  return m_selectedGroup;
+}
 
-  m_iSelectedGroup = GetIndexForGroupID(group->GroupID());
+void CPVRChannelGroups::SetSelectedGroup(CPVRChannelGroupPtr group)
+{
+  // update the selected group
+  {
+    CSingleLock lock(m_critSection);
+    if (m_selectedGroup)
+      m_selectedGroup->SetSelectedGroup(false);
+    m_selectedGroup = group;
+    group->SetSelectedGroup(true);
+  }
+
+  // update the channel number cache
   group->Renumber();
 }
 
 bool CPVRChannelGroups::AddGroup(const CStdString &strName)
 {
-  bool bReturn = false;
-  CSingleLock lock(m_critSection);
+  bool bPersist(false);
+  CPVRChannelGroupPtr group;
 
-  CPVRChannelGroup *group = (CPVRChannelGroup *) GetByName(strName);
-  if (!group)
   {
-    group = new CPVRChannelGroup(m_bRadio);
-    group->SetGroupName(strName);
-    push_back(group);
+    CSingleLock lock(m_critSection);
 
-    bReturn = group->Persist();
-  }
-  else
-  {
-    bReturn = true;
+    // check if there's no group with the same name yet
+    group = GetByName(strName);
+    if (!group)
+    {
+      // create a new group
+      group = CPVRChannelGroupPtr(new CPVRChannelGroup(m_bRadio, -1, strName));
+      m_groups.push_back(group);
+      bPersist = true;
+    }
   }
 
-  return bReturn;
+  // persist in the db if a new group was added
+  return bPersist ? group->Persist() : true;
 }
 
 bool CPVRChannelGroups::DeleteGroup(const CPVRChannelGroup &group)
 {
-  bool bReturn = false;
-  CSingleLock lock(m_critSection);
-
+  // don't delete internal groups
   if (group.IsInternalGroup())
   {
-    CLog::Log(LOGERROR, "CPVRChannelGroups - %s - cannot delete internal group '%s'",
-        __FUNCTION__, group.GroupName().c_str());
-    return bReturn;
+    CLog::Log(LOGERROR, "PVR - %s - cannot delete internal group '%s'", __FUNCTION__, group.GroupName().c_str());
+    return false;
   }
 
-  CPVRDatabase *database = GetPVRDatabase();
-  if (!database)
-    return bReturn;
+  bool bFound(false);
 
-  /* delete the group from the database */
-  bReturn = database->Delete(group);
-
-  /* delete the group in this container */
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
+  // delete the group in this container
   {
-    if (at(iGroupPtr)->GroupID() == group.GroupID())
+    CSingleLock lock(m_critSection);
+    for (std::vector<CPVRChannelGroupPtr>::iterator it = m_groups.begin(); !bFound && it != m_groups.end(); it++)
     {
-      CPVRChannelGroup *selectedGroup = GetSelectedGroup();
-      if (selectedGroup && *selectedGroup == group)
-        g_PVRManager.SetPlayingGroup(GetGroupAll());
+      if ((*it)->GroupID() == group.GroupID())
+      {
+        // update the selected group in the gui if it's deleted
+        CPVRChannelGroupPtr selectedGroup = GetSelectedGroup();
+        if (selectedGroup && *selectedGroup == group)
+          g_PVRManager.SetPlayingGroup(GetGroupAll());
 
-      delete at(iGroupPtr);
-      erase(begin() + iGroupPtr);
-      break;
+        m_groups.erase(it);
+        bFound = true;
+      }
     }
   }
 
-  return bReturn;
+  if (group.GroupID() > 0)
+  {
+    // delete the group from the database
+    CPVRDatabase *database = GetPVRDatabase();
+    return database ? database->Delete(group) : false;
+  }
+  return bFound;
 }
 
-const CStdString &CPVRChannelGroups::GetGroupName(int iGroupId) const
+void CPVRChannelGroups::FillGroupsGUI(int iWindowId, int iControlId) const
 {
-  CSingleLock lock(m_critSection);
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
+  int iListGroupPtr(0);
+  int iSelectedGroupPtr(0);
+  CPVRChannelGroupPtr selectedGroup = g_PVRManager.GetPlayingGroup(false);
+  std::vector<CGUIMessage> messages;
+
+  // fetch all groups
   {
-    if (iGroupId == at(iGroupPtr)->GroupID())
-      return at(iGroupPtr)->GroupName();
+    CSingleLock lock(m_critSection);
+    for (std::vector<CPVRChannelGroupPtr>::const_iterator it = m_groups.begin(); it != m_groups.end(); it++)
+    {
+      // skip empty groups
+      if ((*it)->Size() == 0)
+        continue;
+
+      if ((*it)->GroupID() == selectedGroup->GroupID())
+        iSelectedGroupPtr = iListGroupPtr;
+
+      CGUIMessage msg(GUI_MSG_LABEL_ADD, iWindowId, iControlId, iListGroupPtr++);
+      msg.SetLabel((*it)->GroupName());
+      messages.push_back(msg);
+    }
   }
 
-  return g_localizeStrings.Get(13205);
-}
+  // send updates
+  for (std::vector<CGUIMessage>::iterator it = messages.begin(); it != messages.end(); it++)
+    g_windowManager.SendMessage(*it);
 
-int CPVRChannelGroups::GetGroupId(CStdString strGroupName) const
-{
-  CSingleLock lock(m_critSection);
-  for (unsigned int iGroupPtr = 0; iGroupPtr < size(); iGroupPtr++)
-  {
-    if (strGroupName == at(iGroupPtr)->GroupName())
-      return at(iGroupPtr)->GroupID();
-  }
-  return -1;
-}
-
-bool CPVRChannelGroups::AddChannelToGroup(CPVRChannel *channel, int iGroupId)
-{
-  bool bReturn = false;
-  CSingleLock lock(m_critSection);
-  CPVRChannelGroup *group = (CPVRChannelGroup *) GetById(iGroupId);
-  if (group)
-  {
-    bReturn = group->AddToGroup(*channel);
-  }
-
-  return bReturn;
+  // selected group
+  CGUIMessage msgSel(GUI_MSG_ITEM_SELECT, iWindowId, iControlId, iSelectedGroupPtr);
+  g_windowManager.SendMessage(msgSel);
 }

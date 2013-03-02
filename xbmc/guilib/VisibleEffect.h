@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -33,6 +32,7 @@ class CGUIListItem;
 #include "TransformMatrix.h"  // needed for the TransformMatrix member
 #include "Geometry.h"         // for CPoint, CRect
 #include "utils/StdString.h"
+#include "boost/shared_ptr.hpp"
 
 enum ANIMATION_TYPE
 {
@@ -66,7 +66,7 @@ public:
   const TransformMatrix &GetTransform() const { return m_matrix; };
   EFFECT_TYPE GetType() const { return m_effect; };
 
-  static Tweener* GetTweener(const TiXmlElement *pAnimationNode);
+  static boost::shared_ptr<Tweener> GetTweener(const TiXmlElement *pAnimationNode);
 protected:
   TransformMatrix m_matrix;
   EFFECT_TYPE m_effect;
@@ -78,7 +78,7 @@ private:
   unsigned int m_length;
   unsigned int m_delay;
 
-  Tweener *m_pTweener;
+  boost::shared_ptr<Tweener> m_pTweener;
 };
 
 class CFadeEffect : public CAnimEffect
@@ -214,7 +214,7 @@ private:
 class CScroller
 {
 public:
-  CScroller(unsigned int duration = 200, Tweener *tweener = NULL);
+  CScroller(unsigned int duration = 200, boost::shared_ptr<Tweener> tweener = boost::shared_ptr<Tweener>());
   CScroller(const CScroller& right);
   const CScroller &operator=(const CScroller &src);
   ~CScroller();
@@ -258,5 +258,5 @@ private:
   unsigned int m_lastTime;                //!< Brief last remember time (updated each time Scroll() method is called)
 
   unsigned int m_duration;                //!< Brief duration of scroll
-  Tweener* m_pTweener;
+  boost::shared_ptr<Tweener> m_pTweener;
 };

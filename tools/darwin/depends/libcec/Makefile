@@ -1,29 +1,30 @@
 include ../Makefile.include
+include ../config.site.mk
 
 # lib name, version
 LIBNAME=libcec
-VERSION=1.5.2
+VERSION=2.0.5-3
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX)
 
-LIBDYLIB=$(SOURCE)/.libs/$(LIBNAME).dylib
+LIBDYLIB=$(SOURCE)/src/lib/.libs/$(LIBNAME).2.dylib
 
 all: $(LIBDYLIB) .installed
 
 $(TARBALLS_LOCATION)/$(ARCHIVE):
 	$(RETRIEVE_TOOL) $(RETRIEVE_TOOL_FLAGS) $(BASE_URL)/$(ARCHIVE)
 
-$(LIBNAME): $(TARBALLS_LOCATION)/$(ARCHIVE)
+$(SOURCE): $(TARBALLS_LOCATION)/$(ARCHIVE)
 	rm -rf $(SOURCE)
 	$(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
 	echo $(SOURCE) > .gitignore
 	cd $(SOURCE); autoreconf -vif
 	cd $(SOURCE); $(CONFIGURE)
 
-$(LIBDYLIB): $(LIBNAME)
+$(LIBDYLIB): $(SOURCE)
 	make -j 1 -C $(SOURCE)
 
 .installed:
@@ -33,6 +34,6 @@ $(LIBDYLIB): $(LIBNAME)
 clean:
 	rm -rf $(SOURCE) .installed
 
-distclean::
+distclean:
 	rm -rf $(SOURCE) .installed
 

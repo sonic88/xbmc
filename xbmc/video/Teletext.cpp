@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -34,11 +33,25 @@
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GraphicContext.h"
 
-#ifndef HAS_SDL
-#define SDL_memset4(dst, val, len) memset(dst, val, (len)*4)
-#define SDL_memcpy4(dst, src, len) memcpy(dst, src, (len)*4)
-#define SDL_memcpy4(dst, src, len) memcpy(dst, src, (len)*4)
-#define SDL_memset4(dst, val, len) memset(dst, val, (len)*4)
+#ifdef HAS_SDL
+#include <SDL/SDL_stdinc.h>
+#else
+#define SDL_memset4(dst, val, len)		\
+do {						\
+	uint32_t _count = (len);		\
+	uint32_t _n = (_count + 3) / 4;		\
+	uint32_t *_p = static_cast<uint32_t *>(dst);	\
+	uint32_t _val = (val);			\
+	if (len == 0) break;			\
+        switch (_count % 4) {			\
+        case 0: do {    *_p++ = _val;		\
+        case 3:         *_p++ = _val;		\
+        case 2:         *_p++ = _val;		\
+        case 1:         *_p++ = _val;		\
+		} while ( --_n );		\
+	}					\
+} while(0)
+#define SDL_memcpy4(dst, src, len) memcpy(dst, src, (len) << 2)
 #endif
 
 using namespace std;
@@ -1382,7 +1395,7 @@ void CTeletextDecoder::DoFlashing(int startrow)
               case 3: if (flashphase>=500 && flashphase<750) doflash = true;
             }
             break;
-          case 0x11 :  // decremental flash
+          case 0x14 :  // decremental flash
             decflash--;
             if (decflash<1) decflash = 3;
             switch (decflash)
@@ -1660,7 +1673,7 @@ void CTeletextDecoder::Decode_ADIP() /* additional information table */
     m_txtCache->ADIP_Pg[i] = 0; /* completely decoded: clear entry */
   } /* next adip page i */
 
-  while (!m_txtCache->ADIP_Pg[m_txtCache->ADIP_PgMax] && (m_txtCache->ADIP_PgMax >= 0)) /* and shrink table */
+  while ((m_txtCache->ADIP_PgMax >= 0) && !m_txtCache->ADIP_Pg[m_txtCache->ADIP_PgMax]) /* and shrink table */
     m_txtCache->ADIP_PgMax--;
 }
 

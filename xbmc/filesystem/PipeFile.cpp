@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -23,6 +22,7 @@
 #include "threads/SingleLock.h"
 #include "PipesManager.h"
 #include "utils/StringUtils.h"
+#include "URL.h"
 
 using namespace XFILE;
 
@@ -82,7 +82,7 @@ unsigned int CPipeFile::Read(void* lpBuf, int64_t uiBufSize)
   if (!m_pipe)
     return -1;
   
-  return m_pipe->Read((char *)lpBuf,(int)uiBufSize,INFINITE);
+  return m_pipe->Read((char *)lpBuf,(int)uiBufSize);
 }
 
 int CPipeFile::Write(const void* lpBuf, int64_t uiBufSize)
@@ -90,7 +90,7 @@ int CPipeFile::Write(const void* lpBuf, int64_t uiBufSize)
   if (!m_pipe)
     return -1;
   
-  return (int)(m_pipe->Write((const char *)lpBuf,(int)uiBufSize,INFINITE)); // its not the size. its bool. either all was written or not.
+  return (int)(m_pipe->Write((const char *)lpBuf,(int)uiBufSize)); // its not the size. its bool. either all was written or not.
 }
 
 void CPipeFile::SetEof()
@@ -179,7 +179,7 @@ void CPipeFile::OnPipeOverFlow()
     m_listeners[l]->OnPipeOverFlow();
 }
 
-__int64	CPipeFile::GetAvailableRead()
+int64_t	CPipeFile::GetAvailableRead()
 {
   return m_pipe->GetAvailableRead();
 }

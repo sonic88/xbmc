@@ -77,6 +77,7 @@
 					<align>right</align>
 					<aligny>center</aligny>
 					<scroll>false</scroll>
+					<visible>!IsEmpty(Container(11).ListItem.NextTitle)</visible>
 					<label>$LOCALIZE[19031]: $INFO[Container(11).ListItem.NextTitle]</label>
 				</control>
 			</control>
@@ -289,6 +290,7 @@
 				<orientation>vertical</orientation>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>
@@ -335,6 +337,7 @@
 					<aligny>center</aligny>
 					<font>font10_title</font>
 					<textcolor>blue</textcolor>
+					<visible>Container(12).ListItem.HasEpg</visible>
 					<label>$INFO[Container(12).ListItem.StartTime]</label>
 				</control>
 				<control type="progress">
@@ -343,6 +346,7 @@
 					<posy>30</posy>
 					<width>510</width>
 					<height>8</height>
+					<visible>Container(12).ListItem.HasEpg</visible>
 					<info>Container(12).ListItem.Progress</info>
 				</control>
 				<control type="label">
@@ -354,6 +358,7 @@
 					<aligny>center</aligny>
 					<font>font10_title</font>
 					<textcolor>blue</textcolor>
+					<visible>Container(12).ListItem.HasEpg</visible>
 					<label>$INFO[Container(12).ListItem.EndTime]</label>
 				</control>
 				<control type="textbox">
@@ -380,6 +385,7 @@
 					<align>right</align>
 					<aligny>center</aligny>
 					<scroll>false</scroll>
+					<visible>!IsEmpty(Container(12).ListItem.NextTitle)</visible>
 					<label>$LOCALIZE[19031]: $INFO[Container(12).ListItem.NextTitle]</label>
 				</control>
 			</control>
@@ -462,6 +468,7 @@
 						<height>6</height>
 						<colordiffuse>88FFFFFF</colordiffuse>
 						<info>ListItem.Progress</info>
+						<visible>ListItem.HasEpg</visible>
 					</control>
 					<control type="image">
 						<posx>340</posx>
@@ -556,6 +563,7 @@
 						<height>6</height>
 						<colordiffuse>88FFFFFF</colordiffuse>
 						<info>ListItem.Progress</info>
+						<visible>ListItem.HasEpg</visible>
 					</control>
 					<control type="image">
 						<posx>340</posx>
@@ -590,6 +598,7 @@
 				<orientation>vertical</orientation>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>
@@ -669,6 +678,15 @@
 						<width>20</width>
 						<height>16</height>
 						<texture>$INFO[ListItem.Overlay]</texture>
+						<visible>!ListItem.IsResumable</visible>
+					</control>
+					<control type="image">
+						<posx>730</posx>
+						<posy>14</posy>
+						<width>16</width>
+						<height>16</height>
+						<texture>OverlayWatching.png</texture>
+						<visible>ListItem.IsResumable</visible>
 					</control>
 				</itemlayout>
 				<focusedlayout height="40" width="760">
@@ -735,6 +753,15 @@
 						<width>20</width>
 						<height>16</height>
 						<texture>$INFO[ListItem.Overlay]</texture>
+						<visible>!ListItem.IsResumable</visible>
+					</control>
+					<control type="image">
+						<posx>730</posx>
+						<posy>14</posy>
+						<width>16</width>
+						<height>16</height>
+						<texture>OverlayWatching.png</texture>
+						<visible>ListItem.IsResumable</visible>
 					</control>
 				</focusedlayout>
 			</control>
@@ -754,6 +781,7 @@
 				<orientation>vertical</orientation>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>
@@ -795,24 +823,10 @@
 					<scrollout>false</scrollout>
 					<pauseatend>1000</pauseatend>
 				</control>
-				<control type="fadelabel">
-					<posx>10</posx>
-					<posy>250</posy>
-					<width>290</width>
-					<height>25</height>
-					<label>$INFO[Container(13).ListItem.PlotOutline]</label>
-					<align>center</align>
-					<aligny>center</aligny>
-					<font>font12</font>
-					<textcolor>blue</textcolor>
-					<shadowcolor>black</shadowcolor>
-					<scrollout>false</scrollout>
-					<pauseatend>1000</pauseatend>
-				</control>
 				<control type="textbox">
 					<description>Description Value for TV Show</description>
 					<posx>10</posx>
-					<posy>280</posy>
+					<posy>270</posy>
 					<width>290</width>
 					<height>280</height>
 					<font>font12</font>
@@ -1204,9 +1218,9 @@
 							<visible>!Control.HasFocus(14)</visible>
 						</control>
 						<control type="image">
-							<posx>980</posx>
+							<posx>940</posx>
 							<posy>0</posy>
-							<width>120</width>
+							<width>155</width>
 							<height>40</height>
 							<colordiffuse>33FFFFFF</colordiffuse>
 							<texture border="5">StackFO.png</texture>
@@ -1324,6 +1338,7 @@
 				</control>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>
@@ -1678,6 +1693,7 @@
 				</control>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>
@@ -1794,7 +1810,7 @@
 							<aligny>center</aligny>
 							<textcolor>grey2</textcolor>
 							<selectedcolor>selected</selectedcolor>
-							<info>ListItem.Label2</info>
+							<info>ListItem.Date</info>
 						</control>
 						<control type="label">
 							<posx>310</posx>
@@ -1913,7 +1929,7 @@
 							<aligny>center</aligny>
 							<textcolor>white</textcolor>
 							<selectedcolor>selected</selectedcolor>
-							<info>ListItem.Label2</info>
+							<info>ListItem.Date</info>
 						</control>
 						<control type="label">
 							<posx>310</posx>
@@ -2001,6 +2017,7 @@
 				</control>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>
@@ -2304,7 +2321,7 @@
 						<control type="textbox">
 							<description>Plot Value for TVShow</description>
 							<posx>50</posx>
-							<posy>40</posy>
+							<posy>35</posy>
 							<width>1000</width>
 							<height>60</height>
 							<font>font12</font>
@@ -2375,6 +2392,7 @@
 				</control>
 			</control>
 			<control type="label">
+				<animation effect="slide" start="0,0" end="-90,0" time="0" condition="system.getbool(input.enablemouse)">Conditional</animation>
 				<description>Page Count Label</description>
 				<posx>40r</posx>
 				<posy>53r</posy>

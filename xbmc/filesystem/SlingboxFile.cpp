@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,6 +25,7 @@
 #include "settings/Settings.h"
 #include "utils/log.h"
 #include "utils/XMLUtils.h"
+#include "URL.h"
 
 using namespace XFILE;
 using namespace std;
@@ -68,7 +68,7 @@ bool CSlingboxFile::Open(const CURL& url)
   // Connect to the Slingbox
   if (m_pSlingbox->Connect(bAdmin, url.GetPassWord()))
   {
-    CLog::Log(LOGDEBUG, "%s - Sucessfully connected to Slingbox: %s",
+    CLog::Log(LOGDEBUG, "%s - Successfully connected to Slingbox: %s",
       __FUNCTION__, url.GetHostName().c_str());
   }
   else
@@ -502,7 +502,7 @@ void CSlingboxFile::LoadSettings(const CStdString& strHostname)
   }
 
   // Load the XML file
-  TiXmlDocument slingboxXML;
+  CXBMCTinyXML slingboxXML;
   if (!slingboxXML.LoadFile(slingboxXMLFile))
   {
     CLog::Log(LOGERROR, "%s - Error loading %s - line %d\n%s", __FUNCTION__, 

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -82,102 +81,61 @@ CPVRChannelGroups *CPVRChannelGroupsContainer::Get(bool bRadio) const
   return bRadio ? m_groupsRadio : m_groupsTV;
 }
 
-CPVRChannelGroupInternal *CPVRChannelGroupsContainer::GetGroupAll(bool bRadio) const
+CPVRChannelGroupPtr CPVRChannelGroupsContainer::GetGroupAll(bool bRadio) const
 {
-  CPVRChannelGroupInternal *group = NULL;
-  const CPVRChannelGroups *groups = Get(bRadio);
-  if (groups)
-    group = groups->GetGroupAll();
-
-  return group;
+  return Get(bRadio)->GetGroupAll();
 }
 
-CPVRChannelGroup *CPVRChannelGroupsContainer::GetById(bool bRadio, int iGroupId) const
+CPVRChannelGroupPtr CPVRChannelGroupsContainer::GetByIdFromAll(int iGroupId) const
 {
-  CPVRChannelGroup *group = NULL;
-  const CPVRChannelGroups *groups = Get(bRadio);
-  if (groups)
-    group = groups->GetById(iGroupId);
-
-  return group;
-}
-
-CPVRChannelGroup *CPVRChannelGroupsContainer::GetByIdFromAll(int iGroupId) const
-{
-  CPVRChannelGroup *group = m_groupsRadio->GetById(iGroupId);
+  CPVRChannelGroupPtr group = m_groupsTV->GetById(iGroupId);
   if (!group)
-    group = m_groupsTV->GetById(iGroupId);
+    group = m_groupsRadio->GetById(iGroupId);
 
   return group;
 }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetChannelById(int iChannelId) const
+CPVRChannelPtr CPVRChannelGroupsContainer::GetChannelById(int iChannelId) const
 {
-  CPVRChannel *channel = m_groupsTV->GetGroupAll()->GetByChannelID(iChannelId);
+  CPVRChannelPtr channel = m_groupsTV->GetGroupAll()->GetByChannelID(iChannelId);
   if (!channel)
     channel = m_groupsRadio->GetGroupAll()->GetByChannelID(iChannelId);
 
   return channel;
 }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetChannelByEpgId(int iEpgId) const
+CPVRChannelPtr CPVRChannelGroupsContainer::GetChannelByEpgId(int iEpgId) const
 {
-  CPVRChannel *channel = m_groupsTV->GetGroupAll()->GetByChannelEpgID(iEpgId);
+  CPVRChannelPtr channel = m_groupsTV->GetGroupAll()->GetByChannelEpgID(iEpgId);
   if (!channel)
     channel = m_groupsRadio->GetGroupAll()->GetByChannelEpgID(iEpgId);
 
   return channel;
 }
 
-bool CPVRChannelGroupsContainer::GetGroupsDirectory(const CStdString &strBase, CFileItemList *results, bool bRadio)
+bool CPVRChannelGroupsContainer::GetGroupsDirectory(CFileItemList *results, bool bRadio)
 {
   const CPVRChannelGroups *channelGroups = Get(bRadio);
-  CFileItemPtr item;
-
-  /* add all groups */
-  for (unsigned int ptr = 0; ptr < channelGroups->size(); ptr++)
+  if (channelGroups)
   {
-    const CPVRChannelGroup *group = channelGroups->at(ptr);
-    CStdString strGroup = strBase + "/" + group->GroupName() + "/";
-    item.reset(new CFileItem(strGroup, true));
-    item->SetLabel(group->GroupName());
-    item->SetLabelPreformated(true);
-    results->Add(item);
+    channelGroups->GetGroupList(results);
+    return true;
   }
-
-  return true;
+  return false;
 }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetByPath(const CStdString &strPath)
+CFileItemPtr CPVRChannelGroupsContainer::GetByPath(const CStdString &strPath) const
 {
-  const CPVRChannelGroup *channels = NULL;
-  int iChannelIndex(-1);
-
-  /* get the filename from curl */
-  CURL url(strPath);
-  CStdString strFileName = url.GetFileName();
-  URIUtils::RemoveSlashAtEnd(strFileName);
-
-  CStdString strCheckPath;
   for (unsigned int bRadio = 0; bRadio <= 1; bRadio++)
   {
     const CPVRChannelGroups *groups = Get(bRadio == 1);
-    for (unsigned int iGroupPtr = 0; iGroupPtr < groups->size(); iGroupPtr++)
-    {
-      const CPVRChannelGroup *group = groups->at(iGroupPtr);
-      strCheckPath.Format("channels/%s/%s/", group->IsRadio() ? "radio" : "tv", group->GroupName().c_str());
-
-      if (strFileName.Left(strCheckPath.length()) == strCheckPath)
-      {
-        strFileName.erase(0, strCheckPath.length());
-        channels = group;
-        iChannelIndex = atoi(strFileName.c_str());
-        break;
-      }
-    }
+    CFileItemPtr retVal = groups->GetByPath(strPath);
+    if (retVal && retVal->HasPVRChannelInfoTag())
+      return retVal;
   }
 
-  return channels ? channels->GetByIndex(iChannelIndex) : NULL;
+  CFileItemPtr retVal(new CFileItem);
+  return retVal;
 }
 
 bool CPVRChannelGroupsContainer::GetDirectory(const CStdString& strPath, CFileItemList &results)
@@ -209,17 +167,17 @@ bool CPVRChannelGroupsContainer::GetDirectory(const CStdString& strPath, CFileIt
   }
   else if (fileName == "channels/tv")
   {
-    return GetGroupsDirectory(strBase, &results, false);
+    return GetGroupsDirectory(&results, false);
   }
   else if (fileName == "channels/radio")
   {
-    return GetGroupsDirectory(strBase, &results, true);
+    return GetGroupsDirectory(&results, true);
   }
   else if (fileName.Left(12) == "channels/tv/")
   {
     CStdString strGroupName(fileName.substr(12));
     URIUtils::RemoveSlashAtEnd(strGroupName);
-    const CPVRChannelGroup *group = GetTV()->GetByName(strGroupName);
+    CPVRChannelGroupPtr group = GetTV()->GetByName(strGroupName);
     if (!group)
       group = GetGroupAllTV();
     if (group)
@@ -230,7 +188,7 @@ bool CPVRChannelGroupsContainer::GetDirectory(const CStdString& strPath, CFileIt
   {
     CStdString strGroupName(fileName.substr(15));
     URIUtils::RemoveSlashAtEnd(strGroupName);
-    const CPVRChannelGroup *group = GetRadio()->GetByName(strGroupName);
+    CPVRChannelGroupPtr group = GetRadio()->GetByName(strGroupName);
     if (!group)
       group = GetGroupAllRadio();
     if (group)
@@ -246,29 +204,30 @@ int CPVRChannelGroupsContainer::GetNumChannelsFromAll()
   return GetGroupAllTV()->Size() + GetGroupAllRadio()->Size();
 }
 
-CPVRChannelGroup *CPVRChannelGroupsContainer::GetSelectedGroup(bool bRadio) const
+CPVRChannelGroupPtr CPVRChannelGroupsContainer::GetSelectedGroup(bool bRadio) const
 {
   return Get(bRadio)->GetSelectedGroup();
 }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetByUniqueID(int iClientChannelNumber, int iClientID)
+CPVRChannelPtr CPVRChannelGroupsContainer::GetByUniqueID(int iUniqueChannelId, int iClientID)
 {
-  CPVRChannel *channel = NULL;
-  const CPVRChannelGroup* channelgroup = GetGroupAllTV();
+  CPVRChannelPtr channel;
+  CPVRChannelGroupPtr channelgroup = GetGroupAllTV();
+  if (channelgroup)
+    channel = channelgroup->GetByClient(iUniqueChannelId, iClientID);
 
-  if (channelgroup == NULL)
+  if (!channelgroup || !channel)
     channelgroup = GetGroupAllRadio();
-
-  if (channelgroup != NULL)
-    channel = channelgroup->GetByClient(iClientChannelNumber, iClientID);
+  if (channelgroup)
+    channel = channelgroup->GetByClient(iUniqueChannelId, iClientID);
 
   return channel;
 }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetByChannelIDFromAll(int iChannelID)
+CFileItemPtr CPVRChannelGroupsContainer::GetByChannelIDFromAll(int iChannelID)
 {
-  CPVRChannel *channel = NULL;
-  const CPVRChannelGroup* channelgroup = GetGroupAllTV();
+  CPVRChannelPtr channel;
+  CPVRChannelGroupPtr channelgroup = GetGroupAllTV();
   if (channelgroup)
     channel = channelgroup->GetByChannelID(iChannelID);
 
@@ -279,33 +238,14 @@ CPVRChannel *CPVRChannelGroupsContainer::GetByChannelIDFromAll(int iChannelID)
       channel = channelgroup->GetByChannelID(iChannelID);
   }
 
-  return channel;
-}
+  if (channel)
+  {
+    CFileItemPtr retVal = CFileItemPtr(new CFileItem(*channel));
+    return retVal;
+  }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetByClientFromAll(unsigned int iClientId, unsigned int iChannelUid)
-{
-  CPVRChannel *channel = NULL;
-
-  channel = GetGroupAllTV()->GetByClient(iChannelUid, iClientId);
-
-  if (channel == NULL)
-    channel = GetGroupAllRadio()->GetByClient(iChannelUid, iClientId);
-
-  return channel;
-}
-
-CPVRChannel *CPVRChannelGroupsContainer::GetByUniqueIDFromAll(int iUniqueID)
-{
-  CPVRChannel *channel;
-  const CPVRChannelGroup* channelgroup = GetGroupAllTV();
-
-  if (channelgroup == NULL)
-    channelgroup = GetGroupAllRadio();
-
-  if (channelgroup != NULL)
-    channel = channelgroup->GetByUniqueID(iUniqueID);
-
-  return NULL;
+  CFileItemPtr retVal = CFileItemPtr(new CFileItem);
+  return retVal;
 }
 
 void CPVRChannelGroupsContainer::SearchMissingChannelIcons(void)
@@ -313,24 +253,32 @@ void CPVRChannelGroupsContainer::SearchMissingChannelIcons(void)
   CLog::Log(LOGINFO, "PVRChannelGroupsContainer - %s - starting channel icon search", __FUNCTION__);
 
   // TODO: Add Process dialog here
-  CPVRChannelGroup* channelgrouptv  = (CPVRChannelGroup *) GetGroupAllTV();
-  CPVRChannelGroup* channelgroupradio  =(CPVRChannelGroup *) GetGroupAllRadio();
+  CPVRChannelGroupPtr channelgrouptv  = GetGroupAllTV();
+  CPVRChannelGroupPtr channelgroupradio = GetGroupAllRadio();
 
-  if (channelgrouptv != NULL)
+  if (channelgrouptv)
     channelgrouptv->SearchAndSetChannelIcons(true);
-  if (channelgroupradio != NULL)
+  if (channelgroupradio)
     channelgroupradio->SearchAndSetChannelIcons(true);
 
-  CGUIDialogOK::ShowAndGetInput(19103,0,20177,0);
+  CGUIDialogOK::ShowAndGetInput(19167,0,20177,0);
 }
 
-CPVRChannel *CPVRChannelGroupsContainer::GetLastPlayedChannel(void) const
+CFileItemPtr CPVRChannelGroupsContainer::GetLastPlayedChannel(void) const
 {
-  CPVRChannel *lastChannel = GetGroupAllTV()->GetLastPlayedChannel();
+  CFileItemPtr lastChannel = GetGroupAllTV()->GetLastPlayedChannel();
+  bool bHasTVChannel(lastChannel && lastChannel->HasPVRChannelInfoTag());
 
-  CPVRChannel *lastRadioChannel = GetGroupAllRadio()->GetLastPlayedChannel();
-  if (!lastChannel || (lastRadioChannel && lastChannel->LastWatched() < lastRadioChannel->LastWatched()))
-    lastChannel = lastRadioChannel;
+  CFileItemPtr lastRadioChannel = GetGroupAllRadio()->GetLastPlayedChannel();
+  bool bHasRadioChannel(lastRadioChannel && lastRadioChannel->HasPVRChannelInfoTag());
+
+  if (!bHasTVChannel || (bHasRadioChannel && lastChannel->GetPVRChannelInfoTag()->LastWatched() < lastRadioChannel->GetPVRChannelInfoTag()->LastWatched()))
+    return lastRadioChannel;
 
   return lastChannel;
+}
+
+bool CPVRChannelGroupsContainer::CreateChannel(const CPVRChannel &channel)
+{
+  return GetGroupAll(channel.IsRadio())->AddNewChannel(channel);
 }

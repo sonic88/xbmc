@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -143,32 +143,33 @@ void CreateSkeletonHeaderImpl(CXBTF& xbtf, std::string fullPath, std::string rel
 
       //stat to check for dir type (reiserfs fix)
       std::string fileN = fullPath + "/" + dp->d_name;
-      stat(fileN.c_str(), &stat_p);
-
-      if (dp->d_type == DT_DIR || stat_p.st_mode & S_IFDIR)
+      if (stat(fileN.c_str(), &stat_p) == 0)
       {
-        std::string tmpPath = relativePath;
-        if (tmpPath.size() > 0)
+        if (dp->d_type == DT_DIR || stat_p.st_mode & S_IFDIR)
         {
-          tmpPath += "/";
-        }
+          std::string tmpPath = relativePath;
+          if (tmpPath.size() > 0)
+          {
+            tmpPath += "/";
+          }
 
-        CreateSkeletonHeaderImpl(xbtf, fullPath + DIR_SEPARATOR + dp->d_name, tmpPath + dp->d_name);
-      }
-      else if (IsGraphicsFile(dp->d_name))
-      {
-        std::string fileName = "";
-        if (relativePath.size() > 0)
+          CreateSkeletonHeaderImpl(xbtf, fullPath + DIR_SEPARATOR + dp->d_name, tmpPath + dp->d_name);
+        }
+        else if (IsGraphicsFile(dp->d_name))
         {
-          fileName += relativePath;
-          fileName += "/";
+          std::string fileName = "";
+          if (relativePath.size() > 0)
+          {
+            fileName += relativePath;
+            fileName += "/";
+          }
+
+          fileName += dp->d_name;
+
+          CXBTFFile file;
+          file.SetPath(fileName);
+          xbtf.GetFiles().push_back(file);
         }
-
-        fileName += dp->d_name;
-
-        CXBTFFile file;
-        file.SetPath(fileName);
-        xbtf.GetFiles().push_back(file);
       }
     }
 
@@ -195,7 +196,8 @@ CXBTFFrame appendContent(CXBTFWriter &writer, int width, int height, unsigned ch
   if ((flags & FLAGS_USE_LZO) == FLAGS_USE_LZO)
   {
     // grab a temporary buffer for unpacking into
-    unsigned char *packed  = new unsigned char[size + size / 16 + 64 + 3]; // see simple.c in lzo
+    packedSize = size + size / 16 + 64 + 3; // see simple.c in lzo
+    unsigned char *packed  = new unsigned char[packedSize];
     unsigned char *working = new unsigned char[LZO1X_999_MEM_COMPRESS];
     if (packed && working)
     {
@@ -208,8 +210,15 @@ CXBTFFrame appendContent(CXBTFWriter &writer, int width, int height, unsigned ch
       else
       { // success
         lzo_uint optimSize = size;
-        lzo1x_optimize(packed, packedSize, data, &optimSize, NULL);
-        writer.AppendContent(packed, packedSize);
+        if (lzo1x_optimize(packed, packedSize, data, &optimSize, NULL) != LZO_E_OK || optimSize != size)
+        { //optimisation failed
+          packedSize = size;
+          writer.AppendContent(data, size);
+        }
+        else
+        { // success
+          writer.AppendContent(packed, packedSize);
+        }
       }
       delete[] working;
       delete[] packed;

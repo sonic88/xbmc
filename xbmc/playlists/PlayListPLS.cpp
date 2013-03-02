@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -29,7 +28,7 @@
 #include "utils/CharsetConverter.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
-#include "tinyXML/tinyxml.h"
+#include "utils/XBMCTinyXML.h"
 
 using namespace std;
 using namespace XFILE;
@@ -293,7 +292,7 @@ bool CPlayListASX::LoadData(istream& stream)
   }
   else
   {
-    TiXmlDocument xmlDoc;
+    CXBMCTinyXML xmlDoc;
     stream >> xmlDoc;
 
     if (xmlDoc.Error())
@@ -316,7 +315,7 @@ bool CPlayListASX::LoadData(istream& stream)
       pChild = pNode->IterateChildren(pChild);
       if(pChild)
       {
-        if (pChild->Type() == TiXmlNode::ELEMENT)
+        if (pChild->Type() == TiXmlNode::TINYXML_ELEMENT)
         {
           value = pChild->Value();
           value.ToLower();

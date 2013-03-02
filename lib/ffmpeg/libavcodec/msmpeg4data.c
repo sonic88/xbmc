@@ -1,5 +1,5 @@
 /*
- * MSMPEG4 backend for ffmpeg encoder and decoder
+ * MSMPEG4 backend for encoder and decoder
  * copyright (c) 2001 Fabrice Bellard
  * copyright (c) 2002-2004 Michael Niedermayer <michaelni@gmx.at>
  *
@@ -592,9 +592,9 @@ static const int8_t table4_run[168] = {
  29, 30, 31, 32, 33, 34, 35, 36,
 };
 
-extern const uint16_t inter_vlc[103][2];
-extern const int8_t inter_level[102];
-extern const int8_t inter_run[102];
+extern const uint16_t ff_inter_vlc[103][2];
+extern const int8_t ff_inter_level[102];
+extern const int8_t ff_inter_run[102];
 
 extern const uint16_t ff_mpeg4_intra_vlc[103][2];
 extern const int8_t ff_mpeg4_intra_level[102];
@@ -647,9 +647,9 @@ RLTable rl_table[NB_RL_TABLES] = {
     {
         102,
         58,
-        inter_vlc,
-        inter_run,
-        inter_level,
+        ff_inter_vlc,
+        ff_inter_run,
+        ff_inter_level,
     },
 };
 

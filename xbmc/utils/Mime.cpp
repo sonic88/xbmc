@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2012 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -101,6 +100,7 @@ map<string, string> fillMimeTypes()
   mimeTypes.insert(pair<string, string>("dif",       "video/x-dv"));
   mimeTypes.insert(pair<string, string>("dir",       "application/x-director"));
   mimeTypes.insert(pair<string, string>("dl",        "video/dl"));
+  mimeTypes.insert(pair<string, string>("divx",      "video/x-msvideo"));
   mimeTypes.insert(pair<string, string>("doc",       "application/msword"));
   mimeTypes.insert(pair<string, string>("docx",      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
   mimeTypes.insert(pair<string, string>("dot",       "application/msword"));
@@ -492,6 +492,7 @@ map<string, string> fillMimeTypes()
   mimeTypes.insert(pair<string, string>("xpm",       "image/xpm"));
   mimeTypes.insert(pair<string, string>("x-png",     "image/png"));
   mimeTypes.insert(pair<string, string>("xsr",       "video/x-amt-showrun"));
+  mimeTypes.insert(pair<string, string>("xvid",      "video/x-msvideo"));
   mimeTypes.insert(pair<string, string>("xwd",       "image/x-xwd"));
   mimeTypes.insert(pair<string, string>("xyz",       "chemical/x-pdb"));
   mimeTypes.insert(pair<string, string>("z",         "application/x-compressed"));

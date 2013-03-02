@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,6 +24,8 @@
 #include "SettingsControls.h"
 #include "GUISettings.h"
 #include "utils/Stopwatch.h"
+
+typedef boost::shared_ptr<CBaseSettingControl> BaseSettingControlPtr;
 
 class CGUIWindowSettingsCategory :
       public CGUIWindow
@@ -48,7 +49,7 @@ protected:
   void FillInCharSets(CSetting *pSetting);
   void FillInSkinFonts(CSetting *pSetting);
   void FillInSoundSkins(CSetting *pSetting);
-  void FillInLanguages(CSetting *pSetting);
+  void FillInLanguages(CSetting *pSetting, const std::vector<CStdString> &languages = std::vector<CStdString>(), const std::vector<CStdString> &languageKeys = std::vector<CStdString>());
   DisplayMode FillInScreens(CStdString strSetting, RESOLUTION res);
   void FillInResolutions(CStdString strSetting, DisplayMode mode, RESOLUTION res, bool UserChange);
   void FillInRefreshRates(CStdString strSetting, RESOLUTION res, bool UserChange);
@@ -75,14 +76,14 @@ protected:
   void CheckForUpdates();
   void FreeSettingsControls();
   virtual void FreeControls();
-  virtual void OnClick(CBaseSettingControl *pSettingControl);
-  virtual void OnSettingChanged(CBaseSettingControl *pSettingControl);
+  virtual void OnClick(BaseSettingControlPtr pSettingControl);
+  virtual void OnSettingChanged(BaseSettingControlPtr pSettingControl);
   CGUIControl* AddSetting(CSetting *pSetting, float width, int &iControlID);
-  CBaseSettingControl* GetSetting(const CStdString &strSetting);
+  BaseSettingControlPtr GetSetting(const CStdString &strSetting);
 
-  void ValidatePortNumber(CBaseSettingControl* pSettingControl, const CStdString& userPort, const CStdString& privPort, bool listening=true);
+  void ValidatePortNumber(BaseSettingControlPtr pSettingControl, const CStdString& userPort, const CStdString& privPort, bool listening=true);
 
-  std::vector<CBaseSettingControl *> m_vecSettings;
+  std::vector<BaseSettingControlPtr> m_vecSettings;
   int m_iSection;
   int m_iScreen;
   vecSettingsCategory m_vecSections;
@@ -104,7 +105,7 @@ protected:
 
   bool m_returningFromSkinLoad; // true if we are returning from loading the skin
 
-  CBaseSettingControl *m_delayedSetting; ///< Current delayed setting \sa CBaseSettingControl::SetDelayed()
+  boost::shared_ptr<CBaseSettingControl> m_delayedSetting; ///< Current delayed setting \sa CBaseSettingControl::SetDelayed()
   CStopWatch           m_delayedTimer;   ///< Delayed setting timer
 };
 

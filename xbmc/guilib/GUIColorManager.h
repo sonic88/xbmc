@@ -9,7 +9,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,9 +23,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -38,7 +37,7 @@
 
 #include <map>
 
-class TiXmlDocument;
+class CXBMCTinyXML;
 
 typedef uint32_t color_t;
 
@@ -55,7 +54,7 @@ public:
   void Clear();
 
 protected:
-  bool LoadXML(TiXmlDocument &xmlDoc);
+  bool LoadXML(CXBMCTinyXML &xmlDoc);
 
   std::map<CStdString, color_t> m_colors;
   typedef std::map<CStdString, color_t>::iterator iColor;

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -32,11 +31,11 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
     Reset();
 
   XMLUtils::GetString(artist,"name",strArtist);
-  XMLUtils::GetStringArray(artist, "genre", genre, prioritise);
-  XMLUtils::GetStringArray(artist, "style", styles, prioritise);
-  XMLUtils::GetStringArray(artist, "mood", moods, prioritise);
-  XMLUtils::GetStringArray(artist, "yearsactive", yearsActive, prioritise);
-  XMLUtils::GetStringArray(artist, "instruments", instruments, prioritise);
+  XMLUtils::GetStringArray(artist, "genre", genre, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist, "style", styles, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist, "mood", moods, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist, "yearsactive", yearsActive, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist, "instruments", instruments, prioritise, g_advancedSettings.m_musicItemSeparator);
 
   XMLUtils::GetString(artist, "born", strBorn);
   XMLUtils::GetString(artist, "formed", strFormed);
@@ -125,7 +124,7 @@ bool CArtist::Save(TiXmlNode *node, const CStdString &tag, const CStdString& str
   XMLUtils::SetString(artist,   "disbanded", strDisbanded);
   if (!thumbURL.m_xml.empty())
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(thumbURL.m_xml);
     const TiXmlNode* thumb = doc.FirstChild("thumb");
     while (thumb)
@@ -137,7 +136,7 @@ bool CArtist::Save(TiXmlNode *node, const CStdString &tag, const CStdString& str
   XMLUtils::SetString(artist,        "path", strPath);
   if (fanart.m_xml.size())
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(fanart.m_xml);
     artist->InsertEndChild(*doc.RootElement());
   }

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2005-2011 Team XBMC
+* Copyright (C) 2005-2013 Team XBMC
 * http://www.xbmc.org
 *
 * This Program is free software; you can redistribute it and/or modify
@@ -14,14 +14,14 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with XBMC; see the file COPYING. If not, write to
-* the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-* http://www.gnu.org/copyleft/gpl.html
+* <http://www.gnu.org/licenses/>.
 *
 */
 
 #pragma once
 
 #include <windows.h>
+#include "commons/Exception.h"
 
 namespace XbmcThreads
 {
@@ -33,11 +33,23 @@ namespace XbmcThreads
   {
     DWORD key;
   public:
-    inline ThreadLocal() { key = TlsAlloc(); }
+    inline ThreadLocal()
+    {
+       if ((key = TlsAlloc()) == TLS_OUT_OF_INDEXES)
+          throw XbmcCommons::UncheckedException("Ran out of Windows TLS Indexes. Windows Error Code %d",(int)GetLastError());
+    }
 
-    inline ~ThreadLocal() { TlsFree(key);  }
+    inline ~ThreadLocal() 
+    {
+       if (!TlsFree(key))
+          throw XbmcCommons::UncheckedException("Failed to free Tls %d, Windows Error Code %d",(int)key, (int)GetLastError());
+    }
 
-    inline void set(T* val) {  TlsSetValue(key,(LPVOID)val);  }
+    inline void set(T* val)
+    {
+       if (!TlsSetValue(key,(LPVOID)val))
+          throw XbmcCommons::UncheckedException("Failed to set Tls %d, Windows Error Code %d",(int)key, (int)GetLastError());
+    }
 
     inline T* get() { return (T*)TlsGetValue(key); }
   };

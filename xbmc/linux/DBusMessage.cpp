@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,21 +13,23 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 #include "DBusMessage.h"
 #ifdef HAS_DBUS
 #include "utils/log.h"
+#include "settings/AdvancedSettings.h"
 
 CDBusMessage::CDBusMessage(const char *destination, const char *object, const char *interface, const char *method)
 {
   m_reply = NULL;
   m_message = dbus_message_new_method_call (destination, object, interface, method);
   m_haveArgs = false;
-  CLog::Log(LOGDEBUG, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
+
+  if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+    CLog::Log(LOGDEBUG, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
 }
 
 CDBusMessage::~CDBusMessage()
@@ -45,6 +47,13 @@ bool CDBusMessage::AppendArgument(const char *string)
 {
   PrepareArgument();
   return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_STRING, &string);
+}
+
+bool CDBusMessage::AppendArgument(const bool b)
+{
+  dbus_bool_t arg = (b == true);
+  PrepareArgument();
+  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_BOOLEAN, &arg);
 }
 
 bool CDBusMessage::AppendArgument(const char **arrayString, unsigned int length)

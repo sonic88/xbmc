@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -29,7 +28,13 @@
 #elif defined(TARGET_LINUX) && defined(HAVE_LIBUSB)
 #define HAVE_PERIPHERAL_BUS_USB 1
 #include "linux/PeripheralBusUSBLibUSB.h"
+#elif defined(TARGET_FREEBSD) && defined(HAVE_LIBUSB)
+#define HAVE_PERIPHERAL_BUS_USB 1
+#include "linux/PeripheralBusUSBLibUSB.h"
 #elif defined(TARGET_DARWIN)
 #define HAVE_PERIPHERAL_BUS_USB 1
 #include "osx/PeripheralBusUSB.h"
+#elif defined(TARGET_ANDROID)
+#define HAVE_PERIPHERAL_BUS_USB 1
+#include "linux/PeripheralBusUSBLibUSB.h"
 #endif

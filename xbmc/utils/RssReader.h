@@ -10,7 +10,7 @@
 #endif // _MSC_VER > 1000
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,9 +24,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -37,7 +36,10 @@
 #include <vector>
 #include <list>
 
-#include "tinyXML/tinyxml.h"
+#include "utils/XBMCTinyXML.h"
+
+#include "system.h"
+
 
 #define RSS_COLOR_BODY  0
 #define RSS_COLOR_HEADLINE 1
@@ -83,7 +85,7 @@ private:
   std::vector<SYSTEMTIME *> m_vecTimeStamps;
   std::vector<int> m_vecUpdateTimes;
   int m_spacesBetweenFeeds;
-  TiXmlDocument m_xml;
+  CXBMCTinyXML m_xml;
   std::list<CStdString> m_tagSet;
   std::vector<std::string> m_vecUrls;
   std::vector<int> m_vecQueue;

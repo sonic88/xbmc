@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -37,15 +36,28 @@ enum EPLAYERCORES
   EPC_DVDPLAYER,
   EPC_MPLAYER,
   EPC_PAPLAYER,
-  EPC_EXTPLAYER
+#if defined(HAS_AMLPLAYER)
+  EPC_AMLPLAYER,
+#endif
+#if defined(HAS_OMXPLAYER)
+  EPC_OMXPLAYER,
+#endif
+  EPC_EXTPLAYER,
+  EPC_UPNPPLAYER,
 };
 
 typedef unsigned int PLAYERCOREID;
 typedef std::vector<PLAYERCOREID> VECPLAYERCORES;
-const PLAYERCOREID PCID_NONE = 0;
-const PLAYERCOREID PCID_DVDPLAYER = 1;
-const PLAYERCOREID PCID_MPLAYER = 2;
-const PLAYERCOREID PCID_PAPLAYER = 3;
+const PLAYERCOREID PCID_NONE = EPC_NONE;
+const PLAYERCOREID PCID_DVDPLAYER = EPC_DVDPLAYER;
+const PLAYERCOREID PCID_MPLAYER = EPC_MPLAYER;
+const PLAYERCOREID PCID_PAPLAYER = EPC_PAPLAYER;
+#if defined(HAS_AMLPLAYER)
+const PLAYERCOREID PCID_AMLPLAYER = EPC_AMLPLAYER;
+#endif
+#if defined(HAS_OMXPLAYER)
+const PLAYERCOREID PCID_OMXPLAYER = EPC_OMXPLAYER;
+#endif
 
 class CPlayerCoreFactory
 {
@@ -64,12 +76,17 @@ public:
   static void GetPlayers( VECPLAYERCORES &vecCores, bool audio, bool video ); //All audio players and/or video players
   static void GetPlayers( VECPLAYERCORES &vecCores );                         //All players
 
+  static void GetRemotePlayers( VECPLAYERCORES &vecCores );                   //All remote players we can attach to
+
   static PLAYERCOREID GetDefaultPlayer( const CFileItem& item );
 
   static PLAYERCOREID SelectPlayerDialog(VECPLAYERCORES &vecCores, float posX = 0, float posY = 0);
   static PLAYERCOREID SelectPlayerDialog(float posX, float posY);
 
   static bool LoadConfiguration(TiXmlElement* pConfig, bool clear);
+
+  static void OnPlayerDiscovered(const CStdString& id, const CStdString& name, EPLAYERCORES core);
+  static void OnPlayerRemoved(const CStdString& id);
 
 private:
   static std::vector<CPlayerCoreConfig *> s_vecCoreConfigs;

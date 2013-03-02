@@ -29,18 +29,6 @@
 #import <IOKit/hidsystem/ev_keymap.h>
 #import <sys/sysctl.h>
 
-#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_5
-#if __LP64__ || NS_BUILD_32_LIKE_64
-typedef long NSInteger;
-typedef unsigned long NSUInteger;
-#define NSUIntegerMax   ULONG_MAX
-#else
-typedef int NSInteger;
-typedef unsigned int NSUInteger;
-#define NSUIntegerMax   UINT_MAX
-#endif
-#endif
-
 NSString* const MediaKeyPower                 = @"MediaKeyPower";
 NSString* const MediaKeySoundMute             = @"MediaKeySoundMute";
 NSString* const MediaKeySoundUp               = @"MediaKeySoundUp";
@@ -55,8 +43,8 @@ NSString* const MediaKeyPreviousNotification  = @"MediaKeyPreviousNotification";
 #define kCGEventTapOptionDefault 0
 #endif
 
-#define NX_KEYSTATE_UP      0x0A
-#define NX_KEYSTATE_DOWN    0x0B
+#define NX_KEYSTATE_DOWN    0x0A
+#define NX_KEYSTATE_UP      0x0B
 
 @implementation HotKeyController
 
@@ -90,7 +78,7 @@ NSString* const MediaKeyPreviousNotification  = @"MediaKeyPreviousNotification";
   return NSUIntegerMax;
 }
  
-- (void)release
+- (oneway void)release
 {
   //do nothing
 }
@@ -180,9 +168,6 @@ static CGEventRef tapEventCallback2(CGEventTapProxy proxy, CGEventType type, CGE
   if ((type != NX_SYSDEFINED) || (![hot_key_controller getActive]))
     return event;
 
-  // eventWithCGEvent does not exist under 10.4 SDK,
-  // but thanks to how objc works, it will resolve at runtime on 10.5+
-  // but we will get a compile warning, just ignore it.
   NSEvent *nsEvent = [NSEvent eventWithCGEvent:event];
   if (!nsEvent || [nsEvent subtype] != 8) 
     return event;
@@ -193,7 +178,9 @@ static CGEventRef tapEventCallback2(CGEventTapProxy proxy, CGEventType type, CGE
   int keyState = (keyFlags & 0xFF00) >> 8;
   BOOL keyIsRepeat = (keyFlags & 0x1) > 0;
   
-  if (keyIsRepeat) 
+  // allow repeated keypresses for volume buttons
+  // all other repeated keypresses are handled by the os (is this really good?)
+  if (keyIsRepeat && keyCode != NX_KEYTYPE_SOUND_UP && keyCode != NX_KEYTYPE_SOUND_DOWN) 
     return event;
   
   NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
@@ -307,8 +294,9 @@ static CGEventRef tapEventCallback(CGEventTapProxy proxy, CGEventType type, CGEv
     m_active = NO;
     m_eventPort = NULL;
     m_runLoopSource = NULL;
-    m_controlSysPower = NO;
-    m_controlSysVolume = NO;
+    // power button controls xbmc sleep button (this will also trigger the osx shutdown menu - we can't prevent this as it seems)
+    m_controlSysPower = YES;
+    m_controlSysVolume = YES; // volume keys control xbmc volume
   }
   return self;
 }

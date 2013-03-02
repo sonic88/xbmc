@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -24,7 +23,6 @@
 #include "signal.h"
 #include "limits.h"
 #include "threads/SingleLock.h"
-#include "guilib/AudioContext.h"
 #include "ExternalPlayer.h"
 #include "windowing/WindowingFactory.h"
 #include "dialogs/GUIDialogOK.h"
@@ -34,10 +32,12 @@
 #include "FileItem.h"
 #include "utils/RegExp.h"
 #include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
 #include "URL.h"
 #include "utils/XMLUtils.h"
 #include "utils/TimeUtils.h"
 #include "utils/log.h"
+#include "cores/AudioEngine/AEFactory.h"
 #if defined(_WIN32)
   #include "Windows.h"
   #ifdef HAS_IRSERVERSUITE
@@ -46,6 +46,9 @@
 #endif
 #if defined(HAS_LIRC)
   #include "input/linux/LIRC.h"
+#endif
+#if defined(TARGET_ANDROID)
+  #include "android/activity/XBMCApp.h"
 #endif
 
 // If the process ends in less than this time (ms), we assume it's a launcher
@@ -143,16 +146,27 @@ void CExternalPlayer::Process()
     // Unwind archive names
     CURL url(m_launchFilename);
     CStdString protocol = url.GetProtocol();
-    if (protocol == "zip" || protocol == "rar"/* || protocol == "iso9660" ??*/)
+    if (protocol == "zip" || protocol == "rar"/* || protocol == "iso9660" ??*/ || protocol == "udf")
     {
       mainFile = url.GetHostName();
       archiveContent = url.GetFileName();
     }
     if (protocol == "musicdb")
       mainFile = CMusicDatabaseFile::TranslateUrl(url);
+    if (protocol == "bluray")
+    {
+      CURL base(url.GetHostName());
+      if(base.GetProtocol() == "udf")
+      {
+        mainFile = base.GetHostName(); /* image file */
+        archiveContent = base.GetFileName();
+      }
+      else
+        mainFile = URIUtils::AddFileToFolder(base.Get(), url.GetFileName());
+    }
   }
 
-  if (m_filenameReplacers.size() > 0) 
+  if (m_filenameReplacers.size() > 0)
   {
     for (unsigned int i = 0; i < m_filenameReplacers.size(); i++)
     {
@@ -174,7 +188,7 @@ void CExternalPlayer::Process()
         continue;
       }
 
-      if (regExp.RegFind(mainFile) > -1) 
+      if (regExp.RegFind(mainFile) > -1)
       {
         CStdString strPat = vecSplit[1];
         strPat.Replace(",,",",");
@@ -193,7 +207,7 @@ void CExternalPlayer::Process()
         while ((iStart = regExp.RegFind(mainFile, iStart)) > -1)
         {
           int iLength = regExp.GetFindLen();
-          mainFile = mainFile.Left(iStart) + regExp.GetReplaceString(strRep.c_str()) + mainFile.Mid(iStart+iLength);
+          mainFile = mainFile.Left(iStart) + regExp.GetReplaceString(strRep.c_str()).c_str() + mainFile.Mid(iStart+iLength);
           if (!bGlobal)
             break;
         }
@@ -243,13 +257,6 @@ void CExternalPlayer::Process()
     strFArgs.append("\"");
   }
 
-  int iActiveDevice = g_audioContext.GetActiveDevice();
-  if (iActiveDevice != CAudioContext::NONE)
-  {
-    CLog::Log(LOGNOTICE, "%s: Releasing audio device %d", __FUNCTION__, iActiveDevice);
-    g_audioContext.SetActiveDevice(CAudioContext::NONE);
-  }
-
 #if defined(_WIN32)
   if (m_warpcursor)
   {
@@ -295,10 +302,21 @@ void CExternalPlayer::Process()
 #endif
 
   m_playbackStartTime = XbmcThreads::SystemClockMillis();
+
+  /* Suspend AE temporarily so exclusive or hog-mode sinks */
+  /* don't block external player's access to audio device  */
+  if (!CAEFactory::Suspend())
+  {
+    CLog::Log(LOGNOTICE,"%s: Failed to suspend AudioEngine before launching external player", __FUNCTION__);
+  }
+
+
   BOOL ret = TRUE;
 #if defined(_WIN32)
   ret = ExecuteAppW32(strFName.c_str(),strFArgs.c_str());
-#elif defined(_LINUX)
+#elif defined(TARGET_ANDROID)
+  ret = ExecuteAppAndroid(m_filename.c_str(), mainFile.c_str());
+#elif defined(_LINUX) || defined(TARGET_DARWIN_OSX)
   ret = ExecuteAppLinux(strFArgs.c_str());
 #endif
   int64_t elapsedMillis = XbmcThreads::SystemClockMillis() - m_playbackStartTime;
@@ -357,15 +375,15 @@ void CExternalPlayer::Process()
   }
 #endif
 
+  /* Resume AE processing of XBMC native audio */
+  if (!CAEFactory::Resume())
+  {
+    CLog::Log(LOGFATAL, "%s: Failed to restart AudioEngine after return from external player",__FUNCTION__);
+  }
+
   // We don't want to come back to an active screensaver
   g_application.ResetScreenSaver();
   g_application.WakeUpScreenSaverAndDPMS();
-
-  if (iActiveDevice != CAudioContext::NONE)
-  {
-    CLog::Log(LOGNOTICE, "%s: Reclaiming audio device %d", __FUNCTION__, iActiveDevice);
-    g_audioContext.SetActiveDevice(iActiveDevice);
-  }
 
   if (!ret || (m_playOneStackItem && g_application.CurrentFileItem().IsStack()))
     m_callback.OnPlayBackStopped();
@@ -391,12 +409,12 @@ BOOL CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
   if (m_bAbortRequest) return false;
 
   BOOL ret = CreateProcessW(WstrPath.IsEmpty() ? NULL : WstrPath.c_str(),
-                            (LPWSTR) WstrSwitches.c_str(), NULL, NULL, FALSE, NULL, 
+                            (LPWSTR) WstrSwitches.c_str(), NULL, NULL, FALSE, NULL,
                             NULL, NULL, &si, &m_processInfo);
 
   if (ret == FALSE)
   {
-    DWORD lastError = GetLastError(); 
+    DWORD lastError = GetLastError();
     CLog::Log(LOGNOTICE, "%s - Failure: %d", __FUNCTION__, lastError);
   }
   else
@@ -430,7 +448,7 @@ BOOL CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
 }
 #endif
 
-#if defined(_LINUX)
+#if !defined(TARGET_ANDROID) && (defined(_LINUX) || defined(TARGET_DARWIN_OSX))
 BOOL CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
 {
   CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
@@ -446,6 +464,22 @@ BOOL CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
   g_RemoteControl.setUsed(remoteused);
   g_RemoteControl.Initialize();
 #endif
+
+  if (ret != 0)
+  {
+    CLog::Log(LOGNOTICE, "%s: Failure: %d", __FUNCTION__, ret);
+  }
+
+  return ret == 0;
+}
+#endif
+
+#if defined(TARGET_ANDROID)
+BOOL CExternalPlayer::ExecuteAppAndroid(const char* strSwitches,const char* strPath)
+{
+  CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
+
+  int ret = CXBMCApp::StartActivity(strSwitches, "android.intent.action.VIEW", "video/*", strPath);
 
   if (ret != 0)
   {
@@ -517,8 +551,8 @@ void CExternalPlayer::SeekPercentage(float iPercent)
 
 float CExternalPlayer::GetPercentage()
 {
-  __int64 iTime = GetTime();
-  __int64 iTotalTime = GetTotalTime() * 1000;
+  int64_t iTime = GetTime();
+  int64_t iTotalTime = GetTotalTime();
 
   if (iTotalTime != 0)
   {
@@ -547,11 +581,11 @@ float CExternalPlayer::GetSubTitleDelay()
   return 0.0;
 }
 
-void CExternalPlayer::SeekTime(__int64 iTime)
+void CExternalPlayer::SeekTime(int64_t iTime)
 {
 }
 
-__int64 CExternalPlayer::GetTime() // in millis
+int64_t CExternalPlayer::GetTime() // in millis
 {
   if ((XbmcThreads::SystemClockMillis() - m_playbackStartTime) / 1000 > m_playCountMinTime)
   {
@@ -561,9 +595,9 @@ __int64 CExternalPlayer::GetTime() // in millis
   return m_time;
 }
 
-int CExternalPlayer::GetTotalTime() // in seconds
+int64_t CExternalPlayer::GetTotalTime() // in milliseconds
 {
-  return m_totalTime;
+  return (int64_t)m_totalTime * 1000;
 }
 
 void CExternalPlayer::ToFFRW(int iSpeed)
@@ -587,7 +621,7 @@ bool CExternalPlayer::SetPlayerState(CStdString state)
 
 bool CExternalPlayer::Initialize(TiXmlElement* pConfig)
 {
-  XMLUtils::GetString(pConfig, "filename", m_filename); 
+  XMLUtils::GetString(pConfig, "filename", m_filename);
   if (m_filename.length() > 0)
   {
     CLog::Log(LOGNOTICE, "ExternalPlayer Filename: %s", m_filename.c_str());
@@ -633,7 +667,7 @@ bool CExternalPlayer::Initialize(TiXmlElement* pConfig)
 
   XMLUtils::GetInt(pConfig, "playcountminimumtime", m_playCountMinTime, 1, INT_MAX);
 
-  CLog::Log(LOGNOTICE, "ExternalPlayer Tweaks: hideconsole (%s), hidexbmc (%s), islauncher (%s), warpcursor (%s)", 
+  CLog::Log(LOGNOTICE, "ExternalPlayer Tweaks: hideconsole (%s), hidexbmc (%s), islauncher (%s), warpcursor (%s)",
           m_hideconsole ? "true" : "false",
           m_hidexbmc ? "true" : "false",
           m_islauncher ? "true" : "false",

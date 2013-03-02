@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,14 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "system.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "GUIWindowLoginScreen.h"
 #include "settings/GUIWindowSettingsProfile.h"
 #include "dialogs/GUIDialogContextMenu.h"
@@ -57,6 +57,7 @@ CGUIWindowLoginScreen::CGUIWindowLoginScreen(void)
   watch.StartZero();
   m_vecItems = new CFileItemList;
   m_iSelectedItem = -1;
+  m_loadType = KEEP_IN_MEMORY;
 }
 
 CGUIWindowLoginScreen::~CGUIWindowLoginScreen(void)
@@ -70,7 +71,6 @@ bool CGUIWindowLoginScreen::OnMessage(CGUIMessage& message)
   {
   case GUI_MSG_WINDOW_DEINIT:
     {
-      m_viewControl.Reset();
       m_vecItems->Clear();
     }
     break;
@@ -184,6 +184,12 @@ void CGUIWindowLoginScreen::OnWindowLoaded()
   m_viewControl.AddView(GetControl(CONTROL_BIG_LIST));
 }
 
+void CGUIWindowLoginScreen::OnWindowUnload()
+{
+  CGUIWindow::OnWindowUnload();
+  m_viewControl.Reset();
+}
+
 void CGUIWindowLoginScreen::Update()
 {
   m_vecItems->Clear();
@@ -197,9 +203,9 @@ void CGUIWindowLoginScreen::Update()
     else
       strLabel.Format(g_localizeStrings.Get(20112), profile->getDate());
     item->SetLabel2(strLabel);
-    item->SetThumbnailImage(profile->getThumb());
+    item->SetArt("thumb", profile->getThumb());
     if (profile->getThumb().IsEmpty() || profile->getThumb().Equals("-"))
-      item->SetThumbnailImage("unknown-user.png");
+      item->SetArt("thumb", "unknown-user.png");
     item->SetLabelPreformated(true);
     m_vecItems->Add(item);
   }
@@ -228,7 +234,7 @@ bool CGUIWindowLoginScreen::OnPopupMenu(int iItem)
     if (g_passwordManager.CheckLock(g_settings.GetMasterProfile().getLockMode(),g_settings.GetMasterProfile().getLockCode(),20075))
       g_passwordManager.iMasterLockRetriesLeft = g_guiSettings.GetInt("masterlock.maxretries");
     else // be inconvenient
-      g_application.getApplicationMessenger().Shutdown();
+      CApplicationMessenger::Get().Shutdown();
 
     return true;
   }
@@ -268,6 +274,9 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   // stop service addons and give it some time before we start it again
   ADDON::CAddonMgr::Get().StopServices(true);
 
+  // stop PVR related services
+  g_application.StopPVRManager();
+
   if (profile != 0 || !g_settings.IsMasterUser())
   {
     g_application.getNetwork().NetworkMessage(CNetwork::SERVICES_DOWN,1);
@@ -291,6 +300,9 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
     g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_NONE);
   }
 
+  // reload the add-ons, or we will first load all add-ons from the master account without checking disabled status
+  ADDON::CAddonMgr::Get().ReInit();
+
   g_weatherManager.Refresh();
 #ifdef HAS_PYTHON
   g_pythonParser.m_bLogin = true;
@@ -302,6 +314,9 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 
   // start services which should run on login 
   ADDON::CAddonMgr::Get().StartServices(false);
+
+  // start PVR related services
+  g_application.StartPVRManager();
 
   g_windowManager.ChangeActiveWindow(g_SkinInfo->GetFirstWindow());
 

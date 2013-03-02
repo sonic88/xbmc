@@ -112,7 +112,10 @@ IF %comp%==vs2010 (
   ECHO Compiling XBMC...
   %NET% %OPTS_EXE%
   IF NOT EXIST %EXE% (
-  	set DIETEXT="XBMC.EXE failed to build!  See ..\vs2010express\XBMC\%buildconfig%\BuildLog.htm for details."
+  	set DIETEXT="XBMC.EXE failed to build!  See %CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
+	IF %promptlevel%==noprompt (
+		type "%CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
+	)
   	goto DIE
   )
   ECHO Done!
@@ -126,7 +129,10 @@ IF %comp%==vs2010 (
   ECHO Compiling Solution...
   %NET% %OPTS_EXE%
   IF NOT EXIST %EXE% (
-  	set DIETEXT="XBMC.EXE failed to build!  See ..\vs2010express\XBMC\%buildconfig%\BuildLog\BuildLog.htm for details."
+  	set DIETEXT="XBMC.EXE failed to build!  See %CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
+	IF %promptlevel%==noprompt (
+		type "%CD%\..\vs2010express\XBMC\%buildconfig%\objs\XBMC.log"
+	)
   	goto DIE
   )
   ECHO Done!
@@ -153,7 +159,6 @@ IF %comp%==vs2010 (
 
   Echo .svn>exclude.txt
   Echo CVS>>exclude.txt
-  Echo .so>>exclude.txt
   Echo Thumbs.db>>exclude.txt
   Echo Desktop.ini>>exclude.txt
   Echo dsstdfx.bin>>exclude.txt
@@ -203,6 +208,9 @@ IF %comp%==vs2010 (
   xcopy ..\..\system BUILD_WIN32\Xbmc\system /E /Q /I /Y /EXCLUDE:exclude.txt  > NUL
   xcopy ..\..\media BUILD_WIN32\Xbmc\media /E /Q /I /Y /EXCLUDE:exclude.txt  > NUL
   xcopy ..\..\sounds BUILD_WIN32\Xbmc\sounds /E /Q /I /Y /EXCLUDE:exclude.txt  > NUL
+  
+  ECHO ------------------------------------------------------------
+  call buildpvraddons.bat %NET%
     
   IF EXIST error.log del error.log > NUL
   SET build_path=%CD%
@@ -216,6 +224,12 @@ IF %comp%==vs2010 (
   TITLE XBMC for Windows Build Script
 
   IF EXIST exclude.txt del exclude.txt  > NUL
+  del /s /q /f BUILD_WIN32\Xbmc\*.so  > NUL
+  del /s /q /f BUILD_WIN32\Xbmc\*.h  > NUL
+  del /s /q /f BUILD_WIN32\Xbmc\*.cpp  > NUL
+  del /s /q /f BUILD_WIN32\Xbmc\*.exp  > NUL
+  del /s /q /f BUILD_WIN32\Xbmc\*.lib  > NUL
+  
   ECHO ------------------------------------------------------------
   ECHO Build Succeeded!
   GOTO NSIS_EXE

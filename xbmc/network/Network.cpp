@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,15 +13,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "system.h"
 #include "Network.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "libscrobbler/lastfmscrobbler.h"
 #include "libscrobbler/librefmscrobbler.h"
 #include "utils/RssReader.h"
@@ -30,6 +30,7 @@
 #include "dialogs/GUIDialogKaiToast.h"
 
 #include <netinet/in.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
 
 using namespace std;
@@ -93,12 +94,12 @@ bool in_ether (const char *bufp, unsigned char *addr)
 
 CNetwork::CNetwork()
 {
-   g_application.getApplicationMessenger().NetworkMessage(SERVICES_UP, 0);
+  CApplicationMessenger::Get().NetworkMessage(SERVICES_UP, 0);
 }
 
 CNetwork::~CNetwork()
 {
-   g_application.getApplicationMessenger().NetworkMessage(SERVICES_DOWN, 0);
+  CApplicationMessenger::Get().NetworkMessage(SERVICES_DOWN, 0);
 }
 
 int CNetwork::ParseHex(char *str, unsigned char *addr)
@@ -280,9 +281,6 @@ bool CNetwork::WakeOnLan(const char* mac)
 
 void CNetwork::StartServices()
 {
-#ifdef HAS_TIME_SERVER
-  g_application.StartTimeServer();
-#endif
 #ifdef HAS_WEB_SERVER
   if (!g_application.StartWebServer())
     CGUIDialogKaiToast::QueueNotification("DefaultIconWarning.png", g_localizeStrings.Get(33101), g_localizeStrings.Get(33100));
@@ -313,9 +311,6 @@ void CNetwork::StopServices(bool bWait)
 {
   if (bWait)
   {
-#ifdef HAS_TIME_SERVER
-    g_application.StopTimeServer();
-#endif
 #ifdef HAS_UPNP
     g_application.StopUPnP(bWait);
 #endif

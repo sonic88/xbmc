@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -79,38 +78,39 @@ void CGUIDialogPVRGuideSearch::UpdateChannelSpin(void)
   int iGroupId = (iChannelGroup == EPG_SEARCH_UNSET) ?
       XBMC_INTERNAL_GROUP_TV :
       iChannelGroup;
-  const CPVRChannelGroup *group = g_PVRChannelGroups->GetByIdFromAll(iGroupId);
+  CPVRChannelGroupPtr group = g_PVRChannelGroups->GetByIdFromAll(iGroupId);
   if (!group)
     group = g_PVRChannelGroups->GetGroupAllTV();
 
   for (int iChannelPtr = 0; iChannelPtr < group->Size(); iChannelPtr++)
   {
-    const CPVRChannel *channel = group->GetByIndex(iChannelPtr);
-    if (!channel)
+    CFileItemPtr channel = group->GetByIndex(iChannelPtr);
+    if (!channel || !channel->HasPVRChannelInfoTag())
       continue;
 
-    int iChannelNumber = group->GetChannelNumber(*channel);
-    pSpin->AddLabel(channel->ChannelName().c_str(), iChannelNumber);
+    int iChannelNumber = group->GetChannelNumber(*channel->GetPVRChannelInfoTag());
+    pSpin->AddLabel(channel->GetPVRChannelInfoTag()->ChannelName().c_str(), iChannelNumber);
   }
 }
 
 void CGUIDialogPVRGuideSearch::UpdateGroupsSpin(void)
 {
-  CFileItemList groups;
   CGUISpinControlEx *pSpin = (CGUISpinControlEx *)GetControl(CONTROL_SPIN_GROUPS);
   if (!pSpin)
     return;
 
+  std::vector<CPVRChannelGroupPtr> group;
+  std::vector<CPVRChannelGroupPtr>::const_iterator it;
+
   /* tv groups */
-  g_PVRChannelGroups->GetTV()->GetGroupList(&groups);
-  for (int iGroupPtr = 0; iGroupPtr < groups.Size(); iGroupPtr++)
-    pSpin->AddLabel(groups[iGroupPtr]->GetLabel(), atoi(groups[iGroupPtr]->GetPath()));
+  group = g_PVRChannelGroups->GetTV()->GetMembers();
+  for (it = group.begin(); it != group.end(); ++it)
+    pSpin->AddLabel((*it)->GroupName(), (*it)->GroupID());
 
   /* radio groups */
-  groups.ClearItems();
-  g_PVRChannelGroups->GetRadio()->GetGroupList(&groups);
-  for (int iGroupPtr = 0; iGroupPtr < groups.Size(); iGroupPtr++)
-    pSpin->AddLabel(groups[iGroupPtr]->GetLabel(), atoi(groups[iGroupPtr]->GetPath()));
+  group = g_PVRChannelGroups->GetRadio()->GetMembers();
+  for (it = group.begin(); it != group.end(); ++it)
+    pSpin->AddLabel((*it)->GroupName(), (*it)->GroupID());
 
   pSpin->SetValue(m_searchFilter->m_iChannelGroup);
 }

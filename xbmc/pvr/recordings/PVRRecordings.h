@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -24,25 +23,28 @@
 #include "XBDateTime.h"
 #include "threads/Thread.h"
 #include "utils/Observer.h"
-#include "ThumbLoader.h"
+#include "video/VideoThumbLoader.h"
+
+#define PVR_ALL_RECORDINGS_PATH_EXTENSION "-1"
 
 namespace PVR
 {
-  class CPVRRecordings : public std::vector<CPVRRecording *>,
-                         public Observable
+  class CPVRRecordings : public Observable
   {
   private:
-    CCriticalSection m_critSection;
-    bool             m_bIsUpdating;
-    CStdString       m_strDirectoryHistory;
-    CVideoThumbLoader m_thumbLoader;
+    CCriticalSection             m_critSection;
+    bool                         m_bIsUpdating;
+    std::vector<CPVRRecording *> m_recordings;
 
     virtual void UpdateFromClients(void);
     virtual CStdString TrimSlashes(const CStdString &strOrig) const;
     virtual const CStdString GetDirectoryFromPath(const CStdString &strPath, const CStdString &strBase) const;
     virtual bool IsDirectoryMember(const CStdString &strDirectory, const CStdString &strEntryDirectory, bool bDirectMember = true) const;
-    virtual void GetContents(const CStdString &strDirectory, CFileItemList *results) ;
+    virtual void GetContents(const CStdString &strDirectory, CFileItemList *results);
     virtual void GetSubDirectories(const CStdString &strBase, CFileItemList *results, bool bAutoSkip = true);
+
+    CStdString AddAllRecordingsPathExtension(const CStdString &strDirectory);
+    CStdString RemoveAllRecordingsPathExtension(const CStdString &strDirectory);
 
   public:
     CPVRRecordings(void);
@@ -63,8 +65,13 @@ namespace PVR
     int GetRecordings(CFileItemList* results);
     bool DeleteRecording(const CFileItem &item);
     bool RenameRecording(CFileItem &item, CStdString &strNewName);
+    bool SetRecordingsPlayCount(const CFileItemPtr &item, int count);
 
     bool GetDirectory(const CStdString& strPath, CFileItemList &items);
-    CPVRRecording *GetByPath(const CStdString &path);
+    CFileItemPtr GetByPath(const CStdString &path);
+    void SetPlayCount(const CFileItem &item, int iPlayCount);
+    void GetAll(CFileItemList &items);
+
+    bool HasAllRecordingsPathExtension(const CStdString &strDirectory);
   };
 }

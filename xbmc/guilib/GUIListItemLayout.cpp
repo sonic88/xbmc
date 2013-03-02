@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,7 +24,7 @@
 #include "GUIInfoManager.h"
 #include "GUIListLabel.h"
 #include "GUIImage.h"
-#include "tinyXML/tinyxml.h"
+#include "utils/XBMCTinyXML.h"
 
 using namespace std;
 
@@ -73,13 +72,13 @@ void CGUIListItemLayout::Process(CGUIListItem *item, int parentID, unsigned int 
 {
   if (m_invalidated)
   { // need to update our item
+    m_invalidated = false;
     // could use a dynamic cast here if RTTI was enabled.  As it's not,
     // let's use a static cast with a virtual base function
     CFileItem *fileItem = item->IsFileItem() ? (CFileItem *)item : new CFileItem(*item);
     m_isPlaying.Update(item);
     m_group.SetInvalid();
     m_group.UpdateInfo(fileItem);
-    m_invalidated = false;
     // delete our temporary fileitem
     if (!item->IsFileItem())
       delete fileItem;

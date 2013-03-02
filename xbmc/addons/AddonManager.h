@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 #include "Addon.h"
@@ -73,6 +72,7 @@ namespace ADDON
   {
   public:
     static CAddonMgr &Get();
+    bool ReInit() { DeInit(); return Init(); }
     bool Init();
     void DeInit();
 
@@ -92,8 +92,8 @@ namespace ADDON
      */
     bool GetAddon(const CStdString &id, AddonPtr &addon, const TYPE &type = ADDON_UNKNOWN, bool enabledOnly = true);
     bool HasAddons(const TYPE &type, bool enabled = true);
-    bool GetAddons(const TYPE &type, VECADDONS &addons, bool enabled = true, bool bGetDisabledPVRAddons = true);
-    bool GetAllAddons(VECADDONS &addons, bool enabled = true, bool allowRepos = false, bool bGetDisabledPVRAddons = true);
+    bool GetAddons(const TYPE &type, VECADDONS &addons, bool enabled = true);
+    bool GetAllAddons(VECADDONS &addons, bool enabled = true, bool allowRepos = false);
     void AddToUpdateableAddons(AddonPtr &pAddon);
     void RemoveFromUpdateableAddons(AddonPtr &pAddon);    
     bool ReloadSettings(const CStdString &id);
@@ -182,9 +182,11 @@ namespace ADDON
     /*! \brief Fetch a (single) addon from a plugin descriptor.
      Assumes that there is a single (non-trivial) extension point per addon.
      \param info the plugin descriptor
+     \param type the extension point we want
      \return an AddonPtr based on the descriptor.  May be NULL if no suitable extension point is found.
      */
-    AddonPtr GetAddonFromDescriptor(const cp_plugin_info_t *info);
+    AddonPtr GetAddonFromDescriptor(const cp_plugin_info_t *info,
+                                    const CStdString& type="");
 
     /*! \brief Check whether this addon is supported on the current platform
      \param info the plugin descriptor

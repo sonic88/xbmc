@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,27 +13,27 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
+#include "network/Network.h"
 #include "system.h"
 #include "utils/AlarmClock.h"
+#include "utils/Screenshot.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "Autorun.h"
 #include "Builtins.h"
 #include "input/ButtonTranslator.h"
 #include "FileItem.h"
 #include "addons/GUIDialogAddonSettings.h"
 #include "dialogs/GUIDialogFileBrowser.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogKaiToast.h"
-#include "music/dialogs/GUIDialogMusicScan.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "dialogs/GUIDialogProgress.h"
-#include "video/dialogs/GUIDialogVideoScan.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "GUIUserMessages.h"
 #include "windows/GUIWindowLoginScreen.h"
@@ -44,7 +44,6 @@
 #include "addons/AddonManager.h"
 #include "addons/PluginSource.h"
 #include "music/LastFmManager.h"
-#include "utils/LCD.h"
 #include "utils/log.h"
 #include "storage/MediaManager.h"
 #include "utils/RssReader.h"
@@ -53,6 +52,8 @@
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "Util.h"
+#include "URL.h"
+#include "music/MusicDatabase.h"
 
 #include "filesystem/PluginDirectory.h"
 #ifdef HAS_FILESYSTEM_RAR
@@ -76,9 +77,9 @@
 #include "interfaces/python/XBPython.h"
 #endif
 
-#if defined(__APPLE__)
+#if defined(TARGET_DARWIN)
 #include "filesystem/SpecialProtocol.h"
-#include "CocoaInterface.h"
+#include "osx/CocoaInterface.h"
 #endif
 
 #ifdef HAS_CDDA_RIPPER
@@ -86,6 +87,7 @@
 #endif
 
 #include <vector>
+#include "xbmc/settings/AdvancedSettings.h"
 
 using namespace std;
 using namespace XFILE;
@@ -104,9 +106,9 @@ typedef struct
 
 const BUILT_IN commands[] = {
   { "Help",                       false,  "This help message" },
-  { "Reboot",                     false,  "Reboot the xbox (power cycle)" },
-  { "Restart",                    false,  "Restart the xbox (power cycle)" },
-  { "ShutDown",                   false,  "Shutdown the xbox" },
+  { "Reboot",                     false,  "Reboot the system" },
+  { "Restart",                    false,  "Restart the system (same as reboot)" },
+  { "ShutDown",                   false,  "Shutdown the system" },
   { "Powerdown",                  false,  "Powerdown system" },
   { "Quit",                       false,  "Quit XBMC" },
   { "Hibernate",                  false,  "Hibernates the system" },
@@ -115,14 +117,15 @@ const BUILT_IN commands[] = {
   { "AllowIdleShutdown",          false,  "Allow idle shutdown" },
   { "RestartApp",                 false,  "Restart XBMC" },
   { "Minimize",                   false,  "Minimize XBMC" },
-  { "Reset",                      false,  "Reset the xbox (warm reboot)" },
+  { "Reset",                      false,  "Reset the system (same as reboot)" },
   { "Mastermode",                 false,  "Control master mode" },
   { "ActivateWindow",             true,   "Activate the specified window" },
   { "ActivateWindowAndFocus",     true,   "Activate the specified window and sets focus to the specified id" },
   { "ReplaceWindow",              true,   "Replaces the current window with the new one" },
   { "TakeScreenshot",             false,  "Takes a Screenshot" },
   { "RunScript",                  true,   "Run the specified script" },
-#if defined(__APPLE__)
+  { "StopScript",                 true,   "Stop the script by ID or path, if running" },
+#if defined(TARGET_DARWIN)
   { "RunAppleScript",             true,   "Run the specified AppleScript command" },
 #endif
   { "RunPlugin",                  true,   "Run the specified plugin" },
@@ -204,11 +207,10 @@ const BUILT_IN commands[] = {
   { "LIRC.Start",                 false,  "Adds XBMC as LIRC client" },
   { "LIRC.Send",                  true,   "Sends a command to LIRC" },
 #endif
-#ifdef HAS_LCD
-  { "LCD.Suspend",                false,  "Suspends LCDproc" },
-  { "LCD.Resume",                 false,  "Resumes LCDproc" },
-#endif
   { "VideoLibrary.Search",        false,  "Brings up a search dialog which will search the library" },
+  { "ToggleDebug",                false,  "Enables/disables debug mode" },
+  { "StartPVRManager",            false,  "(Re)Starts the PVR manager" },
+  { "StopPVRManager",             false,  "Stops the PVR manager" },
 };
 
 bool CBuiltins::HasCommand(const CStdString& execString)
@@ -246,42 +248,42 @@ int CBuiltins::Execute(const CStdString& execString)
   CStdString parameter = params.size() ? params[0] : "";
   CStdString strParameterCaseIntact = parameter;
 
-  if (execute.Equals("reboot") || execute.Equals("restart"))  //Will reboot the xbox, aka cold reboot
+  if (execute.Equals("reboot") || execute.Equals("restart") || execute.Equals("reset"))  //Will reboot the system
   {
-    g_application.getApplicationMessenger().Restart();
+    CApplicationMessenger::Get().Restart();
   }
   else if (execute.Equals("shutdown"))
   {
-    g_application.getApplicationMessenger().Shutdown();
+    CApplicationMessenger::Get().Shutdown();
   }
   else if (execute.Equals("powerdown"))
   {
-    g_application.getApplicationMessenger().Powerdown();
+    CApplicationMessenger::Get().Powerdown();
   }
   else if (execute.Equals("restartapp"))
   {
-    g_application.getApplicationMessenger().RestartApp();
+    CApplicationMessenger::Get().RestartApp();
   }
   else if (execute.Equals("hibernate"))
   {
-    g_application.getApplicationMessenger().Hibernate();
+    CApplicationMessenger::Get().Hibernate();
   }
   else if (execute.Equals("suspend"))
   {
-    g_application.getApplicationMessenger().Suspend();
+    CApplicationMessenger::Get().Suspend();
   }
   else if (execute.Equals("quit"))
   {
-    g_application.getApplicationMessenger().Quit();
+    CApplicationMessenger::Get().Quit();
   }
   else if (execute.Equals("inhibitidleshutdown"))
   {
     bool inhibit = (params.size() == 1 && params[0].Equals("true"));
-    g_application.getApplicationMessenger().InhibitIdleShutdown(inhibit);
+    CApplicationMessenger::Get().InhibitIdleShutdown(inhibit);
   }
   else if (execute.Equals("minimize"))
   {
-    g_application.getApplicationMessenger().Minimize();
+    CApplicationMessenger::Get().Minimize();
   }
   else if (execute.Equals("loadprofile"))
   {
@@ -292,8 +294,7 @@ int CBuiltins::Execute(const CStdString& execString)
         && (g_settings.GetMasterProfile().getLockMode() == LOCK_MODE_EVERYONE
             || g_passwordManager.IsProfileLockUnlocked(index,bCanceled,prompt)))
     {
-
-      CGUIWindowLoginScreen::LoadProfile(index);
+      CApplicationMessenger::Get().LoadProfile(index);
     }
   }
   else if (execute.Equals("mastermode"))
@@ -317,11 +318,7 @@ int CBuiltins::Execute(const CStdString& execString)
   }
   else if (execute.Equals("takescreenshot"))
   {
-    CUtil::TakeScreenshot();
-  }
-  else if (execute.Equals("reset")) //Will reset the xbox, aka soft reset
-  {
-    g_application.getApplicationMessenger().Reset();
+    CScreenShot::TakeScreenshot();
   }
   else if (execute.Equals("activatewindow") || execute.Equals("replacewindow"))
   {
@@ -339,7 +336,7 @@ int CBuiltins::Execute(const CStdString& execString)
     {
       // disable the screensaver
       g_application.WakeUpScreenSaverAndDPMS();
-#if defined(__APPLE__) && defined(__arm__)
+#if defined(TARGET_DARWIN_IOS)
       if (params[0].Equals("shutdownmenu"))
         CBuiltins::Execute("Quit");
 #endif     
@@ -373,7 +370,7 @@ int CBuiltins::Execute(const CStdString& execString)
         CBuiltins::Execute("Quit");
 #endif
       vector<CStdString> dummy;
-      g_windowManager.ActivateWindow(iWindow, dummy, !execute.Equals("activatewindow"));
+      g_windowManager.ActivateWindow(iWindow, dummy, false);
 
       unsigned int iPtr = 1;
       while (params.size() > iPtr + 1)
@@ -391,11 +388,11 @@ int CBuiltins::Execute(const CStdString& execString)
       return false;
     }
   }
-#ifdef HAS_PYTHON
   else if (execute.Equals("runscript") && params.size())
   {
-#if defined(__APPLE__) && !defined(__arm__)
-    if (URIUtils::GetExtension(strParameterCaseIntact) == ".applescript")
+#if defined(TARGET_DARWIN_OSX)
+    if (URIUtils::GetExtension(strParameterCaseIntact) == ".applescript" ||
+        URIUtils::GetExtension(strParameterCaseIntact) == ".scpt")
     {
       CStdString osxPath = CSpecialProtocol::TranslatePath(strParameterCaseIntact);
       Cocoa_DoAppleScriptFile(osxPath.c_str());
@@ -403,6 +400,7 @@ int CBuiltins::Execute(const CStdString& execString)
     else
 #endif
     {
+#ifdef HAS_PYTHON
       vector<CStdString> argv = params;
 
       vector<CStdString> path;
@@ -417,24 +415,37 @@ int CBuiltins::Execute(const CStdString& execString)
         scriptpath = script->LibPath();
 
       g_pythonParser.evalFile(scriptpath, argv,script);
+#endif
     }
   }
-#endif
-#if defined(__APPLE__) && !defined(__arm__)
+#if defined(TARGET_DARWIN_OSX)
   else if (execute.Equals("runapplescript"))
   {
     Cocoa_DoAppleScript(strParameterCaseIntact.c_str());
   }
 #endif
+  else if (execute.Equals("stopscript"))
+  {
+#ifdef HAS_PYTHON
+    CStdString scriptpath(params[0]);
+
+    // Test to see if the param is an addon ID
+    AddonPtr script;
+    if (CAddonMgr::Get().GetAddon(params[0], script))
+      scriptpath = script->LibPath();
+
+    g_pythonParser.StopScript(scriptpath);
+#endif
+  }
   else if (execute.Equals("system.exec"))
   {
-    g_application.getApplicationMessenger().Minimize();
-    g_application.getApplicationMessenger().ExecOS(parameter, false);
+    CApplicationMessenger::Get().Minimize();
+    CApplicationMessenger::Get().ExecOS(parameter, false);
   }
   else if (execute.Equals("system.execwait"))
   {
-    g_application.getApplicationMessenger().Minimize();
-    g_application.getApplicationMessenger().ExecOS(parameter, true);
+    CApplicationMessenger::Get().Minimize();
+    CApplicationMessenger::Get().ExecOS(parameter, true);
   }
   else if (execute.Equals("resolution"))
   {
@@ -444,6 +455,10 @@ int CBuiltins::Execute(const CStdString& execString)
     else if (parameter.Equals("ntsc")) res = RES_NTSC_4x3;
     else if (parameter.Equals("ntsc16x9")) res = RES_NTSC_16x9;
     else if (parameter.Equals("720p")) res = RES_HDTV_720p;
+    else if (parameter.Equals("720pSBS")) res = RES_HDTV_720pSBS;
+    else if (parameter.Equals("720pTB")) res = RES_HDTV_720pTB;
+    else if (parameter.Equals("1080pSBS")) res = RES_HDTV_1080pSBS;
+    else if (parameter.Equals("1080pTB")) res = RES_HDTV_1080pTB;
     else if (parameter.Equals("1080i")) res = RES_HDTV_1080i;
     if (g_graphicsContext.IsValidResolution(res))
     {
@@ -501,15 +516,21 @@ int CBuiltins::Execute(const CStdString& execString)
         {
           if (plugin->Provides(CPluginSource::VIDEO))
             cmd.Format("ActivateWindow(Video,plugin://%s,return)",params[0]);
-          if (plugin->Provides(CPluginSource::AUDIO))
+          else if (plugin->Provides(CPluginSource::AUDIO))
             cmd.Format("ActivateWindow(Music,plugin://%s,return)",params[0]);
-          if (plugin->Provides(CPluginSource::EXECUTABLE))
+          else if (plugin->Provides(CPluginSource::EXECUTABLE))
             cmd.Format("ActivateWindow(Programs,plugin://%s,return)",params[0]);
-          if (plugin->Provides(CPluginSource::IMAGE))
+          else if (plugin->Provides(CPluginSource::IMAGE))
             cmd.Format("ActivateWindow(Pictures,plugin://%s,return)",params[0]);
+          else
+            // Pass the script name (params[0]) and all the parameters
+            // (params[1] ... params[x]) separated by a comma to RunPlugin
+            cmd.Format("RunPlugin(%s)", StringUtils::JoinString(params, ","));
         }
-        if (addon->Type() == ADDON_SCRIPT)
-          cmd.Format("RunScript(%s)",params[0]);
+        else if (addon->Type() >= ADDON_SCRIPT && addon->Type() <= ADDON_SCRIPT_LYRICS)
+          // Pass the script name (params[0]) and all the parameters
+          // (params[1] ... params[x]) separated by a comma to RunScript
+          cmd.Format("RunScript(%s)", StringUtils::JoinString(params, ","));
 
         return Execute(cmd);
       }
@@ -543,6 +564,7 @@ int CBuiltins::Execute(const CStdString& execString)
 
     // ask if we need to check guisettings to resume
     bool askToResume = true;
+    int playOffset = 0;
     for (unsigned int i = 1 ; i < params.size() ; i++)
     {
       if (params[i].Equals("isdir"))
@@ -560,8 +582,10 @@ int CBuiltins::Execute(const CStdString& execString)
         // force the item to start at the beginning (m_lStartOffset is initialized to 0)
         askToResume = false;
       }
-      else if (params[i].Left(11).Equals("playoffset="))
-        item.SetProperty("playlist_starting_track", atoi(params[i].Mid(11)) - 1);
+      else if (params[i].Left(11).Equals("playoffset=")) {
+        playOffset = atoi(params[i].Mid(11)) - 1;
+        item.SetProperty("playlist_starting_track", playOffset);
+      }
     }
 
     if (!item.m_bIsFolder && item.IsPlugin())
@@ -588,7 +612,7 @@ int CBuiltins::Execute(const CStdString& execString)
       g_playlistPlayer.ClearPlaylist(playlist);
       g_playlistPlayer.Add(playlist, items);
       g_playlistPlayer.SetCurrentPlaylist(playlist);
-      g_playlistPlayer.Play();
+      g_playlistPlayer.Play(playOffset);
     }
     else
     {
@@ -749,13 +773,7 @@ int CBuiltins::Execute(const CStdString& execString)
     else if( parameter.Equals("record") )
     {
       if( g_application.IsPlaying() && g_application.m_pPlayer && g_application.m_pPlayer->CanRecord())
-      {
-#ifdef HAS_WEB_SERVER_BROADCAST
-        if (m_pXbmcHttp && g_settings.m_HttpApiBroadcastLevel>=1)
-          g_application.getApplicationMessenger().HttpApi(g_application.m_pPlayer->IsRecording()?"broadcastlevel; RecordStopping;1":"broadcastlevel; RecordStarting;1");
-#endif
         g_application.m_pPlayer->Record(!g_application.m_pPlayer->IsRecording());
-      }
     }
     else if (parameter.Left(9).Equals("partymode"))
     {
@@ -866,14 +884,14 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("setvolume"))
   {
     int oldVolume = g_application.GetVolume();
-    int volume = atoi(parameter.c_str());
+    float volume = (float)strtod(parameter.c_str(), NULL);
 
-    g_application.SetVolume(volume);   
-    if(oldVolume != volume)
+    g_application.SetVolume(volume);
+    if(oldVolume != (int)volume)
     {
       if(params.size() > 1 && params[1].Equals("showVolumeBar"))    
       {
-        g_application.getApplicationMessenger().ShowVolumeBar(oldVolume < volume);  
+        CApplicationMessenger::Get().ShowVolumeBar(oldVolume < volume);  
       }
     }
   }
@@ -925,7 +943,7 @@ int CBuiltins::Execute(const CStdString& execString)
 #ifdef HAS_DVD_DRIVE
   else if (execute.Equals("ejecttray"))
   {
-    CIoSupport::ToggleTray();
+    g_mediaManager.ToggleTray();
   }
 #endif
   else if( execute.Equals("alarmclock") && params.size() > 1 )
@@ -965,7 +983,9 @@ int CBuiltins::Execute(const CStdString& execString)
 
     if( g_alarmClock.IsRunning() )
       g_alarmClock.Stop(params[0],silent);
-
+    // no negative times not allowed, loop must have a positive time
+    if (seconds < 0 || (seconds == 0 && loop))
+      return false;
     g_alarmClock.Start(params[0], seconds, params[1], silent, loop);
   }
   else if (execute.Equals("notification"))
@@ -998,8 +1018,7 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("ripcd"))
   {
 #ifdef HAS_CDDA_RIPPER
-    CCDDARipper ripper;
-    ripper.RipCD();
+    CCDDARipper::GetInstance().RipCD();
 #endif
   }
   else if (execute.Equals("skin.togglesetting"))
@@ -1041,7 +1060,8 @@ int CBuiltins::Execute(const CStdString& execString)
     int iTheme = -1;
 
     // find current theme
-    if (!g_guiSettings.GetString("lookandfeel.skintheme").Equals("skindefault"))
+    if (!g_guiSettings.GetString("lookandfeel.skintheme").Equals("SKINDEFAULT"))
+    {
       for (unsigned int i=0;i<vecTheme.size();++i)
       {
         CStdString strTmpTheme(g_guiSettings.GetString("lookandfeel.skintheme"));
@@ -1052,6 +1072,7 @@ int CBuiltins::Execute(const CStdString& execString)
           break;
         }
       }
+    }
 
     int iParam = atoi(parameter.c_str());
     if (iParam == 0 || iParam == 1)
@@ -1063,15 +1084,16 @@ int CBuiltins::Execute(const CStdString& execString)
     if (iTheme < -1)
       iTheme = vecTheme.size()-1;
 
-    CStdString strSkinTheme;
-    if (iTheme==-1)
-      g_guiSettings.SetString("lookandfeel.skintheme","skindefault");
-    else
-      g_guiSettings.SetString("lookandfeel.skintheme",strSkinTheme);
+    CStdString strSkinTheme = "SKINDEFAULT";
+    if (iTheme != -1 && iTheme < (int)vecTheme.size())
+      strSkinTheme = vecTheme[iTheme];
 
+    g_guiSettings.SetString("lookandfeel.skintheme", strSkinTheme);
     // also set the default color theme
-    g_guiSettings.SetString("lookandfeel.skincolors", URIUtils::ReplaceExtension(strSkinTheme, ".xml"));
-
+    CStdString colorTheme(URIUtils::ReplaceExtension(strSkinTheme, ".xml"));
+    if (colorTheme.Equals("Textures.xml"))
+      colorTheme = "defaults.xml";
+    g_guiSettings.SetString("lookandfeel.skincolors", colorTheme);
     g_application.ReloadSkin();
   }
   else if (execute.Equals("skin.setstring") || execute.Equals("skin.setimage") || execute.Equals("skin.setfile") ||
@@ -1096,7 +1118,7 @@ int CBuiltins::Execute(const CStdString& execString)
     g_mediaManager.GetLocalDrives(localShares);
     if (execute.Equals("skin.setstring"))
     {
-      if (CGUIDialogKeyboard::ShowAndGetInput(value, g_localizeStrings.Get(1029), true))
+      if (CGUIKeyboardFactory::ShowAndGetInput(value, g_localizeStrings.Get(1029), true))
         g_settings.SetSkinString(string, value);
     }
     else if (execute.Equals("skin.setnumeric"))
@@ -1168,6 +1190,19 @@ int CBuiltins::Execute(const CStdString& execString)
     else // execute.Equals("skin.setpath"))
     {
       g_mediaManager.GetNetworkLocations(localShares);
+      if (params.size() > 1)
+      {
+        value = params[1];
+        URIUtils::AddSlashAtEnd(value);
+        bool bIsSource;
+        if (CUtil::GetMatchingSource(value,localShares,bIsSource) < 0) // path is outside shares - add it as a separate one
+        {
+          CMediaSource share;
+          share.strName = g_localizeStrings.Get(13278);
+          share.strPath = value;
+          localShares.push_back(share);
+        }
+      }
       if (CGUIDialogFileBrowser::ShowAndGetDirectory(localShares, g_localizeStrings.Get(1031), value))
         g_settings.SetSkinString(string, value);
     }
@@ -1209,23 +1244,18 @@ int CBuiltins::Execute(const CStdString& execString)
   }
   else if (execute.Equals("system.logoff"))
   {
+    // there was a commit from cptspiff here which was reverted
+    // for keeping the behaviour from Eden in Frodo - see
+    // git rev 9ee5f0047b
     if (g_windowManager.GetActiveWindow() == WINDOW_LOGIN_SCREEN)
       return -1;
 
     g_application.StopPlaying();
-    CGUIDialogMusicScan *musicScan = (CGUIDialogMusicScan *)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_SCAN);
-    if (musicScan && musicScan->IsScanning())
-    {
-      musicScan->StopScanning();
-      musicScan->Close(true);
-    }
+    if (g_application.IsMusicScanning())
+      g_application.StopMusicScan();
 
-    CGUIDialogVideoScan *videoScan = (CGUIDialogVideoScan *)g_windowManager.GetWindow(WINDOW_DIALOG_VIDEO_SCAN);
-    if (videoScan && videoScan->IsScanning())
-    {
-      videoScan->StopScanning();
-      videoScan->Close(true);
-    }
+    if (g_application.IsVideoScanning())
+      g_application.StopVideoScan();
 
     ADDON::CAddonMgr::Get().StopServices(true);
 
@@ -1252,61 +1282,40 @@ int CBuiltins::Execute(const CStdString& execString)
   {
     if (params[0].Equals("music"))
     {
-      CGUIDialogMusicScan *scanner = (CGUIDialogMusicScan *)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_SCAN);
-      if (scanner)
-      {
-        if (scanner->IsScanning())
-          scanner->StopScanning();
-        else
-          scanner->StartScanning(params.size() > 1 ? params[1] : "");
-      }
+      if (g_application.IsMusicScanning())
+        g_application.StopMusicScan();
+      else
+        g_application.StartMusicScan(params.size() > 1 ? params[1] : "");
     }
     if (params[0].Equals("video"))
     {
-      CGUIDialogVideoScan *scanner = (CGUIDialogVideoScan *)g_windowManager.GetWindow(WINDOW_DIALOG_VIDEO_SCAN);
-      if (scanner)
-      {
-        if (scanner->IsScanning())
-          scanner->StopScanning();
-        else
-          scanner->StartScanning(params.size() > 1 ? params[1] : "");
-      }
+      if (g_application.IsVideoScanning())
+        g_application.StopVideoScan();
+      else
+        g_application.StartVideoScan(params.size() > 1 ? params[1] : "");
     }
   }
   else if (execute.Equals("cleanlibrary"))
   {
     if (!params.size() || params[0].Equals("video"))
     {
-      CGUIDialogVideoScan *scanner = (CGUIDialogVideoScan *)g_windowManager.GetWindow(WINDOW_DIALOG_VIDEO_SCAN);
-      if (scanner)
-      {
-        if (!scanner->IsScanning())
-        {
-           CVideoDatabase videodatabase;
-           videodatabase.Open();
-           videodatabase.CleanDatabase();
-           videodatabase.Close();
-        }
-        else
-          CLog::Log(LOGERROR, "XBMC.CleanLibrary is not possible while scanning for media info");
-      }
+      if (!g_application.IsVideoScanning())
+         g_application.StartVideoCleanup();
+      else
+        CLog::Log(LOGERROR, "XBMC.CleanLibrary is not possible while scanning or cleaning");
     }
     else if (params[0].Equals("music"))
     {
-      CGUIDialogMusicScan *scanner = (CGUIDialogMusicScan *)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_SCAN);
-      if (scanner)
+      if (!g_application.IsMusicScanning())
       {
-        if (!scanner->IsScanning())
-        {
-          CMusicDatabase musicdatabase;
+        CMusicDatabase musicdatabase;
 
-          musicdatabase.Open();
-          musicdatabase.Cleanup();
-          musicdatabase.Close();
-        }
-        else
-          CLog::Log(LOGERROR, "XBMC.CleanLibrary is not possible while scanning for media info");
+        musicdatabase.Open();
+        musicdatabase.Cleanup();
+        musicdatabase.Close();
       }
+      else
+        CLog::Log(LOGERROR, "XBMC.CleanLibrary is not possible while scanning for media info");
     }
   }
   else if (execute.Equals("exportlibrary"))
@@ -1488,7 +1497,7 @@ int CBuiltins::Execute(const CStdString& execString)
     if (CButtonTranslator::TranslateActionString(params[0].c_str(), actionID))
     {
       int windowID = params.size() == 2 ? CButtonTranslator::TranslateWindow(params[1]) : WINDOW_INVALID;
-      g_application.getApplicationMessenger().SendAction(CAction(actionID), windowID);
+      CApplicationMessenger::Get().SendAction(CAction(actionID), windowID);
     }
   }
   else if (execute.Equals("setproperty") && params.size() >= 2)
@@ -1575,16 +1584,6 @@ int CBuiltins::Execute(const CStdString& execString)
     g_RemoteControl.AddSendCommand(command);
   }
 #endif
-#ifdef HAS_LCD
-  else if (execute.Equals("lcd.suspend"))
-  {
-    g_lcd->Suspend();
-  }
-  else if (execute.Equals("lcd.resume"))
-  {
-    g_lcd->Resume();
-  }
-#endif
   else if (execute.Equals("weather.locationset"))
   {
     int loc = atoi(params[0]);
@@ -1611,8 +1610,21 @@ int CBuiltins::Execute(const CStdString& execString)
     CGUIMessage msg(GUI_MSG_SEARCH, 0, 0, 0);
     g_windowManager.SendMessage(msg, WINDOW_VIDEO_NAV);
   }
+  else if (execute.Equals("toggledebug"))
+  {
+    bool debug = g_guiSettings.GetBool("debug.showloginfo");
+    g_guiSettings.SetBool("debug.showloginfo", !debug);
+    g_advancedSettings.SetDebugMode(!debug);
+  }
+  else if (execute.Equals("startpvrmanager"))
+  {
+    g_application.StartPVRManager();
+  }
+  else if (execute.Equals("stoppvrmanager"))
+  {
+    g_application.StopPVRManager();
+  }
   else
     return -1;
   return 0;
 }
-

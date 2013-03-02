@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,33 +13,34 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
+#include "system.h"
+
 #include "ZeroconfOSX.h"
+#include "threads/SingleLock.h"
+#include "utils/log.h"
 
 #include <string>
 #include <sstream>
-#include <threads/SingleLock.h>
-#include <utils/log.h>
 
 CZeroconfOSX::CZeroconfOSX():m_runloop(0)
 {
   //aquire the main threads event loop
-#if !defined(__arm__)
-  EventLoopRef ref = GetMainEventLoop();
-  m_runloop = (CFRunLoopRef)GetCFRunLoopFromEventLoop(ref);
-#else
   m_runloop = CFRunLoopGetMain();
-#endif
 }
 
 CZeroconfOSX::~CZeroconfOSX()
 {
   doStop();
+}
+
+CFHashCode CFHashNullVersion (CFTypeRef cf)
+{
+  return 0;
 }
 
 
@@ -48,7 +49,7 @@ bool CZeroconfOSX::doPublishService(const std::string& fcr_identifier,
                       const std::string& fcr_type,
                       const std::string& fcr_name,
                       unsigned int f_port,
-                      std::map<std::string, std::string> txt)
+                      const std::vector<std::pair<std::string, std::string> >& txt)
 {
   CLog::Log(LOGDEBUG, "CZeroconfOSX::doPublishService identifier: %s type: %s name:%s port:%i", fcr_identifier.c_str(),
             fcr_type.c_str(), fcr_name.c_str(), f_port);
@@ -75,10 +76,14 @@ bool CZeroconfOSX::doPublishService(const std::string& fcr_identifier,
   //add txt records
   if(!txt.empty())
   {
+
+    CFDictionaryKeyCallBacks key_cb = kCFTypeDictionaryKeyCallBacks;
+    key_cb.hash = CFHashNullVersion;
+
     //txt map to dictionary
     CFDataRef txtData = NULL;
-    CFMutableDictionaryRef txtDict = CFDictionaryCreateMutable(NULL, 0, NULL, NULL);    
-    for(std::map<std::string, std::string>::const_iterator it = txt.begin(); it != txt.end(); ++it)
+    CFMutableDictionaryRef txtDict = CFDictionaryCreateMutable(NULL, 0, &key_cb, &kCFTypeDictionaryValueCallBacks);
+    for(std::vector<std::pair<std::string, std::string> >::const_iterator it = txt.begin(); it != txt.end(); ++it)
     {
       CFStringRef key = CFStringCreateWithCString (NULL,
                                                    it->first.c_str(),
@@ -107,7 +112,8 @@ bool CZeroconfOSX::doPublishService(const std::string& fcr_identifier,
     CFNetServiceSetClient(netService, NULL, NULL);
     CFRelease(netService);
     netService = NULL;
-    CLog::Log(LOGERROR, "CZeroconfOSX::doPublishService CFNetServiceRegister returned (domain = %d, error = %ld)\n", (int)error.domain, error.error);
+    CLog::Log(LOGERROR, "CZeroconfOSX::doPublishService CFNetServiceRegister returned "
+      "(domain = %d, error = %"PRId64")", (int)error.domain, (int64_t)error.error);
   } else
   {
     CSingleLock lock(m_data_guard);
@@ -149,7 +155,8 @@ void CZeroconfOSX::registerCallback(CFNetServiceRef theService, CFStreamError* e
         CLog::Log(LOGERROR, "CZeroconfOSX::registerCallback name collision occured");
         break;
       default:
-        CLog::Log(LOGERROR, "CZeroconfOSX::registerCallback returned (domain = %d, error = %ld)\n", (int)error->domain, error->error);
+        CLog::Log(LOGERROR, "CZeroconfOSX::registerCallback returned "
+          "(domain = %d, error = %"PRId64")", (int)error->domain, (int64_t)error->error);
         break;
     }
     p_this->cancelRegistration(theService);

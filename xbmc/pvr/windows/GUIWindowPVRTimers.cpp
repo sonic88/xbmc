@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,15 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "GUIWindowPVRTimers.h"
 
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "guilib/GUIWindowManager.h"
@@ -77,7 +76,7 @@ void CGUIWindowPVRTimers::GetContextButtons(int itemNumber, CContextButtons &but
     buttons.Add(CONTEXT_BUTTON_DELETE, 117);            /* delete timer */
     buttons.Add(CONTEXT_BUTTON_SORTBY_NAME, 103);       /* sort by name */
     buttons.Add(CONTEXT_BUTTON_SORTBY_DATE, 104);       /* sort by date */
-    if (g_PVRClients->HasMenuHooks(pItem->GetPVRTimerInfoTag()->m_iClientId))
+    if (g_PVRClients->HasMenuHooks(pItem->GetPVRTimerInfoTag()->m_iClientId, PVR_MENUHOOK_TIMER))
       buttons.Add(CONTEXT_BUTTON_MENU_HOOKS, 19195);    /* PVR client specific action */
   }
 }
@@ -96,26 +95,26 @@ bool CGUIWindowPVRTimers::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       CGUIWindowPVRCommon::OnContextButton(itemNumber, button);
 }
 
-void CGUIWindowPVRTimers::UpdateData(void)
+void CGUIWindowPVRTimers::UpdateData(bool bUpdateSelectedFile /* = true */)
 {
   CSingleLock lock(m_critSection);
   CLog::Log(LOGDEBUG, "CGUIWindowPVRTimers - %s - update window '%s'. set view to %d", __FUNCTION__, GetName(), m_iControlList);
   m_bUpdateRequired = false;
 
-  g_PVRTimers->RegisterObserver(this);
-
   /* lock the graphics context while updating */
   CSingleLock graphicsLock(g_graphicsContext);
 
   m_iSelected = m_parent->m_viewControl.GetSelectedItem();
-  m_parent->m_viewControl.Clear();
-  m_parent->m_vecItems->Clear();
   m_parent->m_viewControl.SetCurrentView(m_iControlList);
+  ShowBusyItem();
+  m_parent->m_vecItems->Clear();
   m_parent->m_vecItems->SetPath("pvr://timers/");
   m_parent->Update(m_parent->m_vecItems->GetPath());
   m_parent->m_vecItems->Sort(m_iSortMethod, m_iSortOrder);
   m_parent->m_viewControl.SetItems(*m_parent->m_vecItems);
-  m_parent->m_viewControl.SetSelectedItem(m_iSelected);
+
+  if (bUpdateSelectedFile)
+    m_parent->m_viewControl.SetSelectedItem(m_iSelected);
 
   m_parent->SetLabel(CONTROL_LABELHEADER, g_localizeStrings.Get(19025));
   m_parent->SetLabel(CONTROL_LABELGROUP, "");
@@ -258,26 +257,26 @@ bool CGUIWindowPVRTimers::OnContextButtonRename(CFileItem *item, CONTEXT_BUTTON 
     CPVRTimerInfoTag *timer = item->GetPVRTimerInfoTag();
 
     CStdString strNewName(timer->m_strTitle);
-    if (CGUIDialogKeyboard::ShowAndGetInput(strNewName, g_localizeStrings.Get(19042), false))
+    if (CGUIKeyboardFactory::ShowAndGetInput(strNewName, g_localizeStrings.Get(19042), false))
       g_PVRTimers->RenameTimer(*item, strNewName);
   }
 
   return bReturn;
 }
 
-void CGUIWindowPVRTimers::Notify(const Observable &obs, const CStdString& msg)
+void CGUIWindowPVRTimers::Notify(const Observable &obs, const ObservableMessage msg)
 {
-  if (msg.Equals("timers"))
+  if (msg == ObservableMessageTimers)
   {
     if (IsVisible())
       SetInvalid();
     else
       m_bUpdateRequired = true;
   }
-  else if (msg.Equals("timers-reset"))
+  else if (msg == ObservableMessageTimersReset)
   {
     if (IsVisible())
-      UpdateData();
+      UpdateData(false);
     else
       m_bUpdateRequired = true;
   }

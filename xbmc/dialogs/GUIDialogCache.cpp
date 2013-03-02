@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,15 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
  
 #include "threads/SystemClock.h"
 #include "GUIDialogCache.h"
-#include "Application.h"
+#include "ApplicationMessenger.h"
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "guilib/LocalizeStrings.h"
@@ -29,17 +28,21 @@
 #include "threads/SingleLock.h"
 #include "utils/TimeUtils.h"
 
-CGUIDialogCache::CGUIDialogCache(DWORD dwDelay, const CStdString& strHeader, const CStdString& strMsg) 
+CGUIDialogCache::CGUIDialogCache(DWORD dwDelay, const CStdString& strHeader, const CStdString& strMsg) : CThread("CGUIDialogCache")
 {
+  m_strHeader = strHeader;
+  m_strLinePrev = strMsg;
+  bSentCancel = false;
+  dwDelay = 0;
+
   m_pDlg = (CGUIDialogProgress*)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
+
+  if (!m_pDlg)
+    return;
 
   /* if progress dialog is already running, take it over */
   if( m_pDlg->IsDialogRunning() )
     dwDelay = 0;
-
-  m_strHeader = strHeader;
-  m_strLinePrev = strMsg;
-  bSentCancel = false;
 
   if(dwDelay == 0)
     OpenDialog();    
@@ -55,8 +58,8 @@ void CGUIDialogCache::Close(bool bForceClose)
 
   // we cannot wait for the app thread to process the close message
   // as this might happen during player startup which leads to a deadlock
-  if (m_pDlg->IsDialogRunning())
-    g_application.getApplicationMessenger().Close(m_pDlg,bForceClose,false);
+  if (m_pDlg && m_pDlg->IsDialogRunning())
+    CApplicationMessenger::Get().Close(m_pDlg,bForceClose,false);
 
   //Set stop, this will kill this object, when thread stops  
   CThread::m_bStop = true;
@@ -64,19 +67,22 @@ void CGUIDialogCache::Close(bool bForceClose)
 
 CGUIDialogCache::~CGUIDialogCache()
 {
-  if(m_pDlg->IsDialogRunning())
+  if(m_pDlg && m_pDlg->IsDialogRunning())
     m_pDlg->Close();
 }
 
 void CGUIDialogCache::OpenDialog()
-{  
-  if (m_strHeader.IsEmpty())
-    m_pDlg->SetHeading(438);
-  else
-    m_pDlg->SetHeading(m_strHeader);
+{
+  if (m_pDlg)
+  {
+    if (m_strHeader.IsEmpty())
+      m_pDlg->SetHeading(438);
+    else
+      m_pDlg->SetHeading(m_strHeader);
 
-  m_pDlg->SetLine(2, m_strLinePrev);
-  m_pDlg->StartModal();
+    m_pDlg->SetLine(2, m_strLinePrev);
+    m_pDlg->StartModal();
+  }
   bSentCancel = false;
 }
 
@@ -92,17 +98,23 @@ void CGUIDialogCache::SetHeader(int nHeader)
 
 void CGUIDialogCache::SetMessage(const CStdString& strMessage)
 {
-  m_pDlg->SetLine(0, m_strLinePrev2);
-  m_pDlg->SetLine(1, m_strLinePrev);
-  m_pDlg->SetLine(2, strMessage);
+  if (m_pDlg)
+  {
+    m_pDlg->SetLine(0, m_strLinePrev2);
+    m_pDlg->SetLine(1, m_strLinePrev);
+    m_pDlg->SetLine(2, strMessage);
+  }
   m_strLinePrev2 = m_strLinePrev;
   m_strLinePrev = strMessage; 
 }
 
 bool CGUIDialogCache::OnFileCallback(void* pContext, int ipercent, float avgSpeed)
 {
-  m_pDlg->ShowProgressBar(true);
-  m_pDlg->SetPercentage(ipercent); 
+  if (m_pDlg)
+  {
+    m_pDlg->ShowProgressBar(true);
+    m_pDlg->SetPercentage(ipercent);
+  }
 
   if( IsCanceled() ) 
     return false;
@@ -112,6 +124,9 @@ bool CGUIDialogCache::OnFileCallback(void* pContext, int ipercent, float avgSpee
 
 void CGUIDialogCache::Process()
 {
+  if (m_pDlg)
+    return;
+
   while( true )
   {
     
@@ -148,16 +163,20 @@ void CGUIDialogCache::Process()
 }
 
 void CGUIDialogCache::ShowProgressBar(bool bOnOff) 
-{ 
-  m_pDlg->ShowProgressBar(bOnOff); 
+{
+  if (m_pDlg)
+    m_pDlg->ShowProgressBar(bOnOff);
 }
+
 void CGUIDialogCache::SetPercentage(int iPercentage) 
 { 
-  m_pDlg->SetPercentage(iPercentage); 
+  if (m_pDlg)
+    m_pDlg->SetPercentage(iPercentage);
 }
+
 bool CGUIDialogCache::IsCanceled() const
 {
-  if (m_pDlg->IsDialogRunning())
+  if (m_pDlg && m_pDlg->IsDialogRunning())
     return m_pDlg->IsCanceled();
   else
     return false;

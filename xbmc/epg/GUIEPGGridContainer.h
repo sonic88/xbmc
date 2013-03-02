@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,6 +24,12 @@
 #include "FileItem.h"
 #include "guilib/GUIControl.h"
 #include "guilib/GUIListItemLayout.h"
+#include "guilib/GUIBaseContainer.h"
+
+namespace PVR
+{
+  class CGUIWindowPVRGuide;
+}
 
 namespace EPG
 {
@@ -38,8 +43,10 @@ namespace EPG
     float height;
   };
 
-  class CGUIEPGGridContainer : public CGUIControl
+  class CGUIEPGGridContainer : public IGUIContainer
   {
+  friend class PVR::CGUIWindowPVRGuide;
+
   public:
     CGUIEPGGridContainer(int parentID, int controlID, float posX, float posY, float width, float height,
                          ORIENTATION orientation, int scrollTime, int preloadItems, int minutesPerPage,
@@ -71,8 +78,8 @@ namespace EPG
     void LoadLayout(TiXmlElement *layout);
     void LoadContent(TiXmlElement *content);
 
-    virtual bool IsContainer() const { return true; };
-    CGUIListItemPtr GetListItem(int offset) const;
+    virtual CGUIListItemPtr GetListItem(int offset, unsigned int flag = 0) const;
+    virtual CStdString GetLabel(int info) const;
 
     virtual int  CorrectOffset(int offset, int cursor) const;
 
@@ -114,7 +121,7 @@ namespace EPG
     int  GetBlock(const CGUIListItemPtr &item, const int &channel);
     int  GetRealBlock(const CGUIListItemPtr &item, const int &channel);
     void MoveToRow(int row);
-    bool MoveChannel(bool direction);
+    bool MoveChannel(bool direction, bool wrapAround);
     bool MoveProgrammes(bool direction);
 
     CGUIListItemLayout *GetFocusedLayout() const;
@@ -207,7 +214,6 @@ namespace EPG
     unsigned int m_renderTime;
 
     int   m_scrollTime;
-    bool  m_channelWrapAround;
     bool  m_gridWrapAround; //! only when no more data available should this be true
 
     int m_programmeScrollLastTime;

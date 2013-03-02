@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -53,6 +52,13 @@ bool CGUIDialogPVRGuideInfo::ActionStartTimer(const CEpgInfoTag *tag)
 {
   bool bReturn = false;
 
+  if (!tag)
+    return false;
+
+  CPVRChannelPtr channel = tag->ChannelTag();
+  if (!channel || !g_PVRManager.CheckParentalLock(*channel))
+    return false;
+
   // prompt user for confirmation of channel record
   CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
 
@@ -68,17 +74,28 @@ bool CGUIDialogPVRGuideInfo::ActionStartTimer(const CEpgInfoTag *tag)
     {
       Close();
       CPVRTimerInfoTag *newTimer = CPVRTimerInfoTag::CreateFromEpg(*tag);
-      bReturn = CPVRTimers::AddTimer(*newTimer);
-      delete newTimer;
+      if (newTimer)
+      {
+        bReturn = CPVRTimers::AddTimer(*newTimer);
+        delete newTimer;
+      }
+      else
+      {
+        bReturn = false;
+      }
     }
   }
 
   return bReturn;
 }
 
-bool CGUIDialogPVRGuideInfo::ActionCancelTimer(const CPVRTimerInfoTag *tag)
+bool CGUIDialogPVRGuideInfo::ActionCancelTimer(CFileItemPtr timer)
 {
   bool bReturn = false;
+  if (!timer || !timer->HasPVRTimerInfoTag())
+  {
+    return bReturn;
+  }
 
   // prompt user for confirmation of timer deletion
   CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
@@ -87,14 +104,14 @@ bool CGUIDialogPVRGuideInfo::ActionCancelTimer(const CPVRTimerInfoTag *tag)
   {
     pDialog->SetHeading(265);
     pDialog->SetLine(0, "");
-    pDialog->SetLine(1, tag->m_strTitle);
+    pDialog->SetLine(1, timer->GetPVRTimerInfoTag()->m_strTitle);
     pDialog->SetLine(2, "");
     pDialog->DoModal();
 
     if (pDialog->IsConfirmed())
     {
       Close();
-      bReturn = CPVRTimers::DeleteTimer(*tag);
+      bReturn = CPVRTimers::DeleteTimer(*timer);
     }
   }
 
@@ -131,8 +148,8 @@ bool CGUIDialogPVRGuideInfo::OnClickButtonRecord(CGUIMessage &message)
       return bReturn;
     }
 
-    const CPVRTimerInfoTag *timerTag = g_PVRTimers->GetMatch(tag);
-    bool bHasTimer = timerTag != NULL;
+    CFileItemPtr timerTag = g_PVRTimers->GetTimerForEpgTag(m_progItem.get());
+    bool bHasTimer = timerTag != NULL && timerTag->HasPVRTimerInfoTag();
 
     if (!bHasTimer)
       ActionStartTimer(tag);
@@ -168,7 +185,7 @@ bool CGUIDialogPVRGuideInfo::OnMessage(CGUIMessage& message)
   case GUI_MSG_WINDOW_INIT:
     CGUIDialog::OnMessage(message);
     Update();
-    break;
+    return true;
   case GUI_MSG_CLICKED:
     return OnClickButtonOK(message) ||
            OnClickButtonRecord(message) ||
@@ -204,8 +221,8 @@ void CGUIDialogPVRGuideInfo::Update()
     return;
   }
 
-  bool bHasTimer = g_PVRTimers->GetMatch(tag) != NULL;
-  if (!bHasTimer)
+  CFileItemPtr match = g_PVRTimers->GetTimerForEpgTag(m_progItem.get());
+  if (!match || !match->HasPVRTimerInfoTag())
   {
     /* no timer present on this tag */
     if (tag->StartAsLocalTime() < CDateTime::GetCurrentDateTime())

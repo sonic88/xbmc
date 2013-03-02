@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,18 +13,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "Directory.h"
 #include "DirectoryFactory.h"
 #include "FileDirectoryFactory.h"
-#ifndef _LINUX
-#include "utils/Win32Exception.h"
-#endif
+#include "commons/Exception.h"
 #include "FileItem.h"
 #include "DirectoryCache.h"
 #include "settings/GUISettings.h"
@@ -118,7 +115,15 @@ CDirectory::CDirectory()
 CDirectory::~CDirectory()
 {}
 
-bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, CStdString strMask /*=""*/, bool bUseFileDirectories /* = true */, bool allowPrompting /* = false */, DIR_CACHE_TYPE cacheDirectory /* = DIR_CACHE_ONCE */, bool extFileInfo /* = true */, bool allowThreads /* = false */, bool getHidden /* = false */)
+bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, const CStdString &strMask /*=""*/, int flags /*=DIR_FLAG_DEFAULTS*/, bool allowThreads /* = false */)
+{
+  CHints hints;
+  hints.flags = flags;
+  hints.mask = strMask;
+  return GetDirectory(strPath, items, hints, allowThreads);
+}
+
+bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, const CHints &hints, bool allowThreads)
 {
   try
   {
@@ -128,19 +133,16 @@ bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, C
       return false;
 
     // check our cache for this path
-    if (g_directoryCache.GetDirectory(strPath, items, cacheDirectory == DIR_CACHE_ALWAYS))
+    if (g_directoryCache.GetDirectory(strPath, items, (hints.flags & DIR_FLAG_READ_CACHE) == DIR_FLAG_READ_CACHE))
       items.SetPath(strPath);
     else
     {
       // need to clear the cache (in case the directory fetch fails)
       // and (re)fetch the folder
-      if (cacheDirectory != DIR_CACHE_NEVER)
+      if (!(hints.flags & DIR_FLAG_BYPASS_CACHE))
         g_directoryCache.ClearDirectory(strPath);
 
-      pDirectory->SetAllowPrompting(allowPrompting);
-      pDirectory->SetCacheDirectory(cacheDirectory);
-      pDirectory->SetUseFileDirectories(bUseFileDirectories);
-      pDirectory->SetExtFileInfo(extFileInfo);
+      pDirectory->SetFlags(hints.flags);
 
       bool result = false, cancel = false;
       while (!result && !cancel)
@@ -159,11 +161,19 @@ bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, C
             {
               CSingleLock lock(g_graphicsContext);
 
+              // update progress
+              float progress = pDirectory->GetProgress();
+              if (progress > 0)
+                dialog->SetProgress(progress);
+
               if(dialog->IsCanceled())
               {
                 cancel = true;
+                pDirectory->CancelDirectory();
                 break;
               }
+
+              lock.Leave(); // prevent an occasional deadlock on exit
               g_windowManager.ProcessRenderLoop(false);
             }
             if(dialog)
@@ -187,19 +197,19 @@ bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, C
       }
 
       // cache the directory, if necessary
-      if (cacheDirectory != DIR_CACHE_NEVER)
+      if (!(hints.flags & DIR_FLAG_BYPASS_CACHE))
         g_directoryCache.SetDirectory(strPath, items, pDirectory->GetCacheType(strPath));
     }
 
     // now filter for allowed files
-    pDirectory->SetMask(strMask);
+    pDirectory->SetMask(hints.mask);
     for (int i = 0; i < items.Size(); ++i)
     {
       CFileItemPtr item = items[i];
       // TODO: we shouldn't be checking the gui setting here;
       // callers should use getHidden instead
       if ((!item->m_bIsFolder && !pDirectory->IsAllowed(item->GetPath())) ||
-          (item->GetProperty("file:hidden").asBoolean() && !getHidden && !g_guiSettings.GetBool("filelists.showhidden")))
+          (item->GetProperty("file:hidden").asBoolean() && !(hints.flags & DIR_FLAG_GET_HIDDEN) && !g_guiSettings.GetBool("filelists.showhidden")))
       {
         items.Remove(i);
         i--; // don't confuse loop
@@ -208,17 +218,12 @@ bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, C
 
     //  Should any of the files we read be treated as a directory?
     //  Disable for database folders, as they already contain the extracted items
-    if (bUseFileDirectories && !items.IsMusicDb() && !items.IsVideoDb() && !items.IsSmartPlayList())
-      FilterFileDirectories(items, strMask);
+    if (!(hints.flags & DIR_FLAG_NO_FILE_DIRS) && !items.IsMusicDb() && !items.IsVideoDb() && !items.IsSmartPlayList())
+      FilterFileDirectories(items, hints.mask);
 
     return true;
   }
-#ifndef _LINUX
-  catch (const win32_exception &e)
-  {
-    e.writelog(__FUNCTION__);
-  }
-#endif
+  XBMCCOMMONS_HANDLE_UNCHECKED
   catch (...)
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
@@ -237,12 +242,7 @@ bool CDirectory::Create(const CStdString& strPath)
       if(pDirectory->Create(realPath.c_str()))
         return true;
   }
-#ifndef _LINUX
-  catch (const win32_exception &e)
-  {
-    e.writelog(__FUNCTION__);
-  }
-#endif
+  XBMCCOMMONS_HANDLE_UNCHECKED
   catch (...)
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
@@ -260,12 +260,7 @@ bool CDirectory::Exists(const CStdString& strPath)
     if (pDirectory.get())
       return pDirectory->Exists(realPath.c_str());
   }
-#ifndef _LINUX
-  catch (const win32_exception &e)
-  {
-    e.writelog(__FUNCTION__);
-  }
-#endif
+  XBMCCOMMONS_HANDLE_UNCHECKED
   catch (...)
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
@@ -284,12 +279,7 @@ bool CDirectory::Remove(const CStdString& strPath)
       if(pDirectory->Remove(realPath.c_str()))
         return true;
   }
-#ifndef _LINUX
-  catch (const win32_exception &e)
-  {
-    e.writelog(__FUNCTION__);
-  }
-#endif
+  XBMCCOMMONS_HANDLE_UNCHECKED
   catch (...)
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);

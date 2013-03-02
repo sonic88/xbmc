@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -60,7 +59,7 @@ namespace PVR
      * @brief Get the minimal database version that is required to operate correctly.
      * @return The minimal database version.
      */
-    virtual int GetMinVersion() const { return 20; };
+    virtual int GetMinVersion() const { return 22; };
 
     /*!
      * @brief Get the default sqlite database filename.
@@ -178,6 +177,12 @@ namespace PVR
      */
     bool Persist(CPVRChannelGroup &group);
 
+    /*!
+     * @brief Reset all epg ids to 0
+     * @return True when reset, false otherwise.
+     */
+    bool ResetEPG(void);
+
     //@}
 
     /*! @name Client methods */
@@ -203,6 +208,12 @@ namespace PVR
      */
     bool Delete(const CPVRClient &client);
 
+    /*!
+     * @brief Get the database ID of a client.
+     * @param strClientUid The unique ID of the client.
+     * @return The database ID of the client or -1 if it wasn't found.
+     */
+    int GetClientId(const CStdString &strClientUid);
     //@}
 
   private:
@@ -214,13 +225,6 @@ namespace PVR
 
     bool DeleteChannelsFromGroup(const CPVRChannelGroup &group);
     bool DeleteChannelsFromGroup(const CPVRChannelGroup &group, const std::vector<int> &channelsToDelete);
-
-    /*!
-     * @brief Get the database ID of a client.
-     * @param strClientUid The unique ID of the client.
-     * @return The database ID of the client or -1 if it wasn't found.
-     */
-    int GetClientId(const CStdString &strClientUid);
 
     bool GetCurrentGroupMembers(const CPVRChannelGroup &group, std::vector<int> &members);
     int GetLastChannelId(void);

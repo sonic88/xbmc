@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -82,11 +81,11 @@ public:
   void getDiskArtist(CStdString& strdisk_artist) const;
   void getDiskTitle(CStdString& strdisk_title) const;
   const CStdString& getTrackExtended(int track) const;
-  unsigned long calc_disc_id(int nr_of_tracks, toc cdtoc[]);
+  uint32_t calc_disc_id(int nr_of_tracks, toc cdtoc[]);
   const CStdString& getInexactArtist(int select) const;
   const CStdString& getInexactTitle(int select) const;
-  bool queryCache( unsigned long discid );
-  bool writeCacheFile( const char* pBuffer, unsigned long discid );
+  bool queryCache( uint32_t discid );
+  bool writeCacheFile( const char* pBuffer, uint32_t discid );
   bool isCDCached( int nr_of_tracks, toc cdtoc[] );
   bool isCDCached( MEDIA_DETECT::CCdInfo* pInfo );
 
@@ -122,7 +121,7 @@ protected:
   void addInexactList(const char *list);
   void addInexactListLine(int line_cnt, const char *line, int len);
   const CStdString& getInexactCommand(int select) const;
-  CStdString GetCacheFile(unsigned int disc_id) const;
+  CStdString GetCacheFile(uint32_t disc_id) const;
   /*! \brief Trim and convert some text to UTF8
    \param untrimmedText original text to trim and convert
    \return a utf8 version of the trimmed text

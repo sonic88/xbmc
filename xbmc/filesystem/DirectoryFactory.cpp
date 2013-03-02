@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,15 +13,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
 #endif
+#include "network/Network.h"
 #include "system.h"
 #include "DirectoryFactory.h"
 #include "HDDirectory.h"
@@ -33,6 +33,7 @@
 #include "MusicDatabaseDirectory.h"
 #include "MusicSearchDirectory.h"
 #include "VideoDatabaseDirectory.h"
+#include "LibraryDirectory.h"
 #include "AddonsDirectory.h"
 #include "SourcesDirectory.h"
 #include "LastFMDirectory.h"
@@ -79,6 +80,9 @@
 #ifdef HAS_PVRCLIENTS
 #include "PVRDirectory.h"
 #endif
+#if defined(TARGET_ANDROID)
+#include "APKDirectory.h"
+#endif
 #include "ZipDirectory.h"
 #ifdef HAS_FILESYSTEM_RAR
 #include "RarDirectory.h"
@@ -101,6 +105,12 @@
 #endif
 #ifdef HAS_FILESYSTEM_AFP
 #include "AFPDirectory.h"
+#endif
+#ifdef HAVE_LIBBLURAY
+#include "BlurayDirectory.h"
+#endif
+#if defined(TARGET_ANDROID)
+#include "AndroidAppDirectory.h"
 #endif
 
 using namespace XFILE;
@@ -134,10 +144,18 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
 #endif
   if (strProtocol == "udf") return new CUDFDirectory();
   if (strProtocol == "plugin") return new CPluginDirectory();
-  if (strProtocol == "zip") return new CZipDirectory();
-#ifdef HAS_FILESYSTEM_RAR
-  if (strProtocol == "rar") return new CRarDirectory();
+#if defined(TARGET_ANDROID)
+  if (strProtocol == "apk") return new CAPKDirectory();
 #endif
+  if (strProtocol == "zip") return new CZipDirectory();
+  if (strProtocol == "rar") 
+  {
+#ifdef HAS_FILESYSTEM_RAR
+    return new CRarDirectory();
+#else
+    CLog::Log(LOGWARNING, "%s - Compiled without non-free, rar support is disabled", __FUNCTION__);
+#endif
+  }
   if (strProtocol == "multipath") return new CMultiPathDirectory();
   if (strProtocol == "stack") return new CStackDirectory();
   if (strProtocol == "playlistmusic") return new CPlaylistDirectory();
@@ -145,6 +163,7 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
   if (strProtocol == "musicdb") return new CMusicDatabaseDirectory();
   if (strProtocol == "musicsearch") return new CMusicSearchDirectory();
   if (strProtocol == "videodb") return new CVideoDatabaseDirectory();
+  if (strProtocol == "library") return new CLibraryDirectory();
   if (strProtocol == "filereader")
     return CDirectoryFactory::Create(url.GetFileName());
 
@@ -152,7 +171,7 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
   {
     if (strProtocol == "lastfm") return new CLastFMDirectory();
     if (strProtocol == "tuxbox") return new CTuxBoxDirectory();
-    if (strProtocol == "ftp" ||  strProtocol == "ftpx" ||  strProtocol == "ftps") return new CFTPDirectory();
+    if (strProtocol == "ftp" || strProtocol == "ftps") return new CFTPDirectory();
     if (strProtocol == "http" || strProtocol == "https") return new CHTTPDirectory();
     if (strProtocol == "dav" || strProtocol == "davs") return new CDAVDirectory();
 #ifdef HAS_FILESYSTEM_SFTP
@@ -201,6 +220,12 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
 #endif
 #ifdef HAS_FILESYSTEM_AFP
       if (strProtocol == "afp") return new CAFPDirectory();
+#endif
+#ifdef HAVE_LIBBLURAY
+      if (strProtocol == "bluray") return new CBlurayDirectory();
+#endif
+#if defined(TARGET_ANDROID)
+      if (strProtocol == "androidapp") return new CAndroidAppDirectory();
 #endif
   }
 

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -23,10 +22,8 @@
 #include "guilib/GUIRadioButtonControl.h"
 #include "guilib/GUISpinControlEx.h"
 #include "guilib/GUIEditControl.h"
-#include "dialogs/GUIDialogNumeric.h"
 #include "Util.h"
 #include "dialogs/GUIDialogOK.h"
-#include "dialogs/GUIDialogKeyboard.h"
 #include "GUISettings.h"
 #include "guilib/GUIImage.h"
 #include "guilib/LocalizeStrings.h"
@@ -58,7 +55,8 @@ bool CRadioButtonSettingControl::OnClick()
 
 void CRadioButtonSettingControl::Update()
 {
-  m_pRadioButton->SetSelected(((CSettingBool *)m_pSetting)->GetData());
+  if (m_pRadioButton)
+    m_pRadioButton->SetSelected(((CSettingBool *)m_pSetting)->GetData());
 }
 
 CSpinExSettingControl::CSpinExSettingControl(CGUISpinControlEx *pSpin, int id, CSetting *pSetting)
@@ -128,6 +126,8 @@ bool CSpinExSettingControl::OnClick()
 
 void CSpinExSettingControl::Update()
 {
+  if (!m_pSpin)
+    return;
   if (m_pSetting->GetControlType() == SPIN_CONTROL_FLOAT)
   {
     CSettingFloat *pSettingFloat = (CSettingFloat *)m_pSetting;
@@ -177,7 +177,8 @@ void CButtonSettingControl::Update()
   }
   else if (m_pSetting->GetControlType() == BUTTON_CONTROL_STANDARD)
     return;
-  m_pButton->SetLabel2(strText);
+  if (m_pButton)
+    m_pButton->SetLabel2(strText);
 }
 
 CEditSettingControl::CEditSettingControl(CGUIEditControl *pEdit, int id, CSetting *pSetting)
@@ -196,6 +197,8 @@ CEditSettingControl::CEditSettingControl(CGUIEditControl *pEdit, int id, CSettin
     m_pEdit->SetInputType(CGUIEditControl::INPUT_TYPE_IPADDRESS, heading);
   else if (pSetting->GetControlType() == EDIT_CONTROL_NUMBER_INPUT)
     m_pEdit->SetInputType(CGUIEditControl::INPUT_TYPE_NUMBER, heading);
+  else if (pSetting->GetControlType() == EDIT_CONTROL_HIDDEN_NUMBER_VERIFY_NEW)
+    m_pEdit->SetInputType(CGUIEditControl::INPUT_TYPE_PASSWORD_NUMBER_VERIFY_NEW, heading);
   else
     m_pEdit->SetInputType(CGUIEditControl::INPUT_TYPE_TEXT, heading);
   Update();
@@ -216,7 +219,7 @@ bool CEditSettingControl::OnClick()
 
 void CEditSettingControl::Update()
 {
-  if (!m_needsUpdate)
+  if (!m_needsUpdate && m_pEdit)
     m_pEdit->SetLabel2(((CSettingString *)m_pSetting)->GetData());
 }
 

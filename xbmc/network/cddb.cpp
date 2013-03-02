@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 //-----------------------------------------------------------------------------
@@ -31,9 +30,9 @@
 
 #ifdef HAS_DVD_DRIVE
 
+#include <taglib/id3v1genres.h>
 #include "cddb.h"
 #include "network/DNSNameCache.h"
-#include "music/tags/Id3Tag.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -47,7 +46,6 @@
 #include <netdb.h>
 
 using namespace std;
-using namespace MUSIC_INFO;
 using namespace MEDIA_DETECT;
 using namespace AUTOPTR;
 using namespace CDDB;
@@ -211,7 +209,7 @@ bool Xcddb::queryCDinfo(CCdInfo* pInfo, int inexact_list_select)
     return false;
   }
 
-  unsigned long discid = pInfo->GetCddbDiscId();
+  uint32_t discid = pInfo->GetCddbDiscId();
 
 
   //##########################################################
@@ -356,7 +354,7 @@ int Xcddb::cddb_sum(int n)
 }
 
 //-------------------------------------------------------------------------------------------------------------------
-unsigned long Xcddb::calc_disc_id(int tot_trks, toc cdtoc[])
+uint32_t Xcddb::calc_disc_id(int tot_trks, toc cdtoc[])
 {
   int i = 0, t = 0, n = 0;
 
@@ -491,7 +489,7 @@ void Xcddb::parseData(const char *buffer)
   // the data contained on those lines should be concatenated
   char *line;
   const char trenner[3] = {'\n', '\r', '\0'};
-  line = strtok((char*)buffer, trenner); // skip first line
+  strtok((char*)buffer, trenner); // skip first line
   while ((line = strtok(0, trenner)))
   {
     // Lines that begin with # are comments, should be ignored
@@ -507,7 +505,6 @@ void Xcddb::parseData(const char *buffer)
         strValue.Replace("\\n", "\n"); 
         strValue.Replace("\\t", "\t"); 
         strValue.Replace("\\\\", "\\"); 
-        g_charsetConverter.unknownToUTF8(strValue);
 
         std::map<CStdString, CStdString>::const_iterator it = keywords.find(strKeyword);
         if (it != keywords.end())
@@ -575,8 +572,8 @@ void Xcddb::parseData(const char *buffer)
           strGenre.TrimLeft(' ');
           if (StringUtils::IsNaturalNumber(strGenre))
           {
-            CID3Tag tag;
-            m_strGenre=tag.ParseMP3Genre(strGenre);
+            int iGenre = strtol(strGenre, NULL, 10);
+            m_strGenre = TagLib::ID3v1::genre(iGenre).to8Bit(true);
           }
         }
       }
@@ -752,7 +749,7 @@ void Xcddb::setCacheDir(const CStdString& pCacheDir )
 }
 
 //-------------------------------------------------------------------------------------------------------------------
-bool Xcddb::queryCache( unsigned long discid )
+bool Xcddb::queryCache( uint32_t discid )
 {
   if (cCacheDir.size() == 0)
     return false;
@@ -773,7 +770,7 @@ bool Xcddb::queryCache( unsigned long discid )
 }
 
 //-------------------------------------------------------------------------------------------------------------------
-bool Xcddb::writeCacheFile( const char* pBuffer, unsigned long discid )
+bool Xcddb::writeCacheFile( const char* pBuffer, uint32_t discid )
 {
   if (cCacheDir.size() == 0)
     return false;
@@ -823,7 +820,7 @@ bool Xcddb::queryCDinfo(CCdInfo* pInfo)
 
   int lead_out = pInfo->GetTrackCount();
   int real_track_count = pInfo->GetTrackCount();
-  unsigned long discid = pInfo->GetCddbDiscId();
+  uint32_t discid = pInfo->GetCddbDiscId();
   unsigned long frames[100];
 
 
@@ -831,7 +828,7 @@ bool Xcddb::queryCDinfo(CCdInfo* pInfo)
   //
   if ( queryCache(discid) )
   {
-    CLog::Log(LOGDEBUG, "Xcddb::queryCDinfo discid [%08lx] already cached", discid);
+    CLog::Log(LOGDEBUG, "Xcddb::queryCDinfo discid [%08x] already cached", discid);
     return true;
   }
 
@@ -930,7 +927,7 @@ bool Xcddb::queryCDinfo(CCdInfo* pInfo)
   strcat(query_buffer, "cddb query");
   {
     char tmp_buffer[256];
-    sprintf(tmp_buffer, " %08lx", discid);
+    sprintf(tmp_buffer, " %08x", discid);
     strcat(query_buffer, tmp_buffer);
   }
   {
@@ -1068,7 +1065,7 @@ bool Xcddb::isCDCached( CCdInfo* pInfo )
   return XFILE::CFile::Exists(GetCacheFile(pInfo->GetCddbDiscId()));
 }
 
-CStdString Xcddb::GetCacheFile(unsigned int disc_id) const
+CStdString Xcddb::GetCacheFile(uint32_t disc_id) const
 {
   CStdString strFileName;
   strFileName.Format("%x.cddb", disc_id);

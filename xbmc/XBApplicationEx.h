@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -42,10 +42,12 @@ public:
   int  m_ExitCode;
   bool m_AppActive;
   bool m_AppFocused;
+  bool m_renderGUI;
 
   // Overridable functions for the 3D scene created by the app
   virtual bool Initialize() { return true; }
   virtual bool Cleanup() { return true; }
+  virtual void SetRenderGUI(bool renderGUI) {};
 
 public:
   // Functions to create, run, and clean up the application

@@ -7,7 +7,7 @@
 #define GUIINFOMANAGER_H_
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,9 +21,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -104,6 +103,11 @@ namespace INFO
 #define PLAYER_FILEPATH              46
 #define PLAYER_SEEKOFFSET            47
 #define PLAYER_PROGRESS_CACHE        48
+#define PLAYER_ITEM_ART              49
+#define PLAYER_CAN_PAUSE             50
+#define PLAYER_CAN_SEEK              51
+#define PLAYER_START_TIME            52
+#define PLAYER_TITLE                 53
 
 #define WEATHER_CONDITIONS          100
 #define WEATHER_TEMPERATURE         101
@@ -158,21 +162,6 @@ namespace INFO
 #define SYSTEM_HDD_LOCKSTATE        157
 #define SYSTEM_HDD_LOCKKEY          158
 #define SYSTEM_INTERNET_STATE       159
-#define LCD_PLAY_ICON               160
-#define LCD_PROGRESS_BAR            161
-#define LCD_CPU_TEMPERATURE         162
-#define LCD_GPU_TEMPERATURE         163
-#define LCD_HDD_TEMPERATURE         164
-#define LCD_FAN_SPEED               165
-#define LCD_DATE                    166
-#define LCD_TIME_21                 172 // Small bigfont
-#define LCD_TIME_22                 173
-#define LCD_TIME_W21                174 // Medum bigfont
-#define LCD_TIME_W22                175
-#define LCD_TIME_41                 176 // Big bigfont
-#define LCD_TIME_42                 177
-#define LCD_TIME_43                 178
-#define LCD_TIME_44                 179
 #define SYSTEM_ALARM_LESS_OR_EQUAL  180
 #define SYSTEM_PROFILECOUNT         181
 #define SYSTEM_ISFULLSCREEN         182
@@ -289,6 +278,10 @@ namespace INFO
 #define LASTFM_CANLOVE              331
 #define LASTFM_CANBAN               332
 
+#define CONTAINER_CAN_FILTER         342
+#define CONTAINER_CAN_FILTERADVANCED 343
+#define CONTAINER_FILTERED           344
+
 #define CONTAINER_SCROLL_PREVIOUS   345 // NOTE: These 5 must be kept in this consecutive order
 #define CONTAINER_MOVE_PREVIOUS     346
 #define CONTAINER_STATIC            347
@@ -360,6 +353,7 @@ namespace INFO
 #define SKIN_THEME                  604
 #define SKIN_COLOUR_THEME           605
 #define SKIN_HAS_THEME              606
+#define SKIN_ASPECT_RATIO           607
 
 #define SYSTEM_TOTAL_MEMORY         644
 #define SYSTEM_CPU_USAGE            645
@@ -397,19 +391,20 @@ namespace INFO
 #define LIBRARY_HAS_MUSIC           720
 #define LIBRARY_HAS_VIDEO           721
 #define LIBRARY_HAS_MOVIES          722
-#define LIBRARY_HAS_TVSHOWS         723
-#define LIBRARY_HAS_MUSICVIDEOS     724
-#define LIBRARY_IS_SCANNING         725
-#define LIBRARY_IS_SCANNING_VIDEO   726
-#define LIBRARY_IS_SCANNING_MUSIC   727
+#define LIBRARY_HAS_MOVIE_SETS      723
+#define LIBRARY_HAS_TVSHOWS         724
+#define LIBRARY_HAS_MUSICVIDEOS     725
+#define LIBRARY_IS_SCANNING         726
+#define LIBRARY_IS_SCANNING_VIDEO   727
+#define LIBRARY_IS_SCANNING_MUSIC   728
 
-#define SYSTEM_PLATFORM_XBOX        740
 #define SYSTEM_PLATFORM_LINUX       741
 #define SYSTEM_PLATFORM_WINDOWS     742
-#define SYSTEM_PLATFORM_OSX         743
+#define SYSTEM_PLATFORM_DARWIN      743
 #define SYSTEM_PLATFORM_DARWIN_OSX  744
 #define SYSTEM_PLATFORM_DARWIN_IOS  745
 #define SYSTEM_PLATFORM_DARWIN_ATV2 746
+#define SYSTEM_PLATFORM_ANDROID     747
 
 #define SYSTEM_CAN_POWERDOWN        750
 #define SYSTEM_CAN_SUSPEND          751
@@ -492,9 +487,9 @@ namespace INFO
 #define CONTROL_GROUP_HAS_FOCUS     29999
 #define CONTROL_HAS_FOCUS           30000
 
-#define VERSION_MAJOR 11
+#define VERSION_MAJOR 13
 #define VERSION_MINOR 0
-#define VERSION_TAG "-PRE"
+#define VERSION_TAG "-ALPHA1"
 
 #define LISTITEM_START              35000
 #define LISTITEM_THUMB              (LISTITEM_START)
@@ -530,83 +525,88 @@ namespace INFO
 // the ordering of LISTITEM_PICTURE_* is important as they're mapped to SLIDE_* items in GUIInfoManager.cpp
 #define LISTITEM_PICTURE_START      (LISTITEM_START + 30)
 #define LISTITEM_PICTURE_RESOLUTION (LISTITEM_PICTURE_START) // => SLIDE_RESOLUTION
-#define LISTITEM_PICTURE_DATETIME   (LISTITEM_START + 31)    // => SLIDE_EXIF_DATE_TIME
-#define LISTITEM_PICTURE_COMMENT    (LISTITEM_START + 32)    // => SLIDE_COMMENT
-#define LISTITEM_PICTURE_CAPTION    (LISTITEM_START + 33)    // => SLIDE_IPTC_CAPTION
-#define LISTITEM_PICTURE_DESC       (LISTITEM_START + 34)    // => SLIDE_EXIF_DESCRIPTION
-#define LISTITEM_PICTURE_KEYWORDS   (LISTITEM_START + 35)    // => SLIDE_IPTC_KEYWORDS
-#define LISTITEM_PICTURE_CAM_MAKE   (LISTITEM_START + 36)    // => SLIDE_EXIF_CAMERA_MAKE
-#define LISTITEM_PICTURE_CAM_MODEL  (LISTITEM_START + 37)    // => SLIDE_EXIF_CAMERA_MODEL
-#define LISTITEM_PICTURE_APERTURE   (LISTITEM_START + 38)    // => SLIDE_EXIF_APERTURE
-#define LISTITEM_PICTURE_FOCAL_LEN  (LISTITEM_START + 39)    // => SLIDE_EXIF_FOCAL_LENGTH
-#define LISTITEM_PICTURE_FOCUS_DIST (LISTITEM_START + 40)    // => SLIDE_EXIF_FOCUS_DIST
-#define LISTITEM_PICTURE_EXP_MODE   (LISTITEM_START + 41)    // => SLIDE_EXIF_EXPOSURE_MODE
-#define LISTITEM_PICTURE_EXP_TIME   (LISTITEM_START + 42)    // => SLIDE_EXIF_EXPOSURE_TIME
-#define LISTITEM_PICTURE_ISO        (LISTITEM_START + 43)    // => SLIDE_EXIF_ISO_EQUIV
-#define LISTITEM_PICTURE_GPS_LAT    (LISTITEM_START + 44)    // => SLIDE_EXIF_GPS_LATITUDE
-#define LISTITEM_PICTURE_GPS_LON    (LISTITEM_START + 45)    // => SLIDE_EXIF_GPS_LONGITUDE
-#define LISTITEM_PICTURE_GPS_ALT    (LISTITEM_START + 46)    // => SLIDE_EXIF_GPS_ALTITUDE
+#define LISTITEM_PICTURE_DATE       (LISTITEM_START + 31)    // => SLIDE_EXIF_DATE
+#define LISTITEM_PICTURE_DATETIME   (LISTITEM_START + 32)    // => SLIDE_EXIF_DATE_TIME
+#define LISTITEM_PICTURE_COMMENT    (LISTITEM_START + 33)    // => SLIDE_COMMENT
+#define LISTITEM_PICTURE_CAPTION    (LISTITEM_START + 34)    // => SLIDE_IPTC_CAPTION
+#define LISTITEM_PICTURE_DESC       (LISTITEM_START + 35)    // => SLIDE_EXIF_DESCRIPTION
+#define LISTITEM_PICTURE_KEYWORDS   (LISTITEM_START + 36)    // => SLIDE_IPTC_KEYWORDS
+#define LISTITEM_PICTURE_CAM_MAKE   (LISTITEM_START + 37)    // => SLIDE_EXIF_CAMERA_MAKE
+#define LISTITEM_PICTURE_CAM_MODEL  (LISTITEM_START + 38)    // => SLIDE_EXIF_CAMERA_MODEL
+#define LISTITEM_PICTURE_APERTURE   (LISTITEM_START + 39)    // => SLIDE_EXIF_APERTURE
+#define LISTITEM_PICTURE_FOCAL_LEN  (LISTITEM_START + 40)    // => SLIDE_EXIF_FOCAL_LENGTH
+#define LISTITEM_PICTURE_FOCUS_DIST (LISTITEM_START + 41)    // => SLIDE_EXIF_FOCUS_DIST
+#define LISTITEM_PICTURE_EXP_MODE   (LISTITEM_START + 42)    // => SLIDE_EXIF_EXPOSURE_MODE
+#define LISTITEM_PICTURE_EXP_TIME   (LISTITEM_START + 43)    // => SLIDE_EXIF_EXPOSURE_TIME
+#define LISTITEM_PICTURE_ISO        (LISTITEM_START + 44)    // => SLIDE_EXIF_ISO_EQUIV
+#define LISTITEM_PICTURE_GPS_LAT    (LISTITEM_START + 45)    // => SLIDE_EXIF_GPS_LATITUDE
+#define LISTITEM_PICTURE_GPS_LON    (LISTITEM_START + 46)    // => SLIDE_EXIF_GPS_LONGITUDE
+#define LISTITEM_PICTURE_GPS_ALT    (LISTITEM_START + 47)    // => SLIDE_EXIF_GPS_ALTITUDE
 #define LISTITEM_PICTURE_END        (LISTITEM_PICTURE_GPS_ALT)
-#define LISTITEM_STUDIO             (LISTITEM_START + 47)
-#define LISTITEM_MPAA               (LISTITEM_START + 48)
-#define LISTITEM_CAST               (LISTITEM_START + 49)
-#define LISTITEM_CAST_AND_ROLE      (LISTITEM_START + 50)
-#define LISTITEM_WRITER             (LISTITEM_START + 51)
-#define LISTITEM_TAGLINE            (LISTITEM_START + 52)
-#define LISTITEM_TOP250             (LISTITEM_START + 53)
-#define LISTITEM_RATING_AND_VOTES   (LISTITEM_START + 54)
-#define LISTITEM_TRAILER            (LISTITEM_START + 55)
-#define LISTITEM_STAR_RATING        (LISTITEM_START + 56)
-#define LISTITEM_FILENAME_AND_PATH  (LISTITEM_START + 57)
-#define LISTITEM_SORT_LETTER        (LISTITEM_START + 58)
-#define LISTITEM_ALBUM_ARTIST       (LISTITEM_START + 59)
-#define LISTITEM_FOLDERNAME         (LISTITEM_START + 60)
-#define LISTITEM_VIDEO_CODEC        (LISTITEM_START + 61)
-#define LISTITEM_VIDEO_RESOLUTION   (LISTITEM_START + 62)
-#define LISTITEM_VIDEO_ASPECT       (LISTITEM_START + 63)
-#define LISTITEM_AUDIO_CODEC        (LISTITEM_START + 64)
-#define LISTITEM_AUDIO_CHANNELS     (LISTITEM_START + 65)
-#define LISTITEM_AUDIO_LANGUAGE     (LISTITEM_START + 66)
-#define LISTITEM_SUBTITLE_LANGUAGE  (LISTITEM_START + 67)
-#define LISTITEM_IS_FOLDER          (LISTITEM_START + 68)
-#define LISTITEM_ORIGINALTITLE      (LISTITEM_START + 69)
-#define LISTITEM_COUNTRY            (LISTITEM_START + 70)
-#define LISTITEM_PLAYCOUNT          (LISTITEM_START + 71)
-#define LISTITEM_LASTPLAYED         (LISTITEM_START + 72)
-#define LISTITEM_FOLDERPATH         (LISTITEM_START + 73)
-#define LISTITEM_DISC_NUMBER        (LISTITEM_START + 74)
-#define LISTITEM_FILE_EXTENSION     (LISTITEM_START + 75)
-#define LISTITEM_IS_RESUMABLE       (LISTITEM_START + 76)
-#define LISTITEM_PERCENT_PLAYED     (LISTITEM_START + 77)
+#define LISTITEM_STUDIO             (LISTITEM_START + 48)
+#define LISTITEM_MPAA               (LISTITEM_START + 49)
+#define LISTITEM_CAST               (LISTITEM_START + 50)
+#define LISTITEM_CAST_AND_ROLE      (LISTITEM_START + 51)
+#define LISTITEM_WRITER             (LISTITEM_START + 52)
+#define LISTITEM_TAGLINE            (LISTITEM_START + 53)
+#define LISTITEM_TOP250             (LISTITEM_START + 54)
+#define LISTITEM_RATING_AND_VOTES   (LISTITEM_START + 55)
+#define LISTITEM_TRAILER            (LISTITEM_START + 56)
+#define LISTITEM_STAR_RATING        (LISTITEM_START + 57)
+#define LISTITEM_FILENAME_AND_PATH  (LISTITEM_START + 58)
+#define LISTITEM_SORT_LETTER        (LISTITEM_START + 59)
+#define LISTITEM_ALBUM_ARTIST       (LISTITEM_START + 60)
+#define LISTITEM_FOLDERNAME         (LISTITEM_START + 61)
+#define LISTITEM_VIDEO_CODEC        (LISTITEM_START + 62)
+#define LISTITEM_VIDEO_RESOLUTION   (LISTITEM_START + 63)
+#define LISTITEM_VIDEO_ASPECT       (LISTITEM_START + 64)
+#define LISTITEM_AUDIO_CODEC        (LISTITEM_START + 65)
+#define LISTITEM_AUDIO_CHANNELS     (LISTITEM_START + 66)
+#define LISTITEM_AUDIO_LANGUAGE     (LISTITEM_START + 67)
+#define LISTITEM_SUBTITLE_LANGUAGE  (LISTITEM_START + 68)
+#define LISTITEM_IS_FOLDER          (LISTITEM_START + 69)
+#define LISTITEM_ORIGINALTITLE      (LISTITEM_START + 70)
+#define LISTITEM_COUNTRY            (LISTITEM_START + 71)
+#define LISTITEM_PLAYCOUNT          (LISTITEM_START + 72)
+#define LISTITEM_LASTPLAYED         (LISTITEM_START + 73)
+#define LISTITEM_FOLDERPATH         (LISTITEM_START + 74)
+#define LISTITEM_DISC_NUMBER        (LISTITEM_START + 75)
+#define LISTITEM_FILE_EXTENSION     (LISTITEM_START + 76)
+#define LISTITEM_IS_RESUMABLE       (LISTITEM_START + 77)
+#define LISTITEM_PERCENT_PLAYED     (LISTITEM_START + 78)
+#define LISTITEM_DATE_ADDED         (LISTITEM_START + 79)
+#define LISTITEM_DBTYPE             (LISTITEM_START + 80)
+#define LISTITEM_DBID               (LISTITEM_START + 81)
 
-#define LISTITEM_STARTTIME          (LISTITEM_START + 78)
-#define LISTITEM_ENDTIME            (LISTITEM_START + 79)
-#define LISTITEM_STARTDATE          (LISTITEM_START + 80)
-#define LISTITEM_ENDDATE            (LISTITEM_START + 81)
-#define LISTITEM_NEXT_TITLE         (LISTITEM_START + 82)
-#define LISTITEM_NEXT_GENRE         (LISTITEM_START + 83)
-#define LISTITEM_NEXT_PLOT          (LISTITEM_START + 84)
-#define LISTITEM_NEXT_PLOT_OUTLINE  (LISTITEM_START + 85)
-#define LISTITEM_NEXT_STARTTIME     (LISTITEM_START + 86)
-#define LISTITEM_NEXT_ENDTIME       (LISTITEM_START + 87)
-#define LISTITEM_NEXT_STARTDATE     (LISTITEM_START + 88)
-#define LISTITEM_NEXT_ENDDATE       (LISTITEM_START + 89)
-#define LISTITEM_NEXT_DURATION      (LISTITEM_START + 90)
-#define LISTITEM_CHANNEL_NAME       (LISTITEM_START + 91)
-#define LISTITEM_CHANNEL_NUMBER     (LISTITEM_START + 92)
-#define LISTITEM_CHANNEL_GROUP      (LISTITEM_START + 93)
-#define LISTITEM_HASTIMER           (LISTITEM_START + 94)
-#define LISTITEM_ISRECORDING        (LISTITEM_START + 95)
-#define LISTITEM_ISENCRYPTED        (LISTITEM_START + 96)
-#define LISTITEM_PARENTALRATING     (LISTITEM_START + 97)
-#define LISTITEM_PROGRESS           (LISTITEM_START + 98)
-#define LISTITEM_HAS_EPG            (LISTITEM_START + 99)
+#define LISTITEM_STARTTIME          (LISTITEM_START + 82)
+#define LISTITEM_ENDTIME            (LISTITEM_START + 83)
+#define LISTITEM_STARTDATE          (LISTITEM_START + 84)
+#define LISTITEM_ENDDATE            (LISTITEM_START + 85)
+#define LISTITEM_NEXT_TITLE         (LISTITEM_START + 86)
+#define LISTITEM_NEXT_GENRE         (LISTITEM_START + 87)
+#define LISTITEM_NEXT_PLOT          (LISTITEM_START + 88)
+#define LISTITEM_NEXT_PLOT_OUTLINE  (LISTITEM_START + 89)
+#define LISTITEM_NEXT_STARTTIME     (LISTITEM_START + 90)
+#define LISTITEM_NEXT_ENDTIME       (LISTITEM_START + 91)
+#define LISTITEM_NEXT_STARTDATE     (LISTITEM_START + 92)
+#define LISTITEM_NEXT_ENDDATE       (LISTITEM_START + 93)
+#define LISTITEM_NEXT_DURATION      (LISTITEM_START + 94)
+#define LISTITEM_CHANNEL_NAME       (LISTITEM_START + 95)
+#define LISTITEM_CHANNEL_NUMBER     (LISTITEM_START + 96)
+#define LISTITEM_CHANNEL_GROUP      (LISTITEM_START + 97)
+#define LISTITEM_HASTIMER           (LISTITEM_START + 98)
+#define LISTITEM_ISRECORDING        (LISTITEM_START + 99)
+#define LISTITEM_ISENCRYPTED        (LISTITEM_START + 100)
+#define LISTITEM_PARENTALRATING     (LISTITEM_START + 101)
+#define LISTITEM_PROGRESS           (LISTITEM_START + 102)
+#define LISTITEM_HAS_EPG            (LISTITEM_START + 103)
 
 #define LISTITEM_PROPERTY_START     (LISTITEM_START + 200)
 #define LISTITEM_PROPERTY_END       (LISTITEM_PROPERTY_START + 1000)
 #define LISTITEM_END                (LISTITEM_PROPERTY_END)
 
-#define MUSICPLAYER_PROPERTY_OFFSET 900 // last 100 id's reserved for musicplayer props.
+#define MUSICPLAYER_PROPERTY_OFFSET 800 // 100 id's reserved for musicplayer props.
+#define LISTITEM_ART_OFFSET         900 // 100 id's reserved for listitem art.
 
 #define CONDITIONAL_LABEL_START       LISTITEM_END + 1 // 36001
 #define CONDITIONAL_LABEL_END         37000
@@ -619,6 +619,7 @@ namespace INFO
 // forward
 class CInfoLabel;
 class CGUIWindow;
+namespace EPG { class CEpgInfoTag; }
 
 // Info Flags
 // Stored in the top 8 bits of GUIInfo::m_data1
@@ -705,12 +706,11 @@ public:
    \sa GetItemInt, GetMultiInfoInt
    */
   bool GetInt(int &value, int info, int contextWindow = 0, const CGUIListItem *item = NULL) const;
-  CStdString GetLabel(int info, int contextWindow = 0);
+  CStdString GetLabel(int info, int contextWindow = 0, CStdString *fallback = NULL);
 
-  CStdString GetImage(int info, int contextWindow);
+  CStdString GetImage(int info, int contextWindow, CStdString *fallback = NULL);
 
   CStdString GetTime(TIME_FORMAT format = TIME_FORMAT_GUESS) const;
-  CStdString GetLcdTime( int _eInfo ) const;
   CStdString GetDate(bool bNumbersOnly = false);
   CStdString GetDuration(TIME_FORMAT format = TIME_FORMAT_GUESS) const;
 
@@ -738,8 +738,9 @@ public:
   const CStdString GetMusicPlaylistInfo(const GUIInfo& info);
   CStdString GetPictureLabel(int item);
 
-  __int64 GetPlayTime() const;  // in ms
+  int64_t GetPlayTime() const;  // in ms
   CStdString GetCurrentPlayTime(TIME_FORMAT format = TIME_FORMAT_GUESS) const;
+  CStdString GetCurrentSeekTime(TIME_FORMAT format = TIME_FORMAT_GUESS) const;
   int GetPlayTimeRemaining() const;
   int GetTotalPlayTime() const;
   CStdString GetCurrentPlayTimeRemaining(TIME_FORMAT format) const;
@@ -767,8 +768,8 @@ public:
 
   void ResetCache();
   bool GetItemInt(int &value, const CGUIListItem *item, int info) const;
-  CStdString GetItemLabel(const CFileItem *item, int info);
-  CStdString GetItemImage(const CFileItem *item, int info);
+  CStdString GetItemLabel(const CFileItem *item, int info, CStdString *fallback = NULL);
+  CStdString GetItemImage(const CFileItem *item, int info, CStdString *fallback = NULL);
 
   // Called from tuxbox service thread to update current status
   void UpdateFromTuxBox();
@@ -794,6 +795,9 @@ public:
   int RegisterSkinVariableString(const INFO::CSkinVariableString* info);
   int TranslateSkinVariableString(const CStdString& name, int context);
   CStdString GetSkinVariableString(int info, bool preferImage = false, const CGUIListItem *item=NULL);
+
+  /// \brief iterates through boolean conditions and compares their stored values to current values. Returns true if any condition changed value.
+  bool ConditionsChangedValues(const std::map<int, bool>& map);
 protected:
   friend class INFO::InfoSingle;
   bool GetBool(int condition, int contextWindow = 0, const CGUIListItem *item=NULL);
@@ -819,7 +823,7 @@ protected:
 
   bool GetMultiInfoBool(const GUIInfo &info, int contextWindow = 0, const CGUIListItem *item = NULL);
   bool GetMultiInfoInt(int &value, const GUIInfo &info, int contextWindow = 0) const;
-  CStdString GetMultiInfoLabel(const GUIInfo &info, int contextWindow = 0);
+  CStdString GetMultiInfoLabel(const GUIInfo &info, int contextWindow = 0, CStdString *fallback = NULL);
   int TranslateListItem(const Property &info);
   int TranslateMusicPlayerString(const CStdString &info) const;
   TIME_FORMAT TranslateTimeFormat(const CStdString &format);
@@ -844,6 +848,13 @@ protected:
   int AddListItemProp(const CStdString &str, int offset=0);
 
   CStdString GetAudioScrobblerLabel(int item);
+
+  /*!
+   * @brief Get the EPG tag that is currently active
+   * @param tag The active tag
+   * @return True if an EPG tag is active and 'tag' was updated, false otherwise
+   */
+  bool GetEpgInfoTag(EPG::CEpgInfoTag& tag) const;
 
   // Conditional string parameters are stored here
   CStdStringArray m_stringParameters;
@@ -892,6 +903,7 @@ protected:
   int m_libraryHasMovies;
   int m_libraryHasTVShows;
   int m_libraryHasMusicVideos;
+  int m_libraryHasMovieSets;
 
   CCriticalSection m_critInfo;
 };

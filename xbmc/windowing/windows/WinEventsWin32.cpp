@@ -1,5 +1,5 @@
 /*
-*      Copyright (C) 2005-2008 Team XBMC
+*      Copyright (C) 2005-2013 Team XBMC
 *      http://www.xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, write to
-*  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-*  http://www.gnu.org/copyleft/gpl.html
+*  along with XBMC; see the file COPYING.  If not, see
+*  <http://www.gnu.org/licenses/>.
 *
 */
 
@@ -27,9 +26,7 @@
 #include "Application.h"
 #include "input/XBMC_vkeys.h"
 #include "input/MouseStat.h"
-#if defined(HAS_SDL_JOYSTICK)
-#include "input/SDLJoystick.h"
-#endif
+#include "input/windows/WINJoystick.h"
 #include "storage/MediaManager.h"
 #include "windowing/WindowingFactory.h"
 #include <dbt.h>
@@ -43,10 +40,14 @@
 #include "settings/AdvancedSettings.h"
 #include "peripherals/Peripherals.h"
 #include "utils/JobManager.h"
+#include "network/Zeroconf.h"
+#include "network/ZeroconfBrowser.h"
 
 #ifdef _WIN32
 
 using namespace PERIPHERALS;
+
+HWND g_hWnd = NULL;
 
 #define XBMC_arraysize(array)	(sizeof(array)/sizeof(array[0]))
 
@@ -56,7 +57,6 @@ using namespace PERIPHERALS;
 #define EXTKEYPAD(keypad) ((scancode & 0x100)?(mvke):(keypad))
 
 static XBMCKey VK_keymap[XBMCK_LAST];
-static HKL hLayoutUS = NULL;
 
 static GUID USB_HID_GUID = { 0x4D1E55B2, 0xF16F, 0x11CF, { 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 } };
 
@@ -78,10 +78,6 @@ void DIB_InitOSKeymap()
   char current_layout[KL_NAMELENGTH];
 
   GetKeyboardLayoutName(current_layout);
-
-  hLayoutUS = LoadKeyboardLayout("00000409", KLF_NOTELLSHELL);
-  if (!hLayoutUS)
-    hLayoutUS = GetKeyboardLayout(0);
 
   LoadKeyboardLayout(current_layout, KLF_ACTIVATE);
 
@@ -236,10 +232,6 @@ void DIB_InitOSKeymap()
 
 static int XBMC_MapVirtualKey(int scancode, int vkey)
 {
-// It isn't clear why the US keyboard layout was being used. This causes
-// problems with e.g. the \ key. I have provisionally switched the code
-// to use the Windows layout.
-// int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, hLayoutUS);
   int mvke = MapVirtualKeyEx(scancode & 0xFF, 1, NULL);
 
   switch(vkey)
@@ -260,6 +252,25 @@ static int XBMC_MapVirtualKey(int scancode, int vkey)
     case VK_RMENU:
     case VK_SNAPSHOT:
     case VK_PAUSE:
+    /* Multimedia keys are already handled */
+    case VK_BROWSER_BACK:
+    case VK_BROWSER_FORWARD:
+    case VK_BROWSER_REFRESH:
+    case VK_BROWSER_STOP:
+    case VK_BROWSER_SEARCH:
+    case VK_BROWSER_FAVORITES:
+    case VK_BROWSER_HOME:
+    case VK_VOLUME_MUTE:
+    case VK_VOLUME_DOWN:
+    case VK_VOLUME_UP:
+    case VK_MEDIA_NEXT_TRACK:
+    case VK_MEDIA_PREV_TRACK:
+    case VK_MEDIA_STOP:
+    case VK_MEDIA_PLAY_PAUSE:
+    case VK_LAUNCH_MAIL:
+    case VK_LAUNCH_MEDIA_SELECT:
+    case VK_LAUNCH_APP1:
+    case VK_LAUNCH_APP2:
       return vkey;
   }
   switch(mvke)
@@ -363,6 +374,7 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
   if (uMsg == WM_CREATE)
   {
+    g_hWnd = hWnd;
     SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG)(((LPCREATESTRUCT)lParam)->lpCreateParams));
     DIB_InitOSKeymap();
     g_uQueryCancelAutoPlay = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
@@ -373,6 +385,9 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
     RegisterDeviceInterfaceToHwnd(USB_HID_GUID, hWnd, &hDeviceNotify);
     return 0;
   }
+
+  if (uMsg == WM_DESTROY)
+    g_hWnd = NULL;
 
   m_pEventFunc = (PHANDLE_EVENT_FUNC)GetWindowLongPtr(hWnd, GWLP_USERDATA);
   if (!m_pEventFunc)
@@ -402,6 +417,9 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
       break;
     case WM_ACTIVATE:
       {
+        if( WA_INACTIVE != wParam )
+          g_Joystick.Reinitialize();
+
         bool active = g_application.m_AppActive;
         if (HIWORD(wParam))
         {
@@ -437,6 +455,21 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
           CLog::Log(LOGDEBUG, __FUNCTION__": Focus switched to process %s", procfile.c_str());
       }
       break;
+    /* needs to be reviewed after frodo. we reset the system idle timer
+       and the display timer directly now (see m_screenSaverTimer).
+    case WM_SYSCOMMAND:
+      switch( wParam&0xFFF0 )
+      {
+        case SC_MONITORPOWER:
+          if (g_application.IsPlaying() || g_application.IsPaused())
+            return 0;
+          else if(g_guiSettings.GetInt("powermanagement.displaysoff") == 0)
+            return 0;
+          break;
+        case SC_SCREENSAVE:
+          return 0;
+      }
+      break;*/
     case WM_SYSKEYDOWN:
       switch (wParam)
       {
@@ -627,9 +660,12 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
       return(0);
     case WM_MEDIA_CHANGE:
       {
-        // There may be multiple notifications for one event
-        // There are also a few events we're not interested in, but they cause no harm
-        // For example SD card reader insertion/removal
+        // This event detects media changes of usb, sd card and optical media.
+        // It only works if the explorer.exe process is started. Because this
+        // isn't the case for all setups we use WM_DEVICECHANGE for usb and 
+        // optical media because this event is also triggered without the 
+        // explorer process. Since WM_DEVICECHANGE doesn't detect sd card changes
+        // we still use this event only for sd.
         long lEvent;
         PIDLIST_ABSOLUTE *ppidl;
         HANDLE hLock = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &ppidl, &lEvent);
@@ -644,25 +680,20 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
           {
             case SHCNE_DRIVEADD:
             case SHCNE_MEDIAINSERTED:
-              CLog::Log(LOGDEBUG, __FUNCTION__": Drive %s Media has arrived.", drivePath);
-              if (GetDriveType(drivePath) == DRIVE_CDROM)
-                CJobManager::GetInstance().AddJob(new CDetectDisc(drivePath, true), NULL);
-              else
+              if (GetDriveType(drivePath) != DRIVE_CDROM)
+              {
+                CLog::Log(LOGDEBUG, __FUNCTION__": Drive %s Media has arrived.", drivePath);
                 CWin32StorageProvider::SetEvent();
+              }
               break;
 
             case SHCNE_DRIVEREMOVED:
             case SHCNE_MEDIAREMOVED:
-              CLog::Log(LOGDEBUG, __FUNCTION__": Drive %s Media was removed.", drivePath);
-              if (GetDriveType(drivePath) == DRIVE_CDROM)
+              if (GetDriveType(drivePath) != DRIVE_CDROM)
               {
-                CMediaSource share;
-                share.strPath = drivePath;
-                share.strName = share.strPath;
-                g_mediaManager.RemoveAutoSource(share);
-              }
-              else
+                CLog::Log(LOGDEBUG, __FUNCTION__": Drive %s Media was removed.", drivePath);
                 CWin32StorageProvider::SetEvent();
+              }
               break;
           }
           SHChangeNotification_Unlock(hLock);
@@ -693,9 +724,33 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
             if (((_DEV_BROADCAST_HEADER*) lParam)->dbcd_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
             {
               g_peripherals.TriggerDeviceScan(PERIPHERAL_BUS_USB);
-#if defined(HAS_SDL_JOYSTICK)
               g_Joystick.Reinitialize();
-#endif
+            }
+            // check if an usb or optical media was inserted or removed
+            if (((_DEV_BROADCAST_HEADER*) lParam)->dbcd_devicetype == DBT_DEVTYP_VOLUME)
+            {
+              PDEV_BROADCAST_VOLUME lpdbv = (PDEV_BROADCAST_VOLUME)((_DEV_BROADCAST_HEADER*) lParam);
+              // optical medium
+              if (lpdbv -> dbcv_flags & DBTF_MEDIA)
+              {
+                CStdString strdrive;
+                strdrive.Format("%c:\\", CWIN32Util::FirstDriveFromMask(lpdbv ->dbcv_unitmask));
+                if(wParam == DBT_DEVICEARRIVAL)
+                {
+                  CLog::Log(LOGDEBUG, __FUNCTION__": Drive %s Media has arrived.", strdrive.c_str());
+                  CJobManager::GetInstance().AddJob(new CDetectDisc(strdrive, true), NULL);
+                }
+                else
+                {
+                  CLog::Log(LOGDEBUG, __FUNCTION__": Drive %s Media was removed.", strdrive.c_str());
+                  CMediaSource share;
+                  share.strPath = strdrive;
+                  share.strName = share.strPath;
+                  g_mediaManager.RemoveAutoSource(share);
+                }
+              }
+              else
+                CWin32StorageProvider::SetEvent();
             }
         }
         break;
@@ -703,6 +758,12 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
     case WM_PAINT:
       //some other app has painted over our window, mark everything as dirty
       g_windowManager.MarkDirty();
+      break;
+    case BONJOUR_EVENT:
+      CZeroconf::GetInstance()->ProcessResults();
+      break;
+    case BONJOUR_BROWSER_EVENT:
+      CZeroconfBrowser::GetInstance()->ProcessResults();
       break;
   }
   return(DefWindowProc(hWnd, uMsg, wParam, lParam));
@@ -717,7 +778,7 @@ void CWinEventsWin32::RegisterDeviceInterfaceToHwnd(GUID InterfaceClassGuid, HWN
   NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
   NotificationFilter.dbcc_classguid = InterfaceClassGuid;
 
-  *hDeviceNotify = RegisterDeviceNotification( 
+  *hDeviceNotify = RegisterDeviceNotification(
       hWnd,                       // events recipient
       &NotificationFilter,        // type of device
       DEVICE_NOTIFY_WINDOW_HANDLE // type of recipient handle
@@ -822,7 +883,8 @@ void CWinEventsWin32::OnGesture(HWND hWnd, LPARAM lParam)
     // You have encountered an unknown gesture
     break;
   }
-  g_Windowing.PtrCloseGestureInfoHandle((HGESTUREINFO)lParam);
+  if(g_Windowing.PtrCloseGestureInfoHandle)
+    g_Windowing.PtrCloseGestureInfoHandle((HGESTUREINFO)lParam);
 }
 
 #endif

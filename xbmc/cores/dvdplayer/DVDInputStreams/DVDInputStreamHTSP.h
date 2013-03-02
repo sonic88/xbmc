@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,6 +25,7 @@
 class CDVDInputStreamHTSP
   : public CDVDInputStream
   , public CDVDInputStream::IChannel
+  , public CDVDInputStream::IDisplayTime
 {
 public:
   CDVDInputStreamHTSP();
@@ -33,12 +33,12 @@ public:
   virtual bool    Open(const char* file, const std::string &content);
   virtual void    Close();
   virtual int     Read(BYTE* buf, int buf_size);
-  virtual __int64 Seek(__int64 offset, int whence) { return -1; }
+  virtual int64_t Seek(int64_t offset, int whence) { return -1; }
   virtual bool Pause(double dTime) { return false; };
   virtual bool    IsEOF();
-  virtual __int64 GetLength()                      { return -1; }
+  virtual int64_t GetLength()                      { return -1; }
 
-  virtual bool    NextStream()                     { return m_startup; }
+  virtual ENextStream NextStream() { return m_startup ? NEXTSTREAM_OPEN : NEXTSTREAM_NONE; }
 
   virtual void    Abort();
 
@@ -53,8 +53,11 @@ public:
   bool            IsRecording()       { return false; }
   bool            Record(bool bOnOff) { return false; }
 
+  bool            CanPause()          { return false; }
+  bool            CanSeek()           { return false; }
+
   int             GetTotalTime();
-  int             GetStartTime();
+  int             GetTime();
 
   htsmsg_t* ReadStream();
 

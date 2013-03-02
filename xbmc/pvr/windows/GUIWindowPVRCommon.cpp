@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,26 +13,28 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "GUIWindowPVRCommon.h"
 
 #include "Application.h"
+#include "ApplicationMessenger.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "filesystem/StackDirectory.h"
 #include "guilib/GUIMessage.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
 #include "pvr/dialogs/GUIDialogPVRRecordingInfo.h"
 #include "pvr/dialogs/GUIDialogPVRTimerSettings.h"
-#include "epg/EpgInfoTag.h"
+#include "epg/Epg.h"
 #include "pvr/timers/PVRTimers.h"
 #include "pvr/addons/PVRClients.h"
 #include "pvr/windows/GUIWindowPVR.h"
@@ -57,7 +59,7 @@ CGUIWindowPVRCommon::CGUIWindowPVRCommon(CGUIWindowPVR *parent, PVRWindow window
   m_iControlList    = iControlList;
   m_bUpdateRequired = false;
   m_iSelected       = 0;
-  m_iSortOrder      = SORT_ORDER_ASC;
+  m_iSortOrder      = SortOrderAscending;
   m_iSortMethod     = SORT_METHOD_DATE;
   if( m_parent->GetViewState() )
   {
@@ -95,6 +97,13 @@ const char *CGUIWindowPVRCommon::GetName(void) const
   default:
     return "unknown";
   }
+}
+
+bool CGUIWindowPVRCommon::IsFocused(void) const
+{
+  return !g_application.IsPlayingFullScreenVideo() &&
+      g_windowManager.GetFocusedWindow() == WINDOW_PVR &&
+      IsActive();
 }
 
 bool CGUIWindowPVRCommon::IsVisible(void) const
@@ -169,8 +178,6 @@ bool CGUIWindowPVRCommon::OnMessageFocus(CGUIMessage &message)
 
     if (!bIsActive || m_bUpdateRequired)
       UpdateData();
-    else
-      m_iSelected = m_parent->m_viewControl.GetSelectedItem();
 
     bReturn = true;
   }
@@ -181,6 +188,7 @@ bool CGUIWindowPVRCommon::OnMessageFocus(CGUIMessage &message)
 void CGUIWindowPVRCommon::OnWindowUnload(void)
 {
   m_iSelected = m_parent->m_viewControl.GetSelectedItem();
+  m_history = m_parent->m_history;
 }
 
 bool CGUIWindowPVRCommon::OnAction(const CAction &action)
@@ -188,7 +196,7 @@ bool CGUIWindowPVRCommon::OnAction(const CAction &action)
   bool bReturn = false;
 
   if (action.GetID() == ACTION_NAV_BACK ||
-      action.GetID() == ACTION_PARENT_DIR)
+      action.GetID() == ACTION_PREVIOUS_MENU)
   {
     g_windowManager.PreviousWindow();
     bReturn = true;
@@ -223,13 +231,13 @@ bool CGUIWindowPVRCommon::OnContextButtonSortByDate(CFileItem *item, CONTEXT_BUT
     if (m_iSortMethod != SORT_METHOD_DATE)
     {
       m_iSortMethod = SORT_METHOD_DATE;
-      m_iSortOrder  = SORT_ORDER_ASC;
+      m_iSortOrder  = SortOrderAscending;
       CGUIMessage message(GUI_MSG_CHANGE_SORT_METHOD, m_parent->GetID(), 0, m_iSortMethod, 0); 
       m_parent->OnMessage(message);
     }
     else
     {
-      m_iSortOrder = m_iSortOrder == SORT_ORDER_ASC ? SORT_ORDER_DESC : SORT_ORDER_ASC;
+      m_iSortOrder = m_iSortOrder == SortOrderAscending ? SortOrderDescending : SortOrderAscending;
     }
     CGUIMessage message(GUI_MSG_CHANGE_SORT_DIRECTION, m_parent->GetID(), 0, m_iSortOrder, 0); 
     m_parent->OnMessage(message);
@@ -250,13 +258,13 @@ bool CGUIWindowPVRCommon::OnContextButtonSortByName(CFileItem *item, CONTEXT_BUT
     if (m_iSortMethod != SORT_METHOD_LABEL)
     {
       m_iSortMethod = SORT_METHOD_LABEL;
-      m_iSortOrder  = SORT_ORDER_ASC;
+      m_iSortOrder  = SortOrderAscending;
       CGUIMessage message(GUI_MSG_CHANGE_SORT_METHOD, m_parent->GetID(), 0, m_iSortMethod, 0); 
       m_parent->OnMessage(message);
     }
     else
     {
-      m_iSortOrder = m_iSortOrder == SORT_ORDER_ASC ? SORT_ORDER_DESC : SORT_ORDER_ASC;
+      m_iSortOrder = m_iSortOrder == SortOrderAscending ? SortOrderDescending : SortOrderAscending;
     }
     CGUIMessage message(GUI_MSG_CHANGE_SORT_DIRECTION, m_parent->GetID(), 0, m_iSortOrder, 0); 
     m_parent->OnMessage(message);
@@ -277,11 +285,11 @@ bool CGUIWindowPVRCommon::OnContextButtonSortByChannel(CFileItem *item, CONTEXT_
     if (m_iSortMethod != SORT_METHOD_CHANNEL)
     {
       m_iSortMethod = SORT_METHOD_CHANNEL;
-      m_iSortOrder  = SORT_ORDER_ASC;
+      m_iSortOrder  = SortOrderAscending;
     }
     else
     {
-      m_iSortOrder = m_iSortOrder == SORT_ORDER_ASC ? SORT_ORDER_DESC : SORT_ORDER_ASC;
+      m_iSortOrder = m_iSortOrder == SortOrderAscending ? SortOrderDescending : SortOrderAscending;
     }
 
     UpdateData();
@@ -332,13 +340,13 @@ bool CGUIWindowPVRCommon::OnContextButtonMenuHooks(CFileItem *item, CONTEXT_BUTT
     bReturn = true;
 
     if (item->IsEPG() && item->GetEPGInfoTag()->HasPVRChannel())
-      g_PVRClients->ProcessMenuHooks(item->GetEPGInfoTag()->ChannelTag()->ClientID());
+      g_PVRClients->ProcessMenuHooks(item->GetEPGInfoTag()->ChannelTag()->ClientID(), PVR_MENUHOOK_EPG);
     else if (item->IsPVRChannel())
-      g_PVRClients->ProcessMenuHooks(item->GetPVRChannelInfoTag()->ClientID());
+      g_PVRClients->ProcessMenuHooks(item->GetPVRChannelInfoTag()->ClientID(), PVR_MENUHOOK_CHANNEL);
     else if (item->IsPVRRecording())
-      g_PVRClients->ProcessMenuHooks(item->GetPVRRecordingInfoTag()->m_iClientId);
+      g_PVRClients->ProcessMenuHooks(item->GetPVRRecordingInfoTag()->m_iClientId, PVR_MENUHOOK_RECORDING);
     else if (item->IsPVRTimer())
-      g_PVRClients->ProcessMenuHooks(item->GetPVRTimerInfoTag()->m_iClientId);
+      g_PVRClients->ProcessMenuHooks(item->GetPVRTimerInfoTag()->m_iClientId, PVR_MENUHOOK_TIMER);
   }
 
   return bReturn;
@@ -378,7 +386,7 @@ bool CGUIWindowPVRCommon::ShowNewTimerDialog(void)
   if (ShowTimerSettings(newItem))
   {
     /* Add timer to backend */
-    bReturn = g_PVRTimers->AddTimer(*newItem);
+    bReturn = g_PVRTimers->AddTimer(*newItem->GetPVRTimerInfoTag());
   }
 
   delete newItem;
@@ -418,7 +426,8 @@ bool CGUIWindowPVRCommon::ActionRecord(CFileItem *item)
   if (!epgTag)
     return bReturn;
 
-  if (!epgTag->HasPVRChannel())
+  CPVRChannelPtr channel = epgTag->ChannelTag();
+  if (!channel || !g_PVRManager.CheckParentalLock(*channel))
     return bReturn;
 
   if (epgTag->Timer() == NULL)
@@ -438,10 +447,16 @@ bool CGUIWindowPVRCommon::ActionRecord(CFileItem *item)
     if (!pDialog->IsConfirmed())
       return bReturn;
 
-    CPVRTimerInfoTag *newtimer = CPVRTimerInfoTag::CreateFromEpg(*epgTag);
-    CFileItem *item = new CFileItem(*newtimer);
-
-    bReturn = g_PVRTimers->AddTimer(*item);
+    CPVRTimerInfoTag *newTimer = CPVRTimerInfoTag::CreateFromEpg(*epgTag);
+    if (newTimer)
+    {
+      bReturn = g_PVRTimers->AddTimer(*newTimer);
+      delete newTimer;
+    }
+    else
+    {
+      bReturn = false;
+    }
   }
   else
   {
@@ -513,8 +528,9 @@ bool CGUIWindowPVRCommon::ActionPlayEpg(CFileItem *item)
   if (!epgTag)
     return bReturn;
 
-  const CPVRChannel *channel = epgTag->ChannelTag();
-  if (!channel || channel->ChannelNumber() > 0)
+  CPVRChannelPtr channel = epgTag->ChannelTag();
+  if (!channel || channel->ChannelNumber() > 0 ||
+      !g_PVRManager.CheckParentalLock(*channel))
     return bReturn;
 
   bReturn = g_application.PlayFile(CFileItem(*channel));
@@ -538,7 +554,7 @@ bool CGUIWindowPVRCommon::ActionDeleteChannel(CFileItem *item)
 
   /* show a confirmation dialog */
   CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*) g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
-  if (pDialog)
+  if (!pDialog)
     return false;
   pDialog->SetHeading(19039);
   pDialog->SetLine(0, "");
@@ -553,6 +569,17 @@ bool CGUIWindowPVRCommon::ActionDeleteChannel(CFileItem *item)
   g_PVRChannelGroups->GetGroupAll(channel->IsRadio())->RemoveFromGroup(*channel);
   UpdateData();
 
+  return true;
+}
+
+bool CGUIWindowPVRCommon::UpdateEpgForChannel(CFileItem *item)
+{
+  CPVRChannel *channel = item->GetPVRChannelInfoTag();
+  CEpg *epg = channel->GetEPG();
+  if (!epg)
+    return false;
+
+  epg->ForceUpdate();
   return true;
 }
 
@@ -584,12 +611,15 @@ bool CGUIWindowPVRCommon::ShowTimerSettings(CFileItem *item)
 
 bool CGUIWindowPVRCommon::PlayRecording(CFileItem *item, bool bPlayMinimized /* = false */)
 {
-  if (item->GetPath().Left(17) != "pvr://recordings/")
+  if (!item->HasPVRRecordingInfoTag())
     return false;
 
   CStdString stream = item->GetPVRRecordingInfoTag()->m_strStreamURL;
   if (stream == "")
-    return false;
+  {
+    CApplicationMessenger::Get().PlayFile(*item, false);
+    return true;
+  }
 
   /* Isolate the folder from the filename */
   size_t found = stream.find_last_of("/");
@@ -607,7 +637,7 @@ bool CGUIWindowPVRCommon::PlayRecording(CFileItem *item, bool bPlayMinimized /* 
 
       CFileItemList items;
       CDirectory::GetDirectory(dir, items);
-      items.Sort(SORT_METHOD_FILE ,SORT_ORDER_ASC);
+      items.Sort(SORT_METHOD_FILE, SortOrderAscending);
 
       vector<int> stack;
       for (int i = 0; i < items.Size(); ++i)
@@ -637,28 +667,28 @@ bool CGUIWindowPVRCommon::PlayRecording(CFileItem *item, bool bPlayMinimized /* 
     return false;
   }
 
-  g_application.getApplicationMessenger().PlayFile(*item, false);
+  CApplicationMessenger::Get().PlayFile(*item, false);
 
   return true;
 }
 
 bool CGUIWindowPVRCommon::PlayFile(CFileItem *item, bool bPlayMinimized /* = false */)
 {
-  if (bPlayMinimized)
+  if (item->m_bIsFolder)
   {
-    if (item->GetPath() == g_application.CurrentFile())
-    {
-      CGUIMessage msg(GUI_MSG_FULLSCREEN, 0, m_parent->GetID());
-      g_windowManager.SendMessage(msg);
-      return true;
-    }
-    else
-    {
-      g_settings.m_bStartVideoWindowed = true;
-    }
+    return false;
   }
 
-  if (item->GetPath().Left(17) == "pvr://recordings/")
+  if (item->GetPath() == g_application.CurrentFile())
+  {
+    CGUIMessage msg(GUI_MSG_FULLSCREEN, 0, m_parent->GetID());
+    g_windowManager.SendMessage(msg);
+    return true;
+  }
+
+  g_settings.m_bStartVideoWindowed = bPlayMinimized;
+
+  if (item->HasPVRRecordingInfoTag())
   {
     return PlayRecording(item, bPlayMinimized);
   }
@@ -666,24 +696,30 @@ bool CGUIWindowPVRCommon::PlayFile(CFileItem *item, bool bPlayMinimized /* = fal
   {
     bool bSwitchSuccessful(false);
 
-    /* try a fast switch */
-    if (item->IsPVRChannel() && (g_PVRManager.IsPlayingTV() || g_PVRManager.IsPlayingRadio()) &&
-        (item->GetPVRChannelInfoTag()->IsRadio() == g_PVRManager.IsPlayingRadio()) && g_application.m_pPlayer)
+    CPVRChannel *channel = item->HasPVRChannelInfoTag() ? item->GetPVRChannelInfoTag() : NULL;
+
+    if (channel && g_PVRManager.CheckParentalLock(*channel))
     {
-      CPVRChannel* channel = item->GetPVRChannelInfoTag();
-      if (channel->StreamURL().IsEmpty())
-        bSwitchSuccessful = g_application.m_pPlayer->SwitchChannel(*channel);
+      /* try a fast switch */
+      if (channel && (g_PVRManager.IsPlayingTV() || g_PVRManager.IsPlayingRadio()) &&
+         (channel->IsRadio() == g_PVRManager.IsPlayingRadio()) && g_application.m_pPlayer)
+      {
+        if (channel->StreamURL().IsEmpty())
+          bSwitchSuccessful = g_application.m_pPlayer->SwitchChannel(*channel);
+      }
+
+      if (!bSwitchSuccessful)
+      {
+        CApplicationMessenger::Get().PlayFile(*item, false);
+        return true;
+      }
     }
 
     if (!bSwitchSuccessful)
     {
-      g_application.getApplicationMessenger().PlayFile(*item, false);
-      return true;
-    }
-
-    if (!bSwitchSuccessful)
-    {
-      CGUIDialogOK::ShowAndGetInput(19033,0,19035,0);
+      CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error,
+              g_localizeStrings.Get(19166), // PVR information
+              g_localizeStrings.Get(19035)); // This channel cannot be played. Check the log for details.
       return false;
     }
   }
@@ -697,11 +733,15 @@ bool CGUIWindowPVRCommon::StartRecordFile(CFileItem *item)
     return false;
 
   CEpgInfoTag *tag = item->GetEPGInfoTag();
-  if (!tag || !tag->HasPVRChannel())
+  CPVRChannelPtr channel;
+  if (tag)
+    channel = tag->ChannelTag();
+
+  if (!channel || !g_PVRManager.CheckParentalLock(*channel))
     return false;
 
-  CPVRTimerInfoTag *timer = g_PVRTimers->GetMatch(item);
-  if (timer)
+  CFileItemPtr timer = g_PVRTimers->GetTimerForEpgTag(item);
+  if (timer && timer->HasPVRTimerInfoTag())
   {
     CGUIDialogOK::ShowAndGetInput(19033,19034,0,0);
     return false;
@@ -719,10 +759,14 @@ bool CGUIWindowPVRCommon::StartRecordFile(CFileItem *item)
   if (!pDialog->IsConfirmed())
     return false;
 
-  CPVRTimerInfoTag *newtimer = CPVRTimerInfoTag::CreateFromEpg(*tag);
-  CFileItem *newTimerItem = new CFileItem(*newtimer);
-
-  return g_PVRTimers->AddTimer(*newTimerItem);
+  CPVRTimerInfoTag *newTimer = CPVRTimerInfoTag::CreateFromEpg(*tag);
+  bool bReturn(false);
+  if (newTimer)
+  {
+    bReturn = g_PVRTimers->AddTimer(*newTimer);
+    delete newTimer;
+  }
+  return bReturn;
 }
 
 bool CGUIWindowPVRCommon::StopRecordFile(CFileItem *item)
@@ -734,8 +778,8 @@ bool CGUIWindowPVRCommon::StopRecordFile(CFileItem *item)
   if (!tag || !tag->HasPVRChannel())
     return false;
 
-  CPVRTimerInfoTag *timer = g_PVRTimers->GetMatch(item);
-  if (!timer || timer->m_bIsRepeating)
+  CFileItemPtr timer = g_PVRTimers->GetTimerForEpgTag(item);
+  if (!timer || !timer->HasPVRTimerInfoTag() || timer->GetPVRTimerInfoTag()->m_bIsRepeating)
     return false;
 
   return g_PVRTimers->DeleteTimer(*timer);
@@ -744,13 +788,22 @@ bool CGUIWindowPVRCommon::StopRecordFile(CFileItem *item)
 void CGUIWindowPVRCommon::ShowEPGInfo(CFileItem *item)
 {
   CFileItem *tag = NULL;
+  bool bHasChannel(false);
+  CPVRChannel channel;
   if (item->IsEPG())
   {
     tag = new CFileItem(*item);
+    if (item->GetEPGInfoTag()->HasPVRChannel())
+    {
+      channel = *item->GetEPGInfoTag()->ChannelTag();
+      bHasChannel = true;
+    }
   }
   else if (item->IsPVRChannel())
   {
     CEpgInfoTag epgnow;
+    channel = *item->GetPVRChannelInfoTag();
+    bHasChannel = true;
     if (!item->GetPVRChannelInfoTag()->GetEPGNow(epgnow))
     {
       CGUIDialogOK::ShowAndGetInput(19033,0,19055,0);
@@ -761,13 +814,15 @@ void CGUIWindowPVRCommon::ShowEPGInfo(CFileItem *item)
 
   if (tag)
   {
-    CGUIDialogPVRGuideInfo* pDlgInfo = (CGUIDialogPVRGuideInfo*)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_GUIDE_INFO);
-    if (!pDlgInfo)
-      return;
-
-    pDlgInfo->SetProgInfo(tag);
-    pDlgInfo->DoModal();
-
+    if (!bHasChannel || g_PVRManager.CheckParentalLock(channel))
+    {
+      CGUIDialogPVRGuideInfo* pDlgInfo = (CGUIDialogPVRGuideInfo*)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_GUIDE_INFO);
+      if (pDlgInfo)
+      {
+        pDlgInfo->SetProgInfo(tag);
+        pDlgInfo->DoModal();
+      }
+    }
     delete tag;
   }
 }
@@ -808,8 +863,22 @@ bool CGUIWindowPVRCommon::OnContextButtonFind(CFileItem *item, CONTEXT_BUTTON bu
       m_parent->SetActiveView(m_parent->m_windowSearch);
       m_parent->m_windowSearch->UpdateData();
       m_parent->SetLabel(m_iControlList, 0);
+      m_parent->m_viewControl.SetFocused();
     }
   }
 
   return bReturn;
+}
+
+void CGUIWindowPVRCommon::ShowBusyItem(void)
+{
+  // FIXME: display a temporary entry so that the list can keep its focus
+  // busy_items has to be static, because m_viewControl holds the pointer to it
+  static CFileItemList busy_items;
+  if (busy_items.IsEmpty())
+  {
+    CFileItemPtr pItem(new CFileItem(g_localizeStrings.Get(1040)));
+    busy_items.AddFront(pItem, 0);
+  }
+  m_parent->m_viewControl.SetItems(busy_items);
 }

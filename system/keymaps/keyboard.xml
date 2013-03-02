@@ -41,6 +41,7 @@
       <q>Queue</q>
       <f>FastForward</f>
       <r>Rewind</r>
+      <y>SwitchPlayer</y>
       <left>Left</left>
       <right>Right</right>
       <up>Up</up>
@@ -94,6 +95,8 @@
       <backslash>ToggleFullScreen</backslash>
       <home>FirstPage</home>
       <end>LastPage</end>
+      <power>ActivateWindow(shutdownmenu)</power>
+      <sleep>ActivateWindow(shutdownmenu)</sleep>
       <!-- PVR windows -->
       <e>XBMC.ActivateWindowAndFocus(MyPVR, 31,0, 10,0)</e>
       <h>XBMC.ActivateWindowAndFocus(MyPVR, 32,0, 11,0)</h>
@@ -135,29 +138,29 @@
       <f10>VolumeUp</f10>                 <!-- MCE Vol up -->
       <f9>VolumeDown</f9>                 <!-- MCE Vol down -->
       <f8>Mute</f8>                       <!-- MCE mute -->
-      <g mod="ctrl">OSD</g>               <!-- MCE Guide -->
+      <g mod="ctrl">ActivateWindowAndFocus(MyPVR, 31,0, 10,0)</g>  <!-- MCE Guide -->
       <m mod="ctrl">ActivateWindow(music)</m>    <!-- MCE My music -->
       <i mod="ctrl">ActivateWindow(pictures)</i> <!-- MCE My pictures -->
       <e mod="ctrl">ActivateWindow(video)</e>    <!-- MCE videos -->
-      <m mod="ctrl,shift">PlayerControl(ShowVideoMenu)</m> <!-- MCE DVD menu -->
+      <m mod="ctrl,shift">PlayerControl(ShowVideoMenu)</m>         <!-- MCE DVD menu -->
+      <o mod="ctrl">ActivateWindowAndFocus(MyPVR, 34,0, 13,0)</o>  <!-- MCE Recorded TV -->
+      <t mod="ctrl">ActivateWindowAndFocus(MyPVR, 32,0, 11,0)</t>  <!-- MCE Live TV  -->
+      <t mod="ctrl,shift">ActivateWindow(MyPVR)</t>                <!-- MCE My TV -->
+      <a mod="ctrl">ActivateWindowAndFocus(MyPVR, 33,0, 12,0)</a>  <!-- MCE My Radio -->
       <!-- MCE keypresses without an obvious use in XBMC -->
-      <o mod="ctrl">Notification(MCEKeypress, Recorded TV, 3)</o>
-      <t mod="ctrl">Notification(MCEKeypress, Live TV, 3)</t>
-      <t mod="ctrl,shift">Notification(MCEKeypress, My TV, 3)</t>
-      <a mod="ctrl">Notification(MCEKeypress, Radio, 3)</a>
       <u mod="ctrl">Notification(MCEKeypress, DVD subtitle, 3)</u>
       <a mod="ctrl,shift">Notification(MCEKeypress, DVD audio, 3)</a>
     </keyboard>
   </global>
   <LoginScreen>
     <keyboard>
-      <end>XBMC.ShutDown()</end>
+      <end mod="ctrl">XBMC.ShutDown()</end>
     </keyboard>
   </LoginScreen>
   <Home>
     <keyboard>
       <i>info</i>
-      <end>XBMC.ShutDown()</end>
+      <end mod="ctrl">XBMC.ShutDown()</end>
     </keyboard>
   </Home>
   <VirtualKeyboard>
@@ -269,9 +272,10 @@
       <r>Rewind</r>
       <period>SkipNext</period>
       <comma>SkipPrevious</comma>
-      <return>ActivateWindow(MusicOSD)</return>
-      <enter>ActivateWindow(MusicOSD)</enter>
-      <m>ActivateWindow(MusicOSD)</m>
+      <backspace>Fullscreen</backspace>
+      <return>OSD</return>
+      <enter>OSD</enter>
+      <m>OSD</m>
       <i>Info</i>
       <p>ActivateWindow(VisualisationPresetList)</p>
       <v>ActivateWindow(VisualisationSettings)</v>
@@ -484,6 +488,16 @@
       <backspace>Close</backspace>
     </keyboard>
   </NumericInput>
+  <FullscreenLiveTV>
+    <keyboard>
+      <comma>BigStepBack</comma>
+      <period>BigStepForward</period>
+      <left>StepBack</left>
+      <right>StepForward</right>
+      <up>ChannelUp</up>
+      <down>ChannelDown</down>
+    </keyboard>
+  </FullscreenLiveTV>
   <PVROSDChannels>
     <keyboard>
       <backspace>Close</backspace>

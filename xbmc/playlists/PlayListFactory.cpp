@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -63,6 +62,7 @@ CPlayList* CPlayListFactory::Create(const CFileItem& item)
     || strMimeType == "text/html")
       return new CPlayListPLS();
 
+    // online m3u8 files are for hls streaming -- do not treat as playlist
     if (strMimeType == "audio/x-mpegurl" && !item.IsType(".m3u8"))
       return new CPlayListM3U();
 
@@ -118,9 +118,13 @@ bool CPlayListFactory::IsPlaylist(const CFileItem& item)
     return true;
 */
 
+  // online m3u8 files are hls:// -- do not treat as playlist
+  if (item.IsInternetStream() && item.IsType(".m3u8"))
+    return false;
+
   if(strMimeType == "audio/x-pn-realaudio"
   || strMimeType == "playlist"
-  || (strMimeType == "audio/x-mpegurl") && !item.IsType(".m3u8"))
+  || strMimeType == "audio/x-mpegurl")
     return true;
 
   return IsPlaylist(item.GetPath());

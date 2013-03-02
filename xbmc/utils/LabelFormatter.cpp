@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -69,35 +68,37 @@ using namespace MUSIC_INFO;
  *
  * Available metadata masks:
  *
- *  %N - Track Number
- *  %S - Disc Number
  *  %A - Artist
- *  %T - Title
  *  %B - Album
- *  %G - Genre
- *  %Y - Year
- *  %F - FileName
- *  %L - existing Label
+ *  %C - Programs count
  *  %D - Duration
+ *  %E - episode number
+ *  %F - FileName
+ *  %G - Genre
+ *  %H - season*100+episode
  *  %I - Size
  *  %J - Date
- *  %R - Movie rating
- *  %C - Programs count
  *  %K - Movie/Game title
+ *  %L - existing Label
  *  %M - number of episodes
- *  %E - episode number
- *  %P - production code
- *  %H - season*100+episode
- *  %Z - tvshow title
+ *  %N - Track Number
  *  %O - mpaa rating
+ *  %P - production code
  *  %Q - file time
+ *  %R - Movie rating
+ *  %S - Disc Number
+ *  %T - Title
  *  %U - studio
  *  %V - Playcount
- *  %X - Bitrate
  *  %W - Listeners
+ *  %X - Bitrate
+ *  %Y - Year
+ *  %Z - tvshow title
+ *  %a - Date Added
+ *  %p - Last Played
  */
 
-#define MASK_CHARS "NSATBGYFLDIJRCKMEPHZOQUVXW"
+#define MASK_CHARS "NSATBGYFLDIJRCKMEPHZOQUVXWap"
 
 CLabelFormatter::CLabelFormatter(const CStdString &mask, const CStdString &mask2)
 {
@@ -165,8 +166,8 @@ CStdString CLabelFormatter::GetMaskContent(const CMaskString &mask, const CFileI
   case 'A':
     if (music && music->GetArtist().size())
       value = StringUtils::Join(music->GetArtist(), g_advancedSettings.m_musicItemSeparator);
-    if (movie && movie->m_strArtist.size())
-      value = movie->m_strArtist;
+    if (movie && movie->m_artist.size())
+      value = StringUtils::Join(movie->m_artist, g_advancedSettings.m_videoItemSeparator);
     break;
   case 'T':
     if (music && music->GetTitle().size())
@@ -220,14 +221,9 @@ CStdString CLabelFormatter::GetMaskContent(const CMaskString &mask, const CFileI
       if (music)
         nDuration = music->GetDuration();
       if (movie)
-      {
-        if (movie->m_streamDetails.GetVideoDuration() > 0)
-          nDuration = movie->m_streamDetails.GetVideoDuration();
-        else if (!movie->m_strRuntime.IsEmpty())
-          nDuration = StringUtils::TimeStringToSeconds(movie->m_strRuntime);
-      }
+        nDuration = movie->GetDuration();
       if (nDuration > 0)
-        value = StringUtils::SecondsToTimeString(nDuration);
+        value = StringUtils::SecondsToTimeString(nDuration, (nDuration >= 3600) ? TIME_FORMAT_H_MM_SS : TIME_FORMAT_MM_SS);
       else if (item->m_dwSize > 0)
         value = StringUtils::SizeToString(item->m_dwSize);
     }
@@ -307,7 +303,15 @@ CStdString CLabelFormatter::GetMaskContent(const CMaskString &mask, const CFileI
    case 'W': // Listeners
     if( !item->m_bIsFolder && music && music->GetListeners() != 0 )
      value.Format("%i %s", music->GetListeners(), g_localizeStrings.Get(music->GetListeners() == 1 ? 20454 : 20455));
-    break;    
+    break;
+  case 'a': // Date Added
+    if (movie && movie->m_dateAdded.IsValid())
+      value = movie->m_dateAdded.GetAsLocalizedDate();
+    break;
+  case 'p': // Last played
+    if (movie && movie->m_lastPlayed.IsValid())
+      value = movie->m_lastPlayed.GetAsLocalizedDate();
+    break;
   }
   if (!value.IsEmpty())
     return mask.m_prefix + value + mask.m_postfix;
@@ -324,9 +328,8 @@ void CLabelFormatter::SplitMask(unsigned int label, const CStdString &mask)
   while ((findStart = reg.RegFind(work.c_str())) >= 0)
   { // we've found a match
     m_staticContent[label].push_back(work.Left(findStart));
-    char* lp_tmp = reg.GetReplaceString("\\1");
-    m_dynamicContent[label].push_back(CMaskString("", *lp_tmp, ""));
-    free(lp_tmp);
+    m_dynamicContent[label].push_back(CMaskString("", 
+          reg.GetReplaceString("\\1")[0], ""));
     work = work.Mid(findStart + reg.GetFindLen());
   }
   m_staticContent[label].push_back(work);
@@ -348,16 +351,11 @@ void CLabelFormatter::AssembleMask(unsigned int label, const CStdString& mask)
   while ((findStart = reg.RegFind(work.c_str())) >= 0)
   { // we've found a match for a pre/postfixed string
     // send anything
-    char *s1 = reg.GetReplaceString("\\1");
-    char *s2 = reg.GetReplaceString("\\2");
-    char *s4 = reg.GetReplaceString("\\4");
-    char *s5 = reg.GetReplaceString("\\5");
-    SplitMask(label, work.Left(findStart) + s1);
-    m_dynamicContent[label].push_back(CMaskString(s2, *s4, s5));
-    free(s1);
-    free(s2);
-    free(s4);
-    free(s5);
+    SplitMask(label, work.Left(findStart) + reg.GetReplaceString("\\1").c_str());
+    m_dynamicContent[label].push_back(CMaskString(
+            reg.GetReplaceString("\\2"),
+            reg.GetReplaceString("\\4")[0],
+            reg.GetReplaceString("\\5")));
     work = work.Mid(findStart + reg.GetFindLen());
   }
   SplitMask(label, work);

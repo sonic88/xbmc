@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -41,6 +40,17 @@ bool XMLUtils::GetUInt(const TiXmlNode* pRootNode, const char* strTag, uint32_t&
   if (!pNode || !pNode->FirstChild()) return false;
   uintValue = atol(pNode->FirstChild()->Value());
   return true;
+}
+
+bool XMLUtils::GetUInt(const TiXmlNode* pRootNode, const char* strTag, uint32_t &value, const uint32_t min, const uint32_t max)
+{
+  if (GetUInt(pRootNode, strTag, value))
+  {
+    if (value < min) value = min;
+    if (value > max) value = max;
+    return true;
+  }
+  return false;
 }
 
 bool XMLUtils::GetLong(const TiXmlNode* pRootNode, const char* strTag, long& lLongValue)
@@ -170,9 +180,9 @@ bool XMLUtils::GetAdditiveString(const TiXmlNode* pRootNode, const char* strTag,
   Parses the XML for multiple tags of the given name.
   Does not clear the array to support chaining.
 */
-bool XMLUtils::GetStringArray(const TiXmlNode* pRootNode, const char* strTag, std::vector<std::string>& arrayValue, bool clear /* = false */)
+bool XMLUtils::GetStringArray(const TiXmlNode* pRootNode, const char* strTag, std::vector<std::string>& arrayValue, bool clear /* = false */, const std::string separator /* = "" */)
 {
-  CStdString strTemp;
+  std::string strTemp;
   const TiXmlElement* node = pRootNode->FirstChildElement(strTag);
   bool bResult=false;
   if (node && node->FirstChild() && clear)
@@ -182,7 +192,22 @@ bool XMLUtils::GetStringArray(const TiXmlNode* pRootNode, const char* strTag, st
     if (node->FirstChild())
     {
       bResult = true;
-      arrayValue.push_back(node->FirstChild()->Value());
+      strTemp = node->FirstChild()->ValueStr();
+
+      const char* clearAttr = node->Attribute("clear");
+      if (clearAttr && strcasecmp(clearAttr, "true") == 0)
+        arrayValue.clear();
+
+      if (strTemp.empty())
+        continue;
+
+      if (separator.empty())
+        arrayValue.push_back(strTemp);
+      else
+      {
+        std::vector<std::string> tempArray = StringUtils::Split(strTemp, separator);
+        arrayValue.insert(arrayValue.end(), tempArray.begin(), tempArray.end());
+      }
     }
     node = node->NextSiblingElement(strTag);
   }
@@ -194,10 +219,10 @@ bool XMLUtils::GetStringArray(const TiXmlNode* pRootNode, const char* strTag, st
   Returns true if the encoding of the document is other then UTF-8.
   /param strEncoding Returns the encoding of the document. Empty if UTF-8
 */
-bool XMLUtils::GetEncoding(const TiXmlDocument* pDoc, CStdString& strEncoding)
+bool XMLUtils::GetEncoding(const CXBMCTinyXML* pDoc, CStdString& strEncoding)
 {
   const TiXmlNode* pNode=NULL;
-  while ((pNode=pDoc->IterateChildren(pNode)) && pNode->Type()!=TiXmlNode::DECLARATION) {}
+  while ((pNode=pDoc->IterateChildren(pNode)) && pNode->Type()!=TiXmlNode::TINYXML_DECLARATION) {}
   if (!pNode) return false;
   const TiXmlDeclaration* pDecl=pNode->ToDeclaration();
   if (!pDecl) return false;
@@ -299,7 +324,7 @@ void XMLUtils::SetInt(TiXmlNode* pRootNode, const char *strTag, int value)
 void XMLUtils::SetLong(TiXmlNode* pRootNode, const char *strTag, long value)
 {
   CStdString strValue;
-  strValue.Format("%l", value);
+  strValue.Format("%ld", value);
   SetString(pRootNode, strTag, strValue);
 }
 

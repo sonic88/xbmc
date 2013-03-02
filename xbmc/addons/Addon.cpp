@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,11 +24,17 @@
 #include "settings/GUISettings.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
-#ifdef __APPLE__
+#include "interfaces/python/XBPython.h"
+#if defined(TARGET_DARWIN)
 #include "../osx/OSXGNUReplacements.h"
 #endif
+#ifdef __FreeBSD__
+#include "freebsd/FreeBSDGNUReplacements.h"
+#endif
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "URL.h"
 #include <vector>
 #include <string.h>
 #include <ostream>
@@ -75,7 +80,7 @@ static const TypeMapping types[] =
    {"xbmc.gui.skin",                     ADDON_SKIN,                  166, "DefaultAddonSkin.png" },
    {"xbmc.gui.webinterface",             ADDON_WEB_INTERFACE,         199, "DefaultAddonWebSkin.png" },
    {"xbmc.addon.repository",             ADDON_REPOSITORY,          24011, "DefaultAddonRepository.png" },
-   {"xbmc.pvrclient",                    ADDON_PVRDLL,              24019, "" },
+   {"xbmc.pvrclient",                    ADDON_PVRDLL,              24019, "DefaultAddonPVRClient.png" },
    {"xbmc.addon.video",                  ADDON_VIDEO,                1037, "DefaultAddonVideo.png" },
    {"xbmc.addon.audio",                  ADDON_AUDIO,                1038, "DefaultAddonMusic.png" },
    {"xbmc.addon.image",                  ADDON_IMAGE,                1039, "DefaultAddonPicture.png" },
@@ -150,6 +155,10 @@ AddonProps::AddonProps(const cp_extension_t *ext)
     description = CAddonMgr::Get().GetTranslatedString(metadata->configuration, "description");
     disclaimer = CAddonMgr::Get().GetTranslatedString(metadata->configuration, "disclaimer");
     license = CAddonMgr::Get().GetExtValue(metadata->configuration, "license");
+    CStdString language;
+    language = CAddonMgr::Get().GetExtValue(metadata->configuration, "language");
+    if (!language.IsEmpty())
+      extrainfo.insert(make_pair("language",language));
     broken = CAddonMgr::Get().GetExtValue(metadata->configuration, "broken");
     EMPTY_IF("nofanart",fanart)
     EMPTY_IF("noicon",icon)
@@ -168,6 +177,60 @@ AddonProps::AddonProps(const cp_plugin_info_t *plugin)
   , stars(0)
 {
   BuildDependencies(plugin);
+}
+
+void AddonProps::Serialize(CVariant &variant) const
+{
+  variant["addonid"] = id;
+  variant["type"] = TranslateType(type);
+  variant["version"] = version.c_str();
+  variant["minversion"] = minversion.c_str();
+  variant["name"] = name;
+  variant["parent"] = parent;
+  variant["license"] = license;
+  variant["summary"] = summary;
+  variant["description"] = description;
+  variant["path"] = path;
+  variant["libname"] = libname;
+  variant["author"] = author;
+  variant["source"] = source;
+
+  if (CURL::IsFullPath(icon))
+    variant["icon"] = icon;
+  else
+    variant["icon"] = URIUtils::AddFileToFolder(path, icon);
+
+  variant["thumbnail"] = variant["icon"];
+  variant["disclaimer"] = disclaimer;
+  variant["changelog"] = changelog;
+
+  if (CURL::IsFullPath(fanart))
+    variant["fanart"] = fanart;
+  else
+    variant["fanart"] = URIUtils::AddFileToFolder(path, fanart);
+
+  variant["dependencies"] = CVariant(CVariant::VariantTypeArray);
+  for (ADDONDEPS::const_iterator it = dependencies.begin(); it != dependencies.end(); it++)
+  {
+    CVariant dep(CVariant::VariantTypeObject);
+    dep["addonid"] = it->first;
+    dep["version"] = it->second.first.c_str();
+    dep["optional"] = it->second.second;
+    variant["dependencies"].push_back(dep);
+  }
+  if (broken.empty())
+    variant["broken"] = false;
+  else
+    variant["broken"] = broken;
+  variant["extrainfo"] = CVariant(CVariant::VariantTypeArray);
+  for (InfoMap::const_iterator it = extrainfo.begin(); it != extrainfo.end(); it++)
+  {
+    CVariant info(CVariant::VariantTypeObject);
+    info["key"] = it->first;
+    info["value"] = it->second;
+    variant["extrainfo"].push_back(info);
+  }
+  variant["rating"] = stars;
 }
 
 void AddonProps::BuildDependencies(const cp_plugin_info_t *plugin)
@@ -251,6 +314,13 @@ AddonPtr CAddon::Clone(const AddonPtr &self) const
 
 bool CAddon::MeetsVersion(const AddonVersion &version) const
 {
+  // if the addon is one of xbmc's extension point definitions (addonid starts with "xbmc.")
+  // and the minversion is "0.0.0" i.e. no <backwards-compatibility> tag has been specified
+  // we need to assume that the current version is not backwards-compatible and therefore check against the actual version
+  if (StringUtils::StartsWith(m_props.id, "xbmc.") &&
+     (strlen(m_props.minversion.c_str()) == 0 || StringUtils::EqualsNoCase(m_props.minversion.c_str(), "0.0.0")))
+    return m_props.version == version;
+
   return m_props.minversion <= version && version <= m_props.version;
 }
 
@@ -340,12 +410,9 @@ void CAddon::BuildLibName(const cp_extension_t *extension)
 bool CAddon::LoadStrings()
 {
   // Path where the language strings reside
-  CStdString chosenPath;
-  chosenPath.Format("resources/language/%s/strings.xml", g_guiSettings.GetString("locale.language").c_str());
-  CStdString chosen = URIUtils::AddFileToFolder(m_props.path, chosenPath);
-  CStdString fallback = URIUtils::AddFileToFolder(m_props.path, "resources/language/English/strings.xml");
+  CStdString chosenPath = URIUtils::AddFileToFolder(m_props.path, "resources/language/");
 
-  m_hasStrings = m_strings.Load(chosen, fallback);
+  m_hasStrings = m_strings.Load(chosenPath, g_guiSettings.GetString("locale.language"));
   return m_checkedStrings = true;
 }
 
@@ -417,7 +484,7 @@ bool CAddon::ReloadSettings()
 bool CAddon::LoadUserSettings()
 {
   m_userSettingsLoaded = false;
-  TiXmlDocument doc;
+  CXBMCTinyXML doc;
   if (doc.LoadFile(m_userSettingsPath))
     m_userSettingsLoaded = SettingsFromXML(doc);
   return m_userSettingsLoaded;
@@ -442,11 +509,12 @@ void CAddon::SaveSettings(void)
     CDirectory::Create(strAddon);
 
   // create the XML file
-  TiXmlDocument doc;
+  CXBMCTinyXML doc;
   SettingsToXML(doc);
   doc.SaveFile(m_userSettingsPath);
   
   CAddonMgr::Get().ReloadSettings(ID());//push the settings changes to the running addon instance
+  g_pythonParser.OnSettingsChanged(ID());
 }
 
 CStdString CAddon::GetSetting(const CStdString& key)
@@ -467,7 +535,7 @@ void CAddon::UpdateSetting(const CStdString& key, const CStdString& value)
   m_settings[key] = value;
 }
 
-bool CAddon::SettingsFromXML(const TiXmlDocument &doc, bool loadDefaults /*=false */)
+bool CAddon::SettingsFromXML(const CXBMCTinyXML &doc, bool loadDefaults /*=false */)
 {
   if (!doc.RootElement())
     return false;
@@ -499,7 +567,7 @@ bool CAddon::SettingsFromXML(const TiXmlDocument &doc, bool loadDefaults /*=fals
   return foundSetting;
 }
 
-void CAddon::SettingsToXML(TiXmlDocument &doc) const
+void CAddon::SettingsToXML(CXBMCTinyXML &doc) const
 {
   TiXmlElement node("settings");
   doc.InsertEndChild(node);

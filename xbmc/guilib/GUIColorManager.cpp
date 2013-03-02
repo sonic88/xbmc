@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -24,7 +23,7 @@
 #include "addons/Skin.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
-#include "tinyXML/tinyxml.h"
+#include "utils/XBMCTinyXML.h"
 
 CGUIColorManager g_colorManager;
 
@@ -48,7 +47,7 @@ void CGUIColorManager::Load(const CStdString &colorFile)
   Clear();
 
   // load the global color map if it exists
-  TiXmlDocument xmlDoc;
+  CXBMCTinyXML xmlDoc;
   if (xmlDoc.LoadFile(CSpecialProtocol::TranslatePathConvertCase("special://xbmc/system/colors.xml")))
     LoadXML(xmlDoc);
 
@@ -71,7 +70,7 @@ void CGUIColorManager::Load(const CStdString &colorFile)
     LoadXML(xmlDoc);
 }
 
-bool CGUIColorManager::LoadXML(TiXmlDocument &xmlDoc)
+bool CGUIColorManager::LoadXML(CXBMCTinyXML &xmlDoc)
 {
   TiXmlElement* pRootElement = xmlDoc.RootElement();
 

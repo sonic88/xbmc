@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,19 +15,18 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "GUIWindowPVRCommon.h"
 #include "utils/Observer.h"
 #include "threads/Thread.h"
+#include "../channels/PVRChannelGroup.h"
 
 namespace PVR
 {
-  class CPVRChannelGroup;
   class CGUIWindowPVR;
 
   class CGUIWindowPVRChannels : public CGUIWindowPVRCommon, private Observer, private CThread
@@ -38,34 +37,37 @@ namespace PVR
     CGUIWindowPVRChannels(CGUIWindowPVR *parent, bool bRadio);
     virtual ~CGUIWindowPVRChannels(void);
 
-    virtual void GetContextButtons(int itemNumber, CContextButtons &buttons) const;
-    virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
-    virtual const CPVRChannelGroup *SelectedGroup(void);
-    virtual void SetSelectedGroup(CPVRChannelGroup *group);
-    virtual CPVRChannelGroup *SelectNextGroup(void);
-    virtual void UpdateData(void);
-    virtual void Notify(const Observable &obs, const CStdString& msg);
-    virtual void ResetObservers(void);
-    virtual void UnregisterObservers(void);
+    void GetContextButtons(int itemNumber, CContextButtons &buttons) const;
+    bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
+    CPVRChannelGroupPtr SelectedGroup(void);
+    void SetSelectedGroup(CPVRChannelGroupPtr group);
+    CPVRChannelGroupPtr SelectNextGroup(void);
+    void UpdateData(bool bUpdateSelectedFile = true);
+    void Notify(const Observable &obs, const ObservableMessage msg);
+    void ResetObservers(void);
+    void UnregisterObservers(void);
 
   private:
-    virtual void Process(void);
-    virtual bool OnClickButton(CGUIMessage &message);
-    virtual bool OnClickList(CGUIMessage &message);
+    void Process(void);
+    bool OnClickButton(CGUIMessage &message);
+    bool OnClickList(CGUIMessage &message);
 
-    virtual bool OnContextButtonAdd(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonGroupManager(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonHide(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonMove(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonPlay(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonSetThumb(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonShowHidden(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool OnContextButtonFilter(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonAdd(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonGroupManager(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonHide(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonMove(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonPlay(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonSetThumb(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonShowHidden(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonFilter(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonUpdateEpg(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonRecord(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonLock(CFileItem *item, CONTEXT_BUTTON button);
 
-    virtual void ShowGroupManager(void);
+    void ShowGroupManager(void);
 
-    CPVRChannelGroup *m_selectedGroup;
+    CPVRChannelGroupPtr m_selectedGroup;
     bool              m_bShowHiddenChannels;
     bool              m_bRadio;
     bool              m_bThreadCreated;

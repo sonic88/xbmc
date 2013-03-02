@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -43,7 +42,7 @@ using namespace std;
 #define SEEKTIMOUT 30000
 
 #ifdef HAS_FILESYSTEM_RAR
-CRarFileExtractThread::CRarFileExtractThread() : hRunning(true), hQuit(true)
+CRarFileExtractThread::CRarFileExtractThread() : CThread("CFileRarExtractThread"), hRunning(true), hQuit(true)
 {
   m_pArc = NULL;
   m_pCmd = NULL;
@@ -226,6 +225,14 @@ bool CRarFile::Open(const CURL& url)
 bool CRarFile::Exists(const CURL& url)
 {
   InitFromUrl(url);
+  
+  // First step:
+  // Make sure that the archive exists in the filesystem.
+  if (!CFile::Exists(m_strRarPath, false)) 
+    return false;
+
+  // Second step:
+  // Make sure that the requested file exists in the archive.
   bool bResult;
 
   if (!g_RarManager.IsFileInRar(bResult, m_strRarPath, m_strPathInRar))
@@ -309,6 +316,14 @@ unsigned int CRarFile::Read(void *lpBuf, int64_t uiBufSize)
       break;
 
     m_iDataInBuffer = MAXWINMEMSIZE-m_pExtract->GetDataIO().UnpackToMemorySize;
+
+    if (m_iDataInBuffer < 0 ||
+        m_iDataInBuffer > MAXWINMEMSIZE - (m_szStartOfBuffer - m_szBuffer))
+    {
+      // invalid data returned by UnrarXLib, prevent a crash
+      CLog::Log(LOGERROR, "CRarFile::Read - Data buffer in inconsistent state");
+      m_iDataInBuffer = 0;
+    }
 
     if (m_iDataInBuffer == 0)
       break;
@@ -471,6 +486,15 @@ int64_t CRarFile::Seek(int64_t iFilePosition, int iWhence)
   }
   m_iDataInBuffer = m_pExtract->GetDataIO().m_iSeekTo; // keep data
   m_iBufferStart = m_pExtract->GetDataIO().m_iStartOfBuffer;
+
+  if (m_iDataInBuffer < 0 || m_iDataInBuffer > MAXWINMEMSIZE)
+  {
+    // invalid data returned by UnrarXLib, prevent a crash
+    CLog::Log(LOGERROR, "CRarFile::Seek - Data buffer in inconsistent state");
+    m_iDataInBuffer = 0;
+    return -1;
+  }
+
   m_szStartOfBuffer = m_szBuffer+MAXWINMEMSIZE-m_iDataInBuffer;
   m_iFilePosition = iFilePosition;
 
@@ -672,7 +696,7 @@ bool CRarFile::OpenInArchive()
       {
         CStdString strFileName;
 
-        if (m_pArc->NewLhd.FileNameW && wcslen(m_pArc->NewLhd.FileNameW) > 0)
+        if (wcslen(m_pArc->NewLhd.FileNameW) > 0)
         {
           g_charsetConverter.wToUTF8(m_pArc->NewLhd.FileNameW, strFileName);
         }

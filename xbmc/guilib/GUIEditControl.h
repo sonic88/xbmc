@@ -9,7 +9,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,9 +23,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -41,6 +40,7 @@ class CGUIEditControl : public CGUIButtonControl
 {
 public:
   enum INPUT_TYPE {
+                    INPUT_TYPE_READONLY = -1,
                     INPUT_TYPE_TEXT = 0,
                     INPUT_TYPE_NUMBER,
                     INPUT_TYPE_SECONDS,
@@ -50,7 +50,8 @@ public:
                     INPUT_TYPE_PASSWORD,
                     INPUT_TYPE_PASSWORD_MD5,
                     INPUT_TYPE_SEARCH,
-                    INPUT_TYPE_FILTER
+                    INPUT_TYPE_FILTER,
+                    INPUT_TYPE_PASSWORD_NUMBER_VERIFY_NEW
                   };
 
   CGUIEditControl(int parentID, int controlID, float posX, float posY,
@@ -81,6 +82,7 @@ public:
 
 protected:
   virtual void ProcessText(unsigned int currentTime);
+  virtual void RenderText();
   CStdStringW GetDisplayedText() const;
   void RecalcLabelPosition();
   void ValidateCursor();
@@ -99,6 +101,7 @@ protected:
   CGUIInfoLabel m_hintInfo;
   float m_textOffset;
   float m_textWidth;
+  CRect m_clipRect; ///< clipping rect for the second label
 
   static const int spaceWidth = 5;
 

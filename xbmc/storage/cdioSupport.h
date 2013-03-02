@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -35,11 +34,10 @@
 
 #ifdef HAS_DVD_DRIVE
 
-#include "storage/IoSupport.h"
-
 #include <cdio/cdio.h>
 #include "threads/CriticalSection.h"
 #include "utils/StdString.h"
+#include "boost/shared_ptr.hpp"
 #include <map>
 
 namespace MEDIA_DETECT
@@ -136,7 +134,7 @@ public:
   int GetFirstDataTrack() { return m_nFirstData; }
   int GetDataTrackCount() { return m_nNumData; }
   int GetAudioTrackCount() { return m_nNumAudio; }
-  ULONG GetCddbDiscId() { return m_ulCddbDiscId; }
+  uint32_t GetCddbDiscId() { return m_ulCddbDiscId; }
   int GetDiscLength() { return m_nLength; }
   CStdString GetDiscLabel(){ return m_strDiscLabel; }
 
@@ -231,7 +229,7 @@ public:
   void SetTrackInformation( int nTrack, trackinfo nInfo ) { if ( nTrack > 0 && nTrack <= 99 ) m_ti[nTrack - 1] = nInfo; }
   void SetDiscCDTextInformation( xbmc_cdtext_t cdtext ) { m_cdtext = cdtext; }
 
-  void SetCddbDiscId( ULONG ulCddbDiscId ) { m_ulCddbDiscId = ulCddbDiscId; }
+  void SetCddbDiscId( uint32_t ulCddbDiscId ) { m_ulCddbDiscId = ulCddbDiscId; }
   void SetDiscLength( int nLength ) { m_nLength = nLength; }
   bool HasCDDBInfo() { return m_bHasCDDBInfo; }
   void SetNoCDDBInfo() { m_bHasCDDBInfo = false; }
@@ -246,7 +244,7 @@ private:
   int m_nNumTrack;
   int m_nFirstTrack;
   trackinfo m_ti[100];
-  ULONG m_ulCddbDiscId;
+  uint32_t m_ulCddbDiscId;
   int m_nLength;   // Disclength can be used for cddb query, also see trackinfo.nFrames
   bool m_bHasCDDBInfo;
   CStdString m_strDiscLabel;
@@ -260,8 +258,8 @@ private:
 public:
   virtual ~CLibcdio();
 
-  static void RemoveInstance();
-  static CLibcdio* GetInstance();
+  static void ReleaseInstance();
+  static boost::shared_ptr<CLibcdio> GetInstance();
 
   // libcdio is not thread safe so these are wrappers to libcdio routines
   CdIo_t* cdio_open(const char *psz_source, driver_id_t driver_id);
@@ -278,9 +276,9 @@ public:
   char* GetDeviceFileName();
 
 private:
-  static char* s_defaultDevice;
+  char* s_defaultDevice;
   CCriticalSection m_critSection;
-  static CLibcdio* m_pInstance;
+  static boost::shared_ptr<CLibcdio> m_pInstance;
 };
 
 class CCdIoSupport
@@ -315,7 +313,7 @@ protected:
   int GetJolietLevel( void );
   int GuessFilesystem(int start_session, track_t track_num);
 
-  ULONG CddbDiscId();
+  uint32_t CddbDiscId();
   int CddbDecDigitSum(int n);
   UINT MsfSeconds(msf_t *msf);
 
@@ -343,7 +341,7 @@ private:
   int m_nFirstAudio;      /* # of first audio track */
   int m_nNumAudio;              /* # of audio tracks */
 
-  CLibcdio* m_cdio;
+  boost::shared_ptr<CLibcdio> m_cdio;
 };
 
 }

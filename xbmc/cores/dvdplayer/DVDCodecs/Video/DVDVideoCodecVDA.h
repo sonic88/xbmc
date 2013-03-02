@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -31,7 +30,7 @@ typedef struct frame_queue {
   double              pts;
   double              sort_time;
   FourCharCode        pixel_buffer_format;
-  CVPixelBufferRef    pixel_buffer_ref;
+  CVBufferRef         pixel_buffer_ref;
   struct frame_queue  *nextframe;
 } frame_queue;
 
@@ -51,6 +50,7 @@ public:
   virtual int  Decode(BYTE *pData, int iSize, double dts, double pts);
   virtual void Reset(void);
   virtual bool GetPicture(DVDVideoPicture *pDvdVideoPicture);
+  virtual bool ClearPicture(DVDVideoPicture* pDvdVideoPicture);
   virtual void SetDropState(bool bDrop);
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
   
@@ -68,12 +68,14 @@ protected:
   int32_t           m_format;
   const char        *m_pFormatName;
   bool              m_DropPictures;
+  bool              m_decode_async;
 
   double            m_sort_time_offset;
   pthread_mutex_t   m_queue_mutex;    // mutex protecting queue manipulation
   frame_queue       *m_display_queue; // display-order queue - next display frame is always at the queue head
   int32_t           m_queue_depth;    // we will try to keep the queue depth around 16+1 frames
   int32_t           m_max_ref_frames;
+  bool              m_use_cvBufferRef;
   
   bool              m_convert_bytestream;
   bool              m_convert_3byteTo4byteNALSize;

@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,6 +25,7 @@
 #include "guilib/Resolution.h"
 #include "addons/IAddon.h"
 #include "utils/Observer.h"
+#include "utils/GlobalsHandling.h"
 
 class TiXmlNode;
 class TiXmlElement;
@@ -65,6 +65,11 @@ class TiXmlElement;
 #define KARAOKE_COLOR_START  0
 #define KARAOKE_COLOR_END    4
 
+// CDDA Autoaction defines
+#define AUTOCD_NONE              0
+#define AUTOCD_PLAY              1
+#define AUTOCD_RIP               2
+
 // CDDA ripper defines
 #define CDDARIP_ENCODER_LAME     0
 #define CDDARIP_ENCODER_VORBIS   1
@@ -84,13 +89,6 @@ class TiXmlElement;
 #define VIDEO_NORMAL 0
 #define VIDEO_LETTERBOX 1
 #define VIDEO_WIDESCREEN 2
-
-// LCD settings
-#define LCD_TYPE_NONE        0
-#define LCD_TYPE_LCD_HD44780 1
-#define LCD_TYPE_LCD_KS0073  2
-#define LCD_TYPE_VFD         3
-#define LCD_TYPE_LCDPROC     4
 
 #define MODCHIP_SMARTXX   0
 #define MODCHIP_XENIUM    1
@@ -144,20 +142,21 @@ class TiXmlElement;
 #define SETTINGS_TYPE_PATH      7
 #define SETTINGS_TYPE_ADDON     8
 
-#define CHECKMARK_CONTROL           1
-#define SPIN_CONTROL_FLOAT          2
-#define SPIN_CONTROL_INT            3
-#define SPIN_CONTROL_INT_PLUS       4
-#define SPIN_CONTROL_TEXT           5
-#define EDIT_CONTROL_INPUT          6
-#define EDIT_CONTROL_HIDDEN_INPUT   7
-#define EDIT_CONTROL_NUMBER_INPUT   8
-#define EDIT_CONTROL_IP_INPUT       9
-#define EDIT_CONTROL_MD5_INPUT     10
-#define BUTTON_CONTROL_STANDARD    11
-#define BUTTON_CONTROL_MISC_INPUT  12
-#define BUTTON_CONTROL_PATH_INPUT  13
-#define SEPARATOR_CONTROL          14
+#define CHECKMARK_CONTROL                      1
+#define SPIN_CONTROL_FLOAT                     2
+#define SPIN_CONTROL_INT                       3
+#define SPIN_CONTROL_INT_PLUS                  4
+#define SPIN_CONTROL_TEXT                      5
+#define EDIT_CONTROL_INPUT                     6
+#define EDIT_CONTROL_HIDDEN_INPUT              7
+#define EDIT_CONTROL_NUMBER_INPUT              8
+#define EDIT_CONTROL_IP_INPUT                  9
+#define EDIT_CONTROL_MD5_INPUT                10
+#define BUTTON_CONTROL_STANDARD               11
+#define BUTTON_CONTROL_MISC_INPUT             12
+#define BUTTON_CONTROL_PATH_INPUT             13
+#define SEPARATOR_CONTROL                     14
+#define EDIT_CONTROL_HIDDEN_NUMBER_VERIFY_NEW 15
 
 #define REPLAY_GAIN_NONE 0
 #define REPLAY_GAIN_ALBUM 1
@@ -167,6 +166,12 @@ class TiXmlElement;
 #define SYNC_DISCON 0
 #define SYNC_SKIPDUP 1
 #define SYNC_RESAMPLE 2
+
+//adjust refreshrate options
+#define ADJUST_REFRESHRATE_OFF            0
+#define ADJUST_REFRESHRATE_ALWAYS         1
+#define ADJUST_REFRESHRATE_ON_STARTSTOP   2
+
 
 //resampler quality
 #define RESAMPLE_LOW 0
@@ -196,7 +201,8 @@ enum VideoSelectAction
   SELECT_ACTION_RESUME,
   SELECT_ACTION_INFO,
   SELECT_ACTION_MORE,
-  SELECT_ACTION_PLAY
+  SELECT_ACTION_PLAY,
+  SELECT_ACTION_PLAYPART
 };
 
 enum SubtitleAlign
@@ -305,11 +311,11 @@ public:
   virtual CStdString ToString() const;
 
   void SetData(int iData)
-  { 
+  {
     if (m_entries.empty())
     {
       m_iData = iData;
-      if (m_iData < m_iMin) m_iData = m_iMin; 
+      if (m_iData < m_iMin) m_iData = m_iMin;
       if (m_iData > m_iMax) m_iData = m_iMax;
     }
     else
@@ -507,11 +513,12 @@ public:
   void Clear();
 
 private:
-  typedef std::map<CStdString, CSetting*>::iterator mapIter;
-  typedef std::map<CStdString, CSetting*>::const_iterator constMapIter;
-  std::map<CStdString, CSetting*> settingsMap;
+  typedef std::map<std::string, CSetting*>::iterator mapIter;
+  typedef std::map<std::string, CSetting*>::const_iterator constMapIter;
+  std::map<std::string, CSetting*> settingsMap;
   std::vector<CSettingsGroup *> settingsGroups;
   void LoadFromXML(TiXmlElement *pRootElement, mapIter &it, bool advanced = false);
 };
 
-extern CGUISettings g_guiSettings;
+XBMC_GLOBAL_REF(CGUISettings, g_guiSettings);
+#define g_guiSettings XBMC_GLOBAL_USE(CGUISettings)

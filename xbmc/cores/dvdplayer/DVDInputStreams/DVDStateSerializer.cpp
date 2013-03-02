@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -27,8 +26,7 @@
 #endif
 
 #include "DllDvdNav.h"
-#include "tinyXML/tinyxml.h"
-
+#include "utils/XBMCTinyXML.h"
 #include "DVDStateSerializer.h"
 #include <sstream>
 
@@ -43,14 +41,14 @@ bool CDVDStateSerializer::test( const dvd_state_t *state  )
 
   XMLToDVDState( &state2, buffer);
 
-  return memcmp( &state2, state, sizeof( state )) == 0;
+  return memcmp( &state2, state, sizeof( dvd_state_t )) == 0;
 
 }
 
 bool CDVDStateSerializer::DVDToXMLState( std::string &xmlstate, const dvd_state_t *state )
 {
   char buffer[256];
-  TiXmlDocument xmlDoc("navstate");
+  CXBMCTinyXML xmlDoc("navstate");
 
   TiXmlElement eRoot("navstate");
   eRoot.SetAttribute("version", 1);
@@ -212,7 +210,7 @@ bool CDVDStateSerializer::DVDToXMLState( std::string &xmlstate, const dvd_state_
 
 bool CDVDStateSerializer::XMLToDVDState( dvd_state_t *state, const std::string &xmlstate )
 {
-  TiXmlDocument xmlDoc;
+  CXBMCTinyXML xmlDoc;
 
   xmlDoc.Parse(xmlstate.c_str());
 

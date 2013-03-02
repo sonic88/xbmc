@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -41,6 +40,7 @@ public:
   CSetting* GetSetting() { return m_pSetting; };
   virtual bool NeedsUpdate() { return false; };   ///< Returns true if the control needs an update
   virtual void Reset() {}; ///< Resets the NeedsUpdate() state
+  virtual void Clear()=0;  ///< Clears the attached control
 
   /*!
    \brief Specifies that this setting should update after a delay
@@ -71,6 +71,7 @@ public:
   virtual ~CRadioButtonSettingControl();
   virtual bool OnClick();
   virtual void Update();
+  virtual void Clear() { m_pRadioButton = NULL; }
   void Select(bool bSelect);
 private:
   CGUIRadioButtonControl *m_pRadioButton;
@@ -83,6 +84,7 @@ public:
   virtual ~CSpinExSettingControl();
   virtual bool OnClick();
   virtual void Update();
+  virtual void Clear() { m_pSpin = NULL; }
 private:
   CGUISpinControlEx *m_pSpin;
 };
@@ -94,6 +96,7 @@ public:
   virtual ~CButtonSettingControl();
   virtual bool OnClick();
   virtual void Update();
+  virtual void Clear() { m_pButton = NULL; }
 private:
   CGUIButtonControl *m_pButton;
 };
@@ -107,6 +110,7 @@ public:
   virtual void Update();
   virtual bool NeedsUpdate() { return m_needsUpdate; };
   virtual void Reset() { m_needsUpdate = false; };
+  virtual void Clear() { m_pEdit = NULL; }
 private:
   bool IsValidIPAddress(const CStdString &strIP);
   CGUIEditControl *m_pEdit;
@@ -120,6 +124,7 @@ public:
   virtual ~CSeparatorSettingControl();
   virtual bool OnClick() { return false; };
   virtual void Update() {};
+  virtual void Clear() { m_pImage = NULL; }
 private:
   CGUIImage *m_pImage;
 };

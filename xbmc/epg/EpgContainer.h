@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -32,7 +31,7 @@
 #include <map>
 
 class CFileItemList;
-class CGUIDialogExtendedProgressBar;
+class CGUIDialogProgressBarHandle;
 
 namespace EPG
 {
@@ -45,6 +44,11 @@ namespace EPG
     friend class CEpgDatabase;
 
   public:
+    /*!
+     * @brief Create a new EPG table container.
+     */
+    CEpgContainer(void);
+
     /*!
      * @brief Destroy this instance.
      */
@@ -101,15 +105,9 @@ namespace EPG
      * @param obs The observable that sent the update.
      * @param msg The update message.
      */
-    virtual void Notify(const Observable &obs, const CStdString& msg);
+    virtual void Notify(const Observable &obs, const ObservableMessage msg);
 
-    /*!
-     * @brief Update an entry in this container.
-     * @param tag The table to update.
-     * @param bUpdateDatabase If set to true, this table will be persisted in the database.
-     * @return The updated epg table or NULL if it couldn't be found.
-     */
-    virtual bool UpdateEntry(const CEpg &entry, bool bUpdateDatabase = false);
+    CEpg *CreateChannelEpg(PVR::CPVRChannelPtr channel);
 
     /*!
      * @brief Get all EPG tables and apply a filter.
@@ -201,6 +199,12 @@ namespace EPG
     void PreventUpdates(bool bSetTo = true) { m_bPreventUpdates = bSetTo;  }
 
     /*!
+     * @brief Notify EPG container that there are pending manual EPG updates
+     * @param bHasPendingUpdates The new value
+     */
+    void SetHasPendingUpdates(bool bHasPendingUpdates = true);
+
+    /*!
      * @return True while being initialised.
      */
     bool IsInitialising(void) const;
@@ -228,9 +232,10 @@ namespace EPG
 
     /*!
      * @brief Load and update the EPG data.
+     * @param bOnlyPending Only check and update EPG tables with pending manual updates
      * @return True if the update has not been interrupted, false otherwise.
      */
-    virtual bool UpdateEPG();
+    virtual bool UpdateEPG(bool bOnlyPending = false);
 
     /*!
      * @return True if a running update should be interrupted, false otherwise.
@@ -238,26 +243,16 @@ namespace EPG
     virtual bool InterruptUpdate(void) const;
 
     /*!
-     * @brief Create a new EPG table.
-     * @param iEpgId The table ID or -1 to create a new one.
-     * @return The new table.
-     */
-    virtual CEpg *CreateEpg(int iEpgId);
-
-    /*!
      * @brief EPG update thread
      */
     virtual void Process(void);
 
     /*!
-     * @brief Create a new EPG table container.
-     */
-    CEpgContainer(void);
-
-    /*!
      * @brief Load all tables from the database
      */
     void LoadFromDB(void);
+
+    void InsertFromDatabase(int iEpgID, const CStdString &strName, const CStdString &strScraperName);
 
     CEpgDatabase m_database;           /*!< the EPG database */
 
@@ -274,6 +269,7 @@ namespace EPG
     bool         m_bIsInitialising;        /*!< true while the epg manager hasn't loaded all tables */
     bool         m_bLoaded;                /*!< true after epg data is initially loaded from the database */
     bool         m_bPreventUpdates;        /*!< true to prevent EPG updates */
+    bool         m_bHasPendingUpdates;     /*!< true if there are manual updates pending */
     time_t       m_iLastEpgCleanup;        /*!< the time the EPG was cleaned up */
     time_t       m_iNextEpgUpdate;         /*!< the time the EPG will be updated */
     time_t       m_iNextEpgActiveTagCheck; /*!< the time the EPG will be checked for active tag updates */
@@ -281,7 +277,7 @@ namespace EPG
     std::map<unsigned int, CEpg*> m_epgs;  /*!< the EPGs in this container */
     //@}
 
-    CGUIDialogExtendedProgressBar *m_progressDialog; /*!< the progress dialog that is visible when updating the first time */
+    CGUIDialogProgressBarHandle *  m_progressHandle; /*!< the progress dialog that is visible when updating the first time */
     CCriticalSection               m_critSection;    /*!< a critical section for changes to this container */
     CEvent                         m_updateEvent;    /*!< trigger when an update finishes */
   };

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -34,6 +33,7 @@
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "commons/Exception.h"
 
 using namespace XFILE;
 
@@ -61,7 +61,6 @@ CSMB::CSMB()
   m_IdleTimeout = 0;
 #endif
   m_context = NULL;
-  smbc_init(xb_smbc_auth, 0);
 }
 
 CSMB::~CSMB()
@@ -81,18 +80,11 @@ void CSMB::Deinit()
       smbc_set_context(NULL);
       smbc_free_context(m_context, 1);
     }
-#ifdef TARGET_WINDOWS
-    catch(win32_exception e)
-    {
-      e.writelog(__FUNCTION__);
-    }
-    m_IdleTimeout = 180;
-#else
+    XBMCCOMMONS_HANDLE_UNCHECKED
     catch(...)
     {
       CLog::Log(LOGERROR,"exception on CSMB::Deinit. errno: %d", errno);
     }
-#endif
     m_context = NULL;
   }
 }
@@ -107,47 +99,53 @@ void CSMB::Init()
     // http://us1.samba.org/samba/docs/man/manpages-3/libsmbclient.7.html
     // http://us1.samba.org/samba/docs/man/manpages-3/smb.conf.5.html
     char smb_conf[MAX_PATH];
-    sprintf(smb_conf, "%s/.smb", getenv("HOME"));
-    mkdir(smb_conf, 0755);
-    sprintf(smb_conf, "%s/.smb/smb.conf", getenv("HOME"));
-    FILE* f = fopen(smb_conf, "w");
-    if (f != NULL)
+    snprintf(smb_conf, sizeof(smb_conf), "%s/.smb", getenv("HOME"));
+    if (mkdir(smb_conf, 0755) == 0)
     {
-      fprintf(f, "[global]\n");
-
-      // make sure we're not acting like a server
-      fprintf(f, "\tpreferred master = no\n");
-      fprintf(f, "\tlocal master = no\n");
-      fprintf(f, "\tdomain master = no\n");
-
-      // use the weaker LANMAN password hash in order to be compatible with older servers
-      fprintf(f, "\tclient lanman auth = yes\n");
-      fprintf(f, "\tlanman auth = yes\n");
-
-      fprintf(f, "\tsocket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=65536 SO_SNDBUF=65536\n");      
-      fprintf(f, "\tlock directory = %s/.smb/\n", getenv("HOME"));
-
-      // set wins server if there's one. name resolve order defaults to 'lmhosts host wins bcast'.
-      // if no WINS server has been specified the wins method will be ignored.
-      if ( g_guiSettings.GetString("smb.winsserver").length() > 0 && !g_guiSettings.GetString("smb.winsserver").Equals("0.0.0.0") )
+      snprintf(smb_conf, sizeof(smb_conf), "%s/.smb/smb.conf", getenv("HOME"));
+      FILE* f = fopen(smb_conf, "w");
+      if (f != NULL)
       {
-        fprintf(f, "\twins server = %s\n", g_guiSettings.GetString("smb.winsserver").c_str());
-        fprintf(f, "\tname resolve order = bcast wins host\n");
+        fprintf(f, "[global]\n");
+
+        // make sure we're not acting like a server
+        fprintf(f, "\tpreferred master = no\n");
+        fprintf(f, "\tlocal master = no\n");
+        fprintf(f, "\tdomain master = no\n");
+
+        // use the weaker LANMAN password hash in order to be compatible with older servers
+        fprintf(f, "\tclient lanman auth = yes\n");
+        fprintf(f, "\tlanman auth = yes\n");
+
+        fprintf(f, "\tsocket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=65536 SO_SNDBUF=65536\n");      
+        fprintf(f, "\tlock directory = %s/.smb/\n", getenv("HOME"));
+
+        // set wins server if there's one. name resolve order defaults to 'lmhosts host wins bcast'.
+        // if no WINS server has been specified the wins method will be ignored.
+        if ( g_guiSettings.GetString("smb.winsserver").length() > 0 && !g_guiSettings.GetString("smb.winsserver").Equals("0.0.0.0") )
+        {
+          fprintf(f, "\twins server = %s\n", g_guiSettings.GetString("smb.winsserver").c_str());
+          fprintf(f, "\tname resolve order = bcast wins host\n");
+        }
+        else
+          fprintf(f, "\tname resolve order = bcast host\n");
+
+        // use user-configured charset. if no charset is specified,
+        // samba tries to use charset 850 but falls back to ASCII in case it is not available
+        if (g_advancedSettings.m_sambadoscodepage.length() > 0)
+          fprintf(f, "\tdos charset = %s\n", g_advancedSettings.m_sambadoscodepage.c_str());
+
+        // if no workgroup string is specified, samba will use the default value 'WORKGROUP'
+        if ( g_guiSettings.GetString("smb.workgroup").length() > 0 )
+          fprintf(f, "\tworkgroup = %s\n", g_guiSettings.GetString("smb.workgroup").c_str());
+        fclose(f);
       }
-      else
-        fprintf(f, "\tname resolve order = bcast host\n");
-
-      // use user-configured charset. if no charset is specified,
-      // samba tries to use charset 850 but falls back to ASCII in case it is not available
-      if (g_advancedSettings.m_sambadoscodepage.length() > 0)
-        fprintf(f, "\tdos charset = %s\n", g_advancedSettings.m_sambadoscodepage.c_str());
-
-      // if no workgroup string is specified, samba will use the default value 'WORKGROUP'
-      if ( g_guiSettings.GetString("smb.workgroup").length() > 0 )
-        fprintf(f, "\tworkgroup = %s\n", g_guiSettings.GetString("smb.workgroup").c_str());
-      fclose(f);
     }
 #endif
+
+    // reads smb.conf so this MUST be after we create smb.conf
+    // multiple smbc_init calls are ignored by libsmbclient.
+    smbc_init(xb_smbc_auth, 0);
 
 #ifdef TARGET_WINDOWS
     // set the log function
@@ -164,6 +162,7 @@ void CSMB::Init()
     smbc_setOptionOneSharePerServer(m_context, false);
     smbc_setOptionBrowseMaxLmbCount(m_context, 0);
     smbc_setTimeout(m_context, g_advancedSettings.m_sambaclienttimeout * 1000);
+    smbc_setUser(m_context, strdup("guest"));
 #else
     m_context->debug = g_advancedSettings.m_logLevel == LOG_LEVEL_DEBUG_SAMBA ? 10 : 0;
     m_context->callbacks.auth_fn = xb_smbc_auth;
@@ -172,6 +171,7 @@ void CSMB::Init()
     m_context->options.one_share_per_server = false;
     m_context->options.browse_max_lmb_count = 0;
     m_context->timeout = g_advancedSettings.m_sambaclienttimeout * 1000;
+    m_context->user = strdup("guest");
 #endif
 
     // initialize samba and do some hacking into the settings
@@ -478,39 +478,6 @@ int CSmbFile::OpenFile(const CURL &url, CStdString& strAuth)
     fd = smbc_open(strPath.c_str(), O_RDONLY, 0);
   }
 
-  // file open failed, try to open the directory to force authentication
-#ifdef TARGET_WINDOWS
-  if (fd < 0 && smb.ConvertUnixToNT(errno) == NT_STATUS_ACCESS_DENIED)
-#else
-  if (fd < 0 && errno == EACCES)
-#endif
-  {
-    CURL urlshare(url);
-
-    /* just replace the filename with the sharename */
-    urlshare.SetFileName(url.GetShareName());
-
-    CSMBDirectory smbDir;
-    // TODO: Currently we always allow prompting on files.  This may need to
-    // change in the future as background scanners are more prolific.
-    smbDir.SetAllowPrompting(true);
-    fd = smbDir.Open(urlshare);
-
-    // directory open worked, try opening the file again
-    if (fd >= 0)
-    {
-      CSingleLock lock(smb);
-      // close current directory filehandle
-      // dont need to purge since its the same server and share
-      smbc_closedir(fd);
-
-      // set up new filehandle (as CSmbFile::Open does)
-      strPath = GetAuthenticatedPath(url);
-
-      fd = smbc_open(strPath.c_str(), O_RDONLY, 0);
-    }
-  }
-
   if (fd >= 0)
     strAuth = strPath;
 
@@ -596,6 +563,25 @@ int CSmbFile::Stat(const CURL& url, struct __stat64* buffer)
   buffer->st_ctime = tmpBuffer.st_ctime;
 
   return iResult;
+}
+
+int CSmbFile::Truncate(int64_t size)
+{
+  if (m_fd == -1) return 0;
+/* 
+ * This would force us to be dependant on SMBv3.2 which is GPLv3
+ * This is only used by the TagLib writers, which are not currently in use
+ * So log and warn until we implement TagLib writing & can re-implement this better.
+  CSingleLock lock(smb); // Init not called since it has to be "inited" by now
+
+#if defined(TARGET_ANDROID)
+  int iResult = 0;
+#else
+  int iResult = smbc_ftruncate(m_fd, size);
+#endif
+*/
+  CLog::Log(LOGWARNING, "%s - Warning(smbc_ftruncate called and not implemented)", __FUNCTION__);
+  return 0;
 }
 
 unsigned int CSmbFile::Read(void *lpBuf, int64_t uiBufSize)

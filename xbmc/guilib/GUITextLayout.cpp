@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -160,7 +159,8 @@ void CGUITextLayout::RenderOutline(float x, float y, color_t color, color_t outl
   }
   if (m_borderFont)
   {
-    float by = y;
+    // adjust so the baselines of the fonts align
+    float by = y + m_font->GetTextBaseLine() - m_borderFont->GetTextBaseLine();
     m_borderFont->Begin();
     for (vector<CGUIString>::iterator i = m_lines.begin(); i != m_lines.end(); i++)
     {
@@ -168,8 +168,22 @@ void CGUITextLayout::RenderOutline(float x, float y, color_t color, color_t outl
       uint32_t align = alignment;
       if (align & XBFONT_JUSTIFIED && string.m_carriageReturn)
         align &= ~XBFONT_JUSTIFIED;
+      // text centered horizontally must be computed using the original font, not the bordered
+      // font, as the bordered font will be wider, and thus will end up uncentered.
+      // TODO: We should really have a better way to handle text extent - at the moment we assume
+      //       that text is rendered from a posx, posy, width, and height which isn't enough to
+      //       accurately position text. We need a vertical and horizontal offset of the baseline
+      //       and cursor as well.
+      float bx = x;
+      if (align & XBFONT_CENTER_X)
+      {
+        bx -= m_font->GetTextWidth(string.m_text) * 0.5f;
+        align &= ~XBFONT_CENTER_X;
+      }
 
-      m_borderFont->DrawText(x, by, outlineColors, 0, string.m_text, align, maxWidth);
+      // don't pass maxWidth through to the renderer for the same reason above: it will cause clipping
+      // on the left.
+      m_borderFont->DrawText(bx, by, outlineColors, 0, string.m_text, align, 0);
       by += m_borderFont->GetLineHeight();
     }
     m_borderFont->End();
@@ -187,7 +201,8 @@ void CGUITextLayout::RenderOutline(float x, float y, color_t color, color_t outl
     if (align & XBFONT_JUSTIFIED && string.m_carriageReturn)
       align &= ~XBFONT_JUSTIFIED;
 
-    m_font->DrawText(x, y, m_colors, 0, string.m_text, align, maxWidth);
+    // don't pass maxWidth through to the renderer for the reason above.
+    m_font->DrawText(x, y, m_colors, 0, string.m_text, align, 0);
     y += m_font->GetLineHeight();
   }
   m_font->End();
@@ -332,8 +347,6 @@ void CGUITextLayout::ParseText(const CStdStringW &text, uint32_t defaultStyle, v
   // these aren't independent, but that's probably not too much of an issue
   // eg [UPPERCASE]Glah[LOWERCASE]FReD[/LOWERCASE]Georeg[/UPPERCASE] will work (lower case >> upper case)
   // but [LOWERCASE]Glah[UPPERCASE]FReD[/UPPERCASE]Georeg[/LOWERCASE] won't
-#define FONT_STYLE_UPPERCASE 4
-#define FONT_STYLE_LOWERCASE 8
 
   int startPos = 0;
   size_t pos = text.Find(L'[');

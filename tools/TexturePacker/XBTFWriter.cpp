@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,7 +24,9 @@
 #include <inttypes.h>
 #include "guilib/XBTF.h"
 #include "utils/EndianSwap.h"
-#if !defined(__APPLE__) && !defined(__FreeBSD__)
+#if defined(__FreeBSD__)
+#include <stdlib.h>
+#elif !defined(__APPLE__)
 #include <malloc.h>
 #endif
 #include <memory.h>

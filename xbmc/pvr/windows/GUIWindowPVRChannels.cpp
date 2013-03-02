@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -23,9 +22,10 @@
 
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "dialogs/GUIDialogNumeric.h"
+#include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
 #include "GUIInfoManager.h"
 #include "pvr/PVRManager.h"
@@ -52,7 +52,6 @@ CGUIWindowPVRChannels::CGUIWindowPVRChannels(CGUIWindowPVR *parent, bool bRadio)
   CThread("PVR Channel Window")
 {
   m_bRadio              = bRadio;
-  m_selectedGroup       = NULL;
   m_bShowHiddenChannels = false;
   m_bThreadCreated      = false;
 }
@@ -85,6 +84,7 @@ void CGUIWindowPVRChannels::GetContextButtons(int itemNumber, CContextButtons &b
   if (itemNumber < 0 || itemNumber >= m_parent->m_vecItems->Size())
     return;
   CFileItemPtr pItem = m_parent->m_vecItems->Get(itemNumber);
+  CPVRChannel *channel = pItem->GetPVRChannelInfoTag();
 
   if (pItem->GetPath() == "pvr://channels/.add.channel")
   {
@@ -96,6 +96,7 @@ void CGUIWindowPVRChannels::GetContextButtons(int itemNumber, CContextButtons &b
     buttons.Add(CONTEXT_BUTTON_INFO, 19047);                                          /* channel info */
     buttons.Add(CONTEXT_BUTTON_FIND, 19003);                                          /* find similar program */
     buttons.Add(CONTEXT_BUTTON_PLAY_ITEM, 19000);                                     /* switch to channel */
+    buttons.Add(CONTEXT_BUTTON_RECORD_ITEM, channel->IsRecording() ? 19256 : 19255);  /* start/stop recording on channel */
     buttons.Add(CONTEXT_BUTTON_SET_THUMB, 20019);                                     /* change icon */
     buttons.Add(CONTEXT_BUTTON_GROUP_MANAGER, 19048);                                 /* group manager */
     buttons.Add(CONTEXT_BUTTON_HIDE, m_bShowHiddenChannels ? 19049 : 19054);          /* show/hide channel */
@@ -106,10 +107,14 @@ void CGUIWindowPVRChannels::GetContextButtons(int itemNumber, CContextButtons &b
     if (m_bShowHiddenChannels || g_PVRChannelGroups->GetGroupAllTV()->GetNumHiddenChannels() > 0)
       buttons.Add(CONTEXT_BUTTON_SHOW_HIDDEN, m_bShowHiddenChannels ? 19050 : 19051); /* show hidden/visible channels */
 
-    if (g_PVRClients->HasMenuHooks(pItem->GetPVRChannelInfoTag()->ClientID()))
+    if (g_PVRClients->HasMenuHooks(pItem->GetPVRChannelInfoTag()->ClientID(), PVR_MENUHOOK_CHANNEL))
       buttons.Add(CONTEXT_BUTTON_MENU_HOOKS, 19195);                                  /* PVR client specific action */
 
+    CPVRChannel *channel = pItem->GetPVRChannelInfoTag();
+    buttons.Add(CONTEXT_BUTTON_ADD_LOCK, channel->IsLocked() ? 19258 : 19257);        /* show lock/unlock channel */
+
     buttons.Add(CONTEXT_BUTTON_FILTER, 19249);                                        /* filter channels */
+    buttons.Add(CONTEXT_BUTTON_UPDATE_EPG, 19251);                                    /* update EPG information */
   }
 }
 
@@ -128,10 +133,13 @@ bool CGUIWindowPVRChannels::OnContextButton(int itemNumber, CONTEXT_BUTTON butto
       OnContextButtonInfo(pItem.get(), button) ||
       OnContextButtonGroupManager(pItem.get(), button) ||
       OnContextButtonFilter(pItem.get(), button) ||
+      OnContextButtonUpdateEpg(pItem.get(), button) ||
+      OnContextButtonRecord(pItem.get(), button) ||
+      OnContextButtonLock(pItem.get(), button) ||
       CGUIWindowPVRCommon::OnContextButton(itemNumber, button);
 }
 
-const CPVRChannelGroup *CGUIWindowPVRChannels::SelectedGroup(void)
+CPVRChannelGroupPtr CGUIWindowPVRChannels::SelectedGroup(void)
 {
   if (!m_selectedGroup)
     SetSelectedGroup(g_PVRManager.GetPlayingGroup(m_bRadio));
@@ -139,7 +147,7 @@ const CPVRChannelGroup *CGUIWindowPVRChannels::SelectedGroup(void)
   return m_selectedGroup;
 }
 
-void CGUIWindowPVRChannels::SetSelectedGroup(CPVRChannelGroup *group)
+void CGUIWindowPVRChannels::SetSelectedGroup(CPVRChannelGroupPtr group)
 {
   if (!group)
     return;
@@ -151,29 +159,33 @@ void CGUIWindowPVRChannels::SetSelectedGroup(CPVRChannelGroup *group)
   g_PVRManager.SetPlayingGroup(m_selectedGroup);
 }
 
-void CGUIWindowPVRChannels::Notify(const Observable &obs, const CStdString& msg)
+void CGUIWindowPVRChannels::Notify(const Observable &obs, const ObservableMessage msg)
 {
-  if (msg.Equals("channelgroup") || msg.Equals("timers-reset") || msg.Equals("timers") || msg.Equals("epg-current-event") || msg.Equals("current-item"))
+  if (msg == ObservableMessageChannelGroup || msg == ObservableMessageTimers || msg == ObservableMessageEpgActiveItem || msg == ObservableMessageCurrentItem)
   {
     if (IsVisible())
       SetInvalid();
     else
       m_bUpdateRequired = true;
   }
-  else if (msg.Equals("channelgroup-reset"))
+  else if (msg == ObservableMessageChannelGroupReset)
   {
     if (IsVisible())
-      UpdateData();
+      UpdateData(true);
     else
       m_bUpdateRequired = true;
   }
 }
 
-CPVRChannelGroup *CGUIWindowPVRChannels::SelectNextGroup(void)
+CPVRChannelGroupPtr CGUIWindowPVRChannels::SelectNextGroup(void)
 {
-  const CPVRChannelGroup *currentGroup = SelectedGroup();
-  CPVRChannelGroup *nextGroup = currentGroup->GetNextGroup();
-  while (nextGroup && *nextGroup != *currentGroup && nextGroup->Size() == 0)
+  CPVRChannelGroupPtr currentGroup = SelectedGroup();
+  CPVRChannelGroupPtr nextGroup = currentGroup->GetNextGroup();
+  while (nextGroup && nextGroup->Size() == 0 &&
+      // break if the group matches
+      *nextGroup != *currentGroup &&
+      // or if we hit the first group
+      !nextGroup->IsInternalGroup())
     nextGroup = nextGroup->GetNextGroup();
 
   /* always update so users can reset the list */
@@ -186,27 +198,32 @@ CPVRChannelGroup *CGUIWindowPVRChannels::SelectNextGroup(void)
   return m_selectedGroup;
 }
 
-void CGUIWindowPVRChannels::UpdateData(void)
+void CGUIWindowPVRChannels::UpdateData(bool bUpdateSelectedFile /* = true */)
 {
   CSingleLock lock(m_critSection);
   CLog::Log(LOGDEBUG, "CGUIWindowPVRChannels - %s - update window '%s'. set view to %d",
       __FUNCTION__, GetName(), m_iControlList);
   m_bUpdateRequired = false;
 
-  g_EpgContainer.RegisterObserver(this);
-  g_PVRTimers->RegisterObserver(this);
-
   /* lock the graphics context while updating */
   CSingleLock graphicsLock(g_graphicsContext);
 
-  m_iSelected = m_parent->m_viewControl.GetSelectedItem();
-  m_parent->m_viewControl.Clear();
-  m_parent->m_vecItems->Clear();
-  m_parent->m_viewControl.SetCurrentView(m_iControlList);
+  CPVRChannelGroupPtr selectedGroup = SelectedGroup();
 
-  const CPVRChannelGroup *currentGroup = g_PVRManager.GetPlayingGroup(m_bRadio);
+  if (!bUpdateSelectedFile)
+    m_iSelected = m_parent->m_viewControl.GetSelectedItem();
+  else
+    m_parent->m_viewControl.SetSelectedItem(0);
+
+  m_parent->m_viewControl.SetCurrentView(m_iControlList);
+  ShowBusyItem();
+  m_parent->m_vecItems->Clear();
+
+  CPVRChannelGroupPtr currentGroup = g_PVRManager.GetPlayingGroup(m_bRadio);
   if (!currentGroup)
     return;
+
+  SetSelectedGroup(currentGroup);
 
   CStdString strPath;
   strPath.Format("pvr://channels/%s/%s/",
@@ -216,8 +233,12 @@ void CGUIWindowPVRChannels::UpdateData(void)
   m_parent->m_vecItems->SetPath(strPath);
   m_parent->Update(m_parent->m_vecItems->GetPath());
   m_parent->m_viewControl.SetItems(*m_parent->m_vecItems);
-  if (!SelectPlayingFile())
-    m_parent->m_viewControl.SetSelectedItem(m_iSelected);
+
+  if (bUpdateSelectedFile)
+  {
+    if (!SelectPlayingFile())
+      m_parent->m_viewControl.SetSelectedItem(m_iSelected);
+  }
 
   /* empty list */
   if (m_parent->m_vecItems->Size() == 0)
@@ -229,7 +250,7 @@ void CGUIWindowPVRChannels::UpdateData(void)
       graphicsLock.Leave();
       lock.Leave();
 
-      UpdateData();
+      UpdateData(bUpdateSelectedFile);
       return;
     }
     else if (currentGroup->GroupID() > 0)
@@ -354,6 +375,29 @@ bool CGUIWindowPVRChannels::OnContextButtonHide(CFileItem *item, CONTEXT_BUTTON 
   return bReturn;
 }
 
+bool CGUIWindowPVRChannels::OnContextButtonLock(CFileItem *item, CONTEXT_BUTTON button)
+{
+  bool bReturn = false;
+
+  if (button == CONTEXT_BUTTON_ADD_LOCK)
+  {
+    // ask for PIN first
+    if (!g_PVRManager.CheckParentalPIN(g_localizeStrings.Get(19262).c_str()))
+      return bReturn;
+
+    CPVRChannelGroupPtr group = g_PVRChannelGroups->GetGroupAll(m_bRadio);
+    if (!group)
+      return bReturn;
+
+    group->ToggleChannelLocked(*item);
+    UpdateData();
+
+    bReturn = true;
+  }
+
+  return bReturn;
+}
+
 bool CGUIWindowPVRChannels::OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON button)
 {
   bool bReturn = false;
@@ -426,15 +470,15 @@ bool CGUIWindowPVRChannels::OnContextButtonSetThumb(CFileItem *item, CONTEXT_BUT
     {
       /* add the current thumb, if available */
       CFileItemPtr current(new CFileItem("thumb://Current", false));
-      current->SetThumbnailImage(channel->IconPath());
+      current->SetArt("thumb", channel->IconPath());
       current->SetLabel(g_localizeStrings.Get(20016));
       items.Add(current);
     }
-    else if (item->HasThumbnail())
+    else if (item->HasArt("thumb"))
     {
       /* already have a thumb that the share doesn't know about - must be a local one, so we may as well reuse it */
       CFileItemPtr current(new CFileItem("thumb://Current", false));
-      current->SetThumbnailImage(item->GetThumbnailImage());
+      current->SetArt("thumb", item->GetArt("thumb"));
       current->SetLabel(g_localizeStrings.Get(20016));
       items.Add(current);
     }
@@ -464,6 +508,7 @@ bool CGUIWindowPVRChannels::OnContextButtonSetThumb(CFileItem *item, CONTEXT_BUT
         strThumb = "";
 
       channel->SetIconPath(strThumb, true);
+      channel->Persist();
       UpdateData();
     }
 
@@ -494,10 +539,57 @@ bool CGUIWindowPVRChannels::OnContextButtonFilter(CFileItem *item, CONTEXT_BUTTO
   if (button == CONTEXT_BUTTON_FILTER)
   {
     CStdString filter = m_parent->GetProperty("filter").asString();
-    CGUIDialogKeyboard::ShowAndGetFilter(filter, false);
+    CGUIKeyboardFactory::ShowAndGetFilter(filter, false);
     m_parent->OnFilterItems(filter);
 
     bReturn = true;
+  }
+
+  return bReturn;
+}
+
+bool CGUIWindowPVRChannels::OnContextButtonRecord(CFileItem *item, CONTEXT_BUTTON button)
+{
+  bool bReturn(false);
+  
+  if (button == CONTEXT_BUTTON_RECORD_ITEM)
+  {
+    CPVRChannel *channel = item->GetPVRChannelInfoTag();
+
+    if (channel)
+      return g_PVRManager.ToggleRecordingOnChannel(channel->ChannelID());
+  }
+
+  return bReturn;
+}
+
+bool CGUIWindowPVRChannels::OnContextButtonUpdateEpg(CFileItem *item, CONTEXT_BUTTON button)
+{
+  bool bReturn = false;
+
+  if (button == CONTEXT_BUTTON_UPDATE_EPG)
+  {
+    CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
+    if (!pDialog)
+      return bReturn;
+
+    CPVRChannel *channel = item->GetPVRChannelInfoTag();
+    pDialog->SetHeading(19251);
+    pDialog->SetLine(0, g_localizeStrings.Get(19252));
+    pDialog->SetLine(1, channel->ChannelName());
+    pDialog->SetLine(2, "");
+    pDialog->DoModal();
+
+    if (!pDialog->IsConfirmed())
+      return bReturn;
+
+    bReturn = UpdateEpgForChannel(item);
+
+    CStdString strMessage;
+    strMessage.Format("%s: '%s'", g_localizeStrings.Get(bReturn ? 19253 : 19254), channel->ChannelName());
+    CGUIDialogKaiToast::QueueNotification(bReturn ? CGUIDialogKaiToast::Info : CGUIDialogKaiToast::Error,
+        g_localizeStrings.Get(19166),
+        strMessage);
   }
 
   return bReturn;

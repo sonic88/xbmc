@@ -1,5 +1,5 @@
 /*
-*      Copyright (C) 2012 Team XBMC
+*      Copyright (C) 2012-2013 Team XBMC
 *      http://www.xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
@@ -13,26 +13,26 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, write to
-*  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-*  http://www.gnu.org/copyleft/gpl.html
+*  along with XBMC; see the file COPYING.  If not, see
+*  <http://www.gnu.org/licenses/>.
 *
 */
 
 #include "system.h"
-#include "WinEvents.h"
+#include <list>
 #include "WinEventsIOS.h"
-#include "XBMC_vkeys.h"
+#include "input/XBMC_vkeys.h"
 #include "Application.h"
-#include "WindowingFactory.h"
+#include "windowing/WindowingFactory.h"
 #include "threads/CriticalSection.h"
+#include "guilib/GUIWindowManager.h"
 #include "utils/log.h"
 
 static CCriticalSection g_inputCond;
 
 PHANDLE_EVENT_FUNC CWinEventsBase::m_pEventFunc = NULL;
 
-static std::vector<XBMC_Event> events;
+static std::list<XBMC_Event> events;
 
 void CWinEventsIOS::DeInit()
 {
@@ -52,21 +52,22 @@ void CWinEventsIOS::MessagePush(XBMC_Event *newEvent)
 bool CWinEventsIOS::MessagePump()
 {
   bool ret = false;
-  bool gotEvent = false;
-  XBMC_Event pumpEvent;
-
-  CSingleLock lock(g_inputCond);
-  for (vector<XBMC_Event>::iterator it = events.begin(); it!=events.end(); ++it)
+  
+  // Do not always loop, only pump the initial queued count events. else if ui keep pushing
+  // events the loop won't finish then it will block xbmc main message loop.
+  for (int pumpEventCount = GetQueueSize(); pumpEventCount > 0; --pumpEventCount)
   {
-    memcpy(&pumpEvent, (XBMC_Event *)&*it, sizeof(XBMC_Event));
-    events.erase (events.begin(),events.begin()+1);
-    gotEvent = true;
-    break;
-  }
-  lock.Leave();
-
-  if (gotEvent)
-  {
+    // Pop up only one event per time since in App::OnEvent it may init modal dialog which init
+    // deeper message loop and call the deeper MessagePump from there.
+    XBMC_Event pumpEvent;
+    {
+      CSingleLock lock(g_inputCond);
+      if (events.size() == 0)
+        return ret;
+      pumpEvent = events.front();
+      events.pop_front();
+    }  
+    
     if (pumpEvent.type == XBMC_USEREVENT)
     {
       // On ATV2, we push in events as a XBMC_USEREVENT,
@@ -83,6 +84,14 @@ bool CWinEventsIOS::MessagePump()
     }
     else
       ret |= g_application.OnEvent(pumpEvent);
+
+//on ios touch devices - unfocus controls on finger lift
+#if !defined(TARGET_DARWIN_IOS_ATV2)
+    if (pumpEvent.type == XBMC_MOUSEBUTTONUP)
+    {
+      g_windowManager.SendMessage(GUI_MSG_UNFOCUS_ALL, 0, 0, 0, 0);
+    }
+#endif
   }
 
   return ret;

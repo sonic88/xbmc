@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -41,13 +40,13 @@
 #endif
 
 //KEEP_ALIVE_TIMEOUT is decremented every half a second
-//480 * 0.5s == 240s == 4mins
-//so when no read was done for 4mins and files are open
+//360 * 0.5s == 180s == 3mins
+//so when no read was done for 3mins and files are open
 //do the nfs keep alive for the open files
-#define KEEP_ALIVE_TIMEOUT 480
+#define KEEP_ALIVE_TIMEOUT 360
 
-//4 mins cached context timeout
-#define CONTEXT_TIMEOUT 240000
+//6 mins (360s) cached context timeout
+#define CONTEXT_TIMEOUT 360000
 
 //return codes for getContextForExport
 #define CONTEXT_INVALID  0    //getcontext failed
@@ -65,6 +64,7 @@ CNfsConnection::CNfsConnection()
 , m_writeChunkSize(0)
 , m_OpenConnections(0)
 , m_IdleTimeout(0)
+, m_lastAccessedTime(0)
 , m_pLibNfs(new DllLibNfs())
 {
 }
@@ -97,6 +97,8 @@ std::list<CStdString> CNfsConnection::GetExportList(const CURL &url)
       }      
 
       gNfsConnection.GetImpl()->mount_free_export_list(exportlist);
+      retList.sort();
+      retList.reverse();
     }
     
     return retList;
@@ -130,6 +132,7 @@ void CNfsConnection::clearMembers()
 
 void CNfsConnection::destroyOpenContexts()
 {
+  CSingleLock lock(openContextLock);
   for(tOpenContextMap::iterator it = m_openContextMap.begin();it!=m_openContextMap.end();it++)
   {
     m_pLibNfs->nfs_destroy_context(it->second.pContext);
@@ -137,21 +140,23 @@ void CNfsConnection::destroyOpenContexts()
   m_openContextMap.clear();
 }
 
-struct nfs_context *CNfsConnection::getContextFromMap(const CStdString &exportname)
+struct nfs_context *CNfsConnection::getContextFromMap(const CStdString &exportname, bool forceCacheHit/* = false*/)
 {
   struct nfs_context *pRet = NULL;
+  CSingleLock lock(openContextLock);
 
   tOpenContextMap::iterator it = m_openContextMap.find(exportname.c_str());
   if(it != m_openContextMap.end())
   {
     //check if context has timed out already
     uint64_t now = XbmcThreads::SystemClockMillis();
-    if((now - it->second.lastAccessedTime) < CONTEXT_TIMEOUT)
+    if((now - it->second.lastAccessedTime) < CONTEXT_TIMEOUT || forceCacheHit)
     {
-      //its not timedout yet
+      //its not timedout yet or caller wants the cached entry regardless of timeout
       //refresh access time of that
       //context and return it
-      CLog::Log(LOGDEBUG, "NFS: Refreshing context for %s, old: %"PRId64", new: %"PRId64, exportname.c_str(), it->second.lastAccessedTime, now);
+      if (!forceCacheHit) // only log it if this isn't the resetkeepalive on each read ;)
+        CLog::Log(LOGDEBUG, "NFS: Refreshing context for %s, old: %"PRId64", new: %"PRId64, exportname.c_str(), it->second.lastAccessedTime, now);
       it->second.lastAccessedTime = now;
       pRet = it->second.pContext;
     }
@@ -188,6 +193,7 @@ int CNfsConnection::getContextForExport(const CStdString &exportname)
       else 
       {
         struct contextTimeout tmp;
+        CSingleLock lock(openContextLock);        
         tmp.pContext = m_pNfsContext;
         tmp.lastAccessedTime = XbmcThreads::SystemClockMillis();
         m_openContextMap[exportname] = tmp; //add context to list of all contexts      
@@ -199,6 +205,7 @@ int CNfsConnection::getContextForExport(const CStdString &exportname)
       ret = CONTEXT_CACHED;
       CLog::Log(LOGDEBUG,"NFS: Using cached context.");
     }
+    m_lastAccessedTime = XbmcThreads::SystemClockMillis(); //refresh last access time of m_pNfsContext
   }
   return ret;
 }
@@ -236,7 +243,13 @@ bool CNfsConnection::splitUrlIntoExportAndPath(const CURL& url, CStdString &expo
         if( path.Find(*it) ==  0 )
         {
           exportPath = *it;
-          relativePath = "//" + path.Right((path.length()-1) - exportPath.length());
+          //handle special case where root is exported
+          //in that case we don't want to stripp off to
+          //much from the path
+          if( exportPath == "/" )
+            relativePath = "//" + path.Right((path.length()) - exportPath.length());
+          else
+            relativePath = "//" + path.Right((path.length()-1) - exportPath.length());
           ret = true;
           break;          
         }
@@ -255,7 +268,9 @@ bool CNfsConnection::Connect(const CURL& url, CStdString &relativePath)
   resolveHost(url);
   ret = splitUrlIntoExportAndPath(url, exportPath, relativePath);
   
-  if(ret && (!exportPath.Equals(m_exportPath,true) || !url.GetHostName().Equals(m_hostName,false)) )
+  if( (ret && (!exportPath.Equals(m_exportPath,true)  || 
+      !url.GetHostName().Equals(m_hostName,false)))    ||
+      (XbmcThreads::SystemClockMillis() - m_lastAccessedTime) > CONTEXT_TIMEOUT )
   {
     int contextRet = getContextForExport(url.GetHostName() + exportPath);
     
@@ -326,20 +341,19 @@ void CNfsConnection::CheckIfIdle()
   
   if( m_pNfsContext != NULL )
   {
+    CSingleLock lock(keepAliveLock);
     //handle keep alive on opened files
     for( tFileKeepAliveMap::iterator it = m_KeepAliveTimeouts.begin();it!=m_KeepAliveTimeouts.end();it++)
     {
-      CSingleLock lock(keepAliveLock);
-      if(it->second > 0)
+      if(it->second.refreshCounter > 0)
       {
-        it->second--;
+        it->second.refreshCounter--;
       }
       else
       {
-        lock.Leave();
-        keepAlive(it->first);
+        keepAlive(it->second.exportPath, it->first);
         //reset timeout
-        resetKeepAlive(it->first);
+        resetKeepAlive(it->second.exportPath, it->first);
       }
     }
   }
@@ -353,25 +367,37 @@ void CNfsConnection::removeFromKeepAliveList(struct nfsfh  *_pFileHandle)
 }
 
 //reset timeouts on read
-void CNfsConnection::resetKeepAlive(struct nfsfh  *_pFileHandle)
+void CNfsConnection::resetKeepAlive(std::string _exportPath, struct nfsfh  *_pFileHandle)
 {
   CSingleLock lock(keepAliveLock);
-  //adds new keys - refreshs existing ones  
-  m_KeepAliveTimeouts[_pFileHandle] = KEEP_ALIVE_TIMEOUT;
+  //refresh last access time of the context aswell
+  getContextFromMap(_exportPath, true);
+  //adds new keys - refreshs existing ones
+  m_KeepAliveTimeouts[_pFileHandle].exportPath = _exportPath;
+  m_KeepAliveTimeouts[_pFileHandle].refreshCounter = KEEP_ALIVE_TIMEOUT;
 }
 
 //keep alive the filehandles nfs connection
 //by blindly doing a read 32bytes - seek back to where
 //we were before
-void CNfsConnection::keepAlive(struct nfsfh  *_pFileHandle)
+void CNfsConnection::keepAlive(std::string _exportPath, struct nfsfh  *_pFileHandle)
 {
-  off64_t offset = 0;
+  uint64_t offset = 0;
   char buffer[32];
+  // this also refreshs the last accessed time for the context
+  // true forces a cachehit regardless the context is timedout
+  // on this call we are sure its not timedout even if the last accessed
+  // time suggests it.
+  struct nfs_context *pContext = getContextFromMap(_exportPath, true);
+  
+  if (!pContext)// this should normally never happen - paranoia
+    pContext = m_pNfsContext;
+  
   CLog::Log(LOGNOTICE, "NFS: sending keep alive after %i s.",KEEP_ALIVE_TIMEOUT/2);
   CSingleLock lock(*this);
-  m_pLibNfs->nfs_lseek(m_pNfsContext, _pFileHandle, 0, SEEK_CUR, &offset);
-  m_pLibNfs->nfs_read(m_pNfsContext, _pFileHandle, 32, buffer);
-  m_pLibNfs->nfs_lseek(m_pNfsContext, _pFileHandle, offset, SEEK_SET, &offset);
+  m_pLibNfs->nfs_lseek(pContext, _pFileHandle, 0, SEEK_CUR, &offset);
+  m_pLibNfs->nfs_read(pContext, _pFileHandle, 32, buffer);
+  m_pLibNfs->nfs_lseek(pContext, _pFileHandle, offset, SEEK_SET, &offset);
 }
 
 int CNfsConnection::stat(const CURL &url, struct stat *statbuff)
@@ -451,7 +477,7 @@ CNFSFile::~CNFSFile()
 int64_t CNFSFile::GetPosition()
 {
   int ret = 0;
-  off64_t offset = 0;
+  uint64_t offset = 0;
   CSingleLock lock(gNfsConnection);
   
   if (gNfsConnection.GetNfsContext() == NULL || m_pFileHandle == NULL) return 0;
@@ -491,12 +517,15 @@ bool CNFSFile::Open(const CURL& url)
     return false;
   
   m_pNfsContext = gNfsConnection.GetNfsContext(); 
+  m_exportPath = gNfsConnection.GetContextMapId();
   
   ret = gNfsConnection.GetImpl()->nfs_open(m_pNfsContext, filename.c_str(), O_RDONLY, &m_pFileHandle);
   
   if (ret != 0) 
   {
     CLog::Log(LOGINFO, "CNFSFile::Open: Unable to open file : '%s'  error : '%s'", url.GetFileName().c_str(), gNfsConnection.GetImpl()->nfs_get_error(m_pNfsContext));
+    m_pNfsContext = NULL;
+    m_exportPath.clear();
     return false;
   } 
   
@@ -577,11 +606,11 @@ unsigned int CNFSFile::Read(void *lpBuf, int64_t uiBufSize)
   
   if (m_pFileHandle == NULL || m_pNfsContext == NULL ) return 0;
 
-  numberOfBytesRead = gNfsConnection.GetImpl()->nfs_read(m_pNfsContext, m_pFileHandle, (size_t)uiBufSize, (char *)lpBuf);  
+  numberOfBytesRead = gNfsConnection.GetImpl()->nfs_read(m_pNfsContext, m_pFileHandle, uiBufSize, (char *)lpBuf);  
 
   lock.Leave();//no need to keep the connection lock after that
   
-  gNfsConnection.resetKeepAlive(m_pFileHandle);//triggers keep alive timer reset for this filehandle
+  gNfsConnection.resetKeepAlive(m_exportPath, m_pFileHandle);//triggers keep alive timer reset for this filehandle
   
   //something went wrong ...
   if (numberOfBytesRead < 0) 
@@ -595,7 +624,7 @@ unsigned int CNFSFile::Read(void *lpBuf, int64_t uiBufSize)
 int64_t CNFSFile::Seek(int64_t iFilePosition, int iWhence)
 {
   int ret = 0;
-  off64_t offset = 0;
+  uint64_t offset = 0;
 
   CSingleLock lock(gNfsConnection);  
   if (m_pFileHandle == NULL || m_pNfsContext == NULL) return -1;
@@ -610,6 +639,23 @@ int64_t CNFSFile::Seek(int64_t iFilePosition, int iWhence)
   return (int64_t)offset;
 }
 
+int CNFSFile::Truncate(int64_t iSize)
+{
+  int ret = 0;
+  
+  CSingleLock lock(gNfsConnection);  
+  if (m_pFileHandle == NULL || m_pNfsContext == NULL) return -1;
+  
+  
+  ret = (int)gNfsConnection.GetImpl()->nfs_ftruncate(m_pNfsContext, m_pFileHandle, iSize);
+  if (ret < 0) 
+  {
+    CLog::Log(LOGERROR, "%s - Error( ftruncate: %"PRId64", fsize: %"PRId64", %s)", __FUNCTION__, iSize, m_fileSize, gNfsConnection.GetImpl()->nfs_get_error(m_pNfsContext));
+    return -1;
+  }
+  return ret;
+}
+
 void CNFSFile::Close()
 {
   CSingleLock lock(gNfsConnection);
@@ -618,8 +664,10 @@ void CNFSFile::Close()
   {
     int ret = 0;
     CLog::Log(LOGDEBUG,"CNFSFile::Close closing file %s", m_url.GetFileName().c_str());
-    ret = gNfsConnection.GetImpl()->nfs_close(m_pNfsContext, m_pFileHandle);
+    // remove it from keep alive list before closing
+    // so keep alive code doens't process it anymore
     gNfsConnection.removeFromKeepAliveList(m_pFileHandle);
+    ret = gNfsConnection.GetImpl()->nfs_close(m_pNfsContext, m_pFileHandle);
         
 	  if (ret < 0) 
     {
@@ -628,6 +676,7 @@ void CNFSFile::Close()
     m_pFileHandle = NULL;
     m_pNfsContext = NULL;    
     m_fileSize = 0;
+    m_exportPath.clear();
   }
 }
 
@@ -657,7 +706,7 @@ int CNFSFile::Write(const void* lpBuf, int64_t uiBufSize)
     //write chunk
     writtenBytes = gNfsConnection.GetImpl()->nfs_write(m_pNfsContext,
                                   m_pFileHandle, 
-                                  (size_t)chunkSize, 
+                                  chunkSize, 
                                   (char *)lpBuf + numberOfBytesWritten);
     //decrease left bytes
     leftBytes-= writtenBytes;
@@ -731,6 +780,7 @@ bool CNFSFile::OpenForWrite(const CURL& url, bool bOverWrite)
     return false;
   
   m_pNfsContext = gNfsConnection.GetNfsContext();
+  m_exportPath = gNfsConnection.GetContextMapId();
   
   if (bOverWrite)
   {
@@ -741,6 +791,7 @@ bool CNFSFile::OpenForWrite(const CURL& url, bool bOverWrite)
     if(ret == 0)
     {
       gNfsConnection.GetImpl()->nfs_close(m_pNfsContext,m_pFileHandle);
+      m_pFileHandle = NULL;          
     }
   }
 
@@ -750,6 +801,8 @@ bool CNFSFile::OpenForWrite(const CURL& url, bool bOverWrite)
   {
     // write error to logfile
     CLog::Log(LOGERROR, "CNFSFile::Open: Unable to open file : '%s' error : '%s'", filename.c_str(), gNfsConnection.GetImpl()->nfs_get_error(gNfsConnection.GetNfsContext()));
+    m_pNfsContext = NULL;
+    m_exportPath.clear();
     return false;
   }
   m_url=url;

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -23,10 +22,13 @@
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
 #endif
+#include "network/Network.h"
 #include "system.h"
 #include "FileFactory.h"
 #include "HDFile.h"
 #include "CurlFile.h"
+#include "HTTPFile.h"
+#include "DAVFile.h"
 #include "ShoutcastFile.h"
 #include "LastFMFile.h"
 #include "FileReaderFile.h"
@@ -58,6 +60,9 @@
 #ifdef HAS_PVRCLIENTS
 #include "PVRFile.h"
 #endif
+#if defined(TARGET_ANDROID)
+#include "APKFile.h"
+#endif
 #include "ZipFile.h"
 #ifdef HAS_FILESYSTEM_RAR
 #include "RarFile.h"
@@ -71,7 +76,12 @@
 #ifdef HAS_FILESYSTEM_AFP
 #include "AFPFile.h"
 #endif
+#if defined(TARGET_ANDROID)
+#include "AndroidAppFile.h"
+#endif
+#ifdef HAS_UPNP
 #include "UPnPFile.h"
+#endif
 #include "PipesManager.h"
 #include "PipeFile.h"
 #include "MusicDatabaseFile.h"
@@ -82,6 +92,7 @@
 #include "MythFile.h"
 #include "HDHomeRunFile.h"
 #include "SlingboxFile.h"
+#include "ImageFile.h"
 #include "Application.h"
 #include "URL.h"
 #include "utils/log.h"
@@ -107,14 +118,23 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
   CStdString strProtocol = url.GetProtocol();
   strProtocol.MakeLower();
 
-  if (strProtocol == "zip") return new CZipFile();
-#ifdef HAS_FILESYSTEM_RAR
-  else if (strProtocol == "rar") return new CRarFile();
+#if defined(TARGET_ANDROID)
+  if (strProtocol == "apk") return new CAPKFile();
 #endif
+  if (strProtocol == "zip") return new CZipFile();
+  else if (strProtocol == "rar")
+  {
+#ifdef HAS_FILESYSTEM_RAR
+    return new CRarFile();
+#else
+    CLog::Log(LOGWARNING, "%s - Compiled without non-free, rar support is disabled", __FUNCTION__);
+#endif
+  }
   else if (strProtocol == "musicdb") return new CMusicDatabaseFile();
   else if (strProtocol == "videodb") return NULL;
   else if (strProtocol == "special") return new CSpecialProtocolFile();
   else if (strProtocol == "multipath") return new CMultiPathFile();
+  else if (strProtocol == "image") return new CImageFile();
   else if (strProtocol == "file" || strProtocol.IsEmpty()) return new CHDFile();
   else if (strProtocol == "filereader") return new CFileReaderFile();
 #if defined(HAS_FILESYSTEM_CDDA) && defined(HAS_DVD_DRIVE)
@@ -127,14 +147,11 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
 
   if( g_application.getNetwork().IsAvailable() )
   {
-    if (strProtocol == "http"
-    ||  strProtocol == "https"
-    ||  strProtocol == "dav"
-    ||  strProtocol == "davs"
-    ||  strProtocol == "ftp"
-    ||  strProtocol == "ftpx"
+    if (strProtocol == "ftp"
     ||  strProtocol == "ftps"
     ||  strProtocol == "rss") return new CCurlFile();
+    else if (strProtocol == "http" ||  strProtocol == "https") return new CHTTPFile();
+    else if (strProtocol == "dav" || strProtocol == "davs") return new CDAVFile();
 #ifdef HAS_FILESYSTEM_SFTP
     else if (strProtocol == "sftp" || strProtocol == "ssh") return new CSFTPFile();
 #endif
@@ -176,7 +193,12 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
     else if (strProtocol == "afp") return new CAFPFile();
 #endif
     else if (strProtocol == "pipe") return new CPipeFile();    
+#ifdef HAS_UPNP
     else if (strProtocol == "upnp") return new CUPnPFile();
+#endif
+#if defined(TARGET_ANDROID)
+    else if (strProtocol == "androidapp") return new CFileAndroidApp();
+#endif
   }
 
   CLog::Log(LOGWARNING, "%s - Unsupported protocol(%s) in %s", __FUNCTION__, strProtocol.c_str(), url.Get().c_str() );

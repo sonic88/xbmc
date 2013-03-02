@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -25,7 +24,9 @@
 #include "XBApplicationEx.h"
 
 #include "guilib/IMsgTargetCallback.h"
+#include "guilib/Key.h"
 #include "threads/Condition.h"
+#include "utils/GlobalsHandling.h"
 
 #include <map>
 
@@ -53,8 +54,6 @@ namespace MEDIA_DETECT
 #include "win32/WIN32Util.h"
 #endif
 #include "utils/Stopwatch.h"
-#include "ApplicationMessenger.h"
-#include "network/Network.h"
 #include "utils/CharsetConverter.h"
 #ifdef HAS_PERFORMANCE_SAMPLE
 #include "utils/PerformanceStats.h"
@@ -62,27 +61,37 @@ namespace MEDIA_DETECT
 #include "windowing/XBMC_events.h"
 #include "threads/Thread.h"
 
+class CSeekHandler;
 class CKaraokeLyricsManager;
 class CInertialScrollingHandler;
-class CApplicationMessenger;
 class DPMSSupport;
 class CSplash;
 class CBookmark;
 class CWebServer;
 #ifdef HAS_WEB_SERVER
 class CWebServer;
+class CHTTPImageHandler;
 class CHTTPVfsHandler;
 #ifdef HAS_JSONRPC
 class CHTTPJsonRpcHandler;
-#endif
-#ifdef HAS_HTTPAPI
-class CHTTPApiHandler;
 #endif
 #ifdef HAS_WEB_INTERFACE
 class CHTTPWebinterfaceHandler;
 class CHTTPWebinterfaceAddonsHandler;
 #endif
 #endif
+
+class CNetwork;
+
+namespace VIDEO
+{
+  class CVideoInfoScanner;
+}
+
+namespace MUSIC_INFO
+{
+  class CMusicInfoScanner;
+}
 
 class CBackgroundPlayer : public CThread
 {
@@ -98,40 +107,57 @@ protected:
 class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMsgTargetCallback
 {
 public:
+
+  enum ESERVERS
+  {
+    ES_WEBSERVER = 1,
+    ES_AIRPLAYSERVER,
+    ES_JSONRPCSERVER,
+    ES_UPNPRENDERER,
+    ES_UPNPSERVER,
+    ES_EVENTSERVER,
+    ES_ZEROCONF
+  };
+
   CApplication(void);
   virtual ~CApplication(void);
   virtual bool Initialize();
-  virtual void FrameMove(bool processEvents);
+  virtual void FrameMove(bool processEvents, bool processGUI = true);
   virtual void Render();
   virtual bool RenderNoPresent();
   virtual void Preflight();
   virtual bool Create();
   virtual bool Cleanup();
 
+  bool CreateGUI();
+  bool InitWindow();
+  bool DestroyWindow();
   void StartServices();
   void StopServices();
+
+  bool StartServer(enum ESERVERS eServer, bool bStart, bool bWait = false);
+
   bool StartWebServer();
   void StopWebServer();
-  void StartAirplayServer();  
-  void StopAirplayServer(bool bWait);   
+  bool StartAirplayServer();
+  void StopAirplayServer(bool bWait);
   bool StartJSONRPCServer();
   void StopJSONRPCServer(bool bWait);
   void StartUPnP();
   void StopUPnP(bool bWait);
+  void StartUPnPClient();
+  void StopUPnPClient();
   void StartUPnPRenderer();
   void StopUPnPRenderer();
   void StartUPnPServer();
   void StopUPnPServer();
-  void StartPVRManager();
-  void StartEPGManager(void);
+  void StartPVRManager(bool bOpenPVRWindow = false);
   void StopPVRManager();
-  void StopEPGManager(void);
   bool StartEventServer();
   bool StopEventServer(bool bWait, bool promptuser);
   void RefreshEventServer();
   void StartZeroconf();
   void StopZeroconf();
-  void DimLCDOnPlayback(bool dim);
   bool IsCurrentThread() const;
   void Stop(int exitCode);
   void RestartApp();
@@ -155,7 +181,7 @@ public:
   bool PlayMediaSync(const CFileItem& item, int iPlaylist = PLAYLIST_MUSIC);
   bool ProcessAndStartPlaylist(const CStdString& strPlayList, PLAYLIST::CPlayList& playlist, int iPlaylist, int track=0);
   bool PlayFile(const CFileItem& item, bool bRestart = false);
-  void SaveFileState();
+  void SaveFileState(bool bForeground = false);
   void UpdateFileState();
   void StopPlaying();
   void Restart(bool bSamePosition = true);
@@ -178,14 +204,13 @@ public:
   void CheckScreenSaverAndDPMS();
   void CheckPlayingProgress();
   void CheckAudioScrobblerStatus();
-  void CheckForTitleChange();
   void ActivateScreenSaver(bool forceType = false);
 
   virtual void Process();
   void ProcessSlow();
   void ResetScreenSaver();
   int GetVolume() const;
-  void SetVolume(long iValue, bool isPercentage = true);
+  void SetVolume(float iValue, bool isPercentage = true);
   bool IsMuted() const;
   void ToggleMute(void);
   void ShowVolumeBar(const CAction *action = NULL);
@@ -197,9 +222,19 @@ public:
   void ResetScreenSaverTimer();
   void StopScreenSaverTimer();
   // Wakes up from the screensaver and / or DPMS. Returns true if woken up.
-  bool WakeUpScreenSaverAndDPMS();
-  bool WakeUpScreenSaver();
+  bool WakeUpScreenSaverAndDPMS(bool bPowerOffKeyPressed = false);
+  bool WakeUpScreenSaver(bool bPowerOffKeyPressed = false);
+  /*!
+   \brief Returns the total time in fractional seconds of the currently playing media
+
+   Beware that this method returns fractional seconds whereas IPlayer::GetTotalTime() returns milliseconds.
+   */
   double GetTotalTime() const;
+  /*!
+   \brief Returns the current time in fractional seconds of the currently playing media
+
+   Beware that this method returns fractional seconds whereas IPlayer::GetTime() returns milliseconds.
+   */
   double GetTime() const;
   float GetPercentage() const;
 
@@ -212,8 +247,18 @@ public:
   void StopShutdownTimer();
   void ResetShutdownTimers();
 
-  void SaveMusicScanSettings();
-  void RestoreMusicScanSettings();
+  void StopVideoScan();
+  void StopMusicScan();
+  bool IsMusicScanning() const;
+  bool IsVideoScanning() const;
+
+  void StartVideoCleanup();
+
+  void StartVideoScan(const CStdString &path, bool scanAll = false);
+  void StartMusicScan(const CStdString &path, int flags = 0);
+  void StartMusicAlbumScan(const CStdString& strDirectory, bool refresh=false);
+  void StartMusicArtistScan(const CStdString& strDirectory, bool refresh=false);
+
   void UpdateLibraries();
   void CheckMusicPlaylist();
 
@@ -221,14 +266,7 @@ public:
 
   static bool OnEvent(XBMC_Event& newEvent);
 
-  CApplicationMessenger& getApplicationMessenger();
-#if defined(HAS_LINUX_NETWORK)
-  CNetworkLinux& getNetwork();
-#elif defined(HAS_WIN32_NETWORK)
-  CNetworkWin32& getNetwork();
-#else
   CNetwork& getNetwork();
-#endif
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats &GetPerformanceStats();
 #endif
@@ -245,12 +283,10 @@ public:
 
 #ifdef HAS_WEB_SERVER
   CWebServer& m_WebServer;
+  CHTTPImageHandler& m_httpImageHandler;
   CHTTPVfsHandler& m_httpVfsHandler;
 #ifdef HAS_JSONRPC
   CHTTPJsonRpcHandler& m_httpJsonRpcHandler;
-#endif
-#ifdef HAS_HTTPAPI
-  CHTTPApiHandler& m_httpApiHandler;
 #endif
 #ifdef HAS_WEB_INTERFACE
   CHTTPWebinterfaceHandler& m_httpWebinterfaceHandler;
@@ -261,7 +297,6 @@ public:
   inline bool IsInScreenSaver() { return m_bScreenSave; };
   int m_iScreenSaveLock; // spiff: are we checking for a lock? if so, ignore the screensaver state, if -1 we have failed to input locks
 
-  bool m_bIsPaused;
   bool m_bPlaybackStarting;
 
   CKaraokeLyricsManager* m_pKaraokeMgr;
@@ -316,14 +351,24 @@ public:
   bool ToggleDPMS(bool manual);
 
   float GetDimScreenSaverLevel() const;
+
+  /*! \brief Retrieve the applications seek handler.
+   \return a constant pointer to the seek handler.
+   \sa CSeekHandler
+   */
+  const CSeekHandler *GetSeekHandler() const { return m_seekHandler; };
+
+  bool SwitchToFullScreen();
+
+  CSplash* GetSplash() { return m_splash; }
+  void SetRenderGUI(bool renderGUI);
 protected:
   bool LoadSkin(const CStdString& skinID);
   void LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);
 
   bool m_skinReloading; // if true we disallow LoadSkin until ReloadSkin is called
 
-  friend class CApplicationMessenger;
-#if defined(__APPLE__) && defined(__arm__)
+#if defined(TARGET_DARWIN_IOS)
   friend class CWinEventsIOS;
 #endif
   // screensaver
@@ -333,14 +378,15 @@ protected:
   // timer information
 #ifdef _WIN32
   CWinIdleTimer m_idleTimer;
+  CWinIdleTimer m_screenSaverTimer;
 #else
   CStopWatch m_idleTimer;
+  CStopWatch m_screenSaverTimer;
 #endif
   CStopWatch m_restartPlayerTimer;
   CStopWatch m_frameTime;
   CStopWatch m_navigationTimer;
   CStopWatch m_slowTimer;
-  CStopWatch m_screenSaverTimer;
   CStopWatch m_shutdownTimer;
 
   bool m_bInhibitIdleShutdown;
@@ -351,12 +397,12 @@ protected:
 
   CFileItemPtr m_itemCurrentFile;
   CFileItemList* m_currentStack;
+  CFileItemPtr m_stackFileItemToUpdate;
+
   CStdString m_prevMedia;
   CSplash* m_splash;
   ThreadIdentifier m_threadID;       // application thread ID.  Used in applicationMessanger to know where we are firing a thread with delay from.
   PLAYERCOREID m_eCurrentPlayer;
-  bool m_bSettingsLoaded;
-  bool m_bAllSettingsLoaded;
   bool m_bInitializing;
   bool m_bPlatformDirectories;
 
@@ -376,28 +422,30 @@ protected:
   bool m_bEnableLegacyRes;
   bool m_bTestMode;
   bool m_bSystemScreenSaverEnable;
-  
+
   int        m_frameCount;
   CCriticalSection m_frameMutex;
   XbmcThreads::ConditionVariable  m_frameCond;
 
+  VIDEO::CVideoInfoScanner *m_videoInfoScanner;
+  MUSIC_INFO::CMusicInfoScanner *m_musicInfoScanner;
+
   void Mute();
   void UnMute();
 
-  void SetHardwareVolume(long hardwareVolume);
-  void UpdateLCD();
-  void FatalErrorHandler(bool WindowSystemInitialized, bool MapDrives, bool InitNetwork);
+  void SetHardwareVolume(float hardwareVolume);
+
+  void VolumeChanged() const;
 
   bool PlayStack(const CFileItem& item, bool bRestart);
-  bool SwitchToFullScreen();
   bool ProcessMouse();
   bool ProcessRemote(float frameTime);
   bool ProcessGamepad(float frameTime);
   bool ProcessEventServer(float frameTime);
   bool ProcessPeripherals(float frameTime);
-  bool ProcessHTTPApiButtons();
-  bool ProcessJsonRpcButtons();
   bool ProcessJoystickEvent(const std::string& joystickName, int button, bool isAxis, float fAmount, unsigned int holdTime = 0);
+  bool ExecuteInputAction(CAction action);
+  int  GetActiveWindowID(void);
 
   float NavigationIdleTime();
   static bool AlwaysProcess(const CAction& action);
@@ -409,15 +457,9 @@ protected:
   bool InitDirectoriesWin32();
   void CreateUserDirs();
 
+  CSeekHandler *m_seekHandler;
   CInertialScrollingHandler *m_pInertialScrollingHandler;
-  CApplicationMessenger m_applicationMessenger;
-#if defined(HAS_LINUX_NETWORK)
-  CNetworkLinux m_network;
-#elif defined(HAS_WIN32_NETWORK)
-  CNetworkWin32 m_network;
-#else
-  CNetwork    m_network;
-#endif
+  CNetwork    *m_network;
 #ifdef HAS_PERFORMANCE_SAMPLE
   CPerformanceStats m_perfStats;
 #endif
@@ -428,4 +470,5 @@ protected:
 
 };
 
-extern CApplication g_application;
+XBMC_GLOBAL_REF(CApplication,g_application);
+#define g_application XBMC_GLOBAL_USE(CApplication)

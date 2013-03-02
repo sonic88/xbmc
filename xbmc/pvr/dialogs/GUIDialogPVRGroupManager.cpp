@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,16 +13,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "GUIDialogPVRGroupManager.h"
 #include "Application.h"
 #include "FileItem.h"
-#include "dialogs/GUIDialogKeyboard.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "guilib/GUIWindowManager.h"
@@ -51,7 +50,6 @@ CGUIDialogPVRGroupManager::CGUIDialogPVRGroupManager() :
   m_ungroupedChannels = new CFileItemList;
   m_groupMembers      = new CFileItemList;
   m_channelGroups     = new CFileItemList;
-  m_selectedGroup     = NULL;
 }
 
 CGUIDialogPVRGroupManager::~CGUIDialogPVRGroupManager()
@@ -96,7 +94,7 @@ bool CGUIDialogPVRGroupManager::ActionButtonNewGroup(CGUIMessage &message)
   {
     CStdString strGroupName = "";
     /* prompt for a group name */
-    if (CGUIDialogKeyboard::ShowAndGetInput(strGroupName, g_localizeStrings.Get(19139), false))
+    if (CGUIKeyboardFactory::ShowAndGetInput(strGroupName, g_localizeStrings.Get(19139), false))
     {
       if (strGroupName != "")
       {
@@ -104,7 +102,8 @@ bool CGUIDialogPVRGroupManager::ActionButtonNewGroup(CGUIMessage &message)
         CPVRChannelGroups *groups = ((CPVRChannelGroups *) g_PVRChannelGroups->Get(m_bIsRadio));
         if (groups->AddGroup(strGroupName))
         {
-          m_iSelectedChannelGroup = groups->size() - 1;
+          g_PVRChannelGroups->Get(m_bIsRadio)->GetByName(strGroupName)->SetGroupType(PVR_GROUP_TYPE_USER_DEFINED);
+          m_iSelectedChannelGroup = groups->Size() - 1;
           Update();
         }
       }
@@ -158,7 +157,7 @@ bool CGUIDialogPVRGroupManager::ActionButtonRenameGroup(CGUIMessage &message)
       return bReturn;
 
     CStdString strGroupName(m_selectedGroup->GroupName());
-    if (CGUIDialogKeyboard::ShowAndGetInput(strGroupName, g_localizeStrings.Get(19139), false))
+    if (CGUIKeyboardFactory::ShowAndGetInput(strGroupName, g_localizeStrings.Get(19139), false))
     {
       if (strGroupName != "")
       {
@@ -185,7 +184,7 @@ bool CGUIDialogPVRGroupManager::ActionButtonUngroupedChannels(CGUIMessage &messa
 
     if (iAction == ACTION_SELECT_ITEM || iAction == ACTION_MOUSE_LEFT_CLICK)
     {
-      if (m_channelGroups->GetFileCount() == 0)
+      if (m_channelGroups->GetFolderCount() == 0)
       {
         CGUIDialogOK::ShowAndGetInput(19033,19137,0,19138);
       }
@@ -318,8 +317,6 @@ void CGUIDialogPVRGroupManager::OnWindowUnload()
 
 void CGUIDialogPVRGroupManager::Update()
 {
-  m_selectedGroup = NULL;
-
   /* lock our display, as this window is rendered from the player thread */
   g_graphicsContext.Lock();
   m_viewUngroupedChannels.SetCurrentView(CONTROL_LIST_CHANNELS_LEFT);
@@ -335,8 +332,8 @@ void CGUIDialogPVRGroupManager::Update()
 
   /* select a group or select the default group if no group was selected */
   CFileItemPtr pItem = m_channelGroups->Get(m_viewChannelGroups.GetSelectedItem());
-  m_selectedGroup = (CPVRChannelGroup *) g_PVRChannelGroups->Get(m_bIsRadio)->GetByName(pItem->m_strTitle);
-  if (m_selectedGroup != NULL)
+  m_selectedGroup = g_PVRChannelGroups->Get(m_bIsRadio)->GetByName(pItem->m_strTitle);
+  if (m_selectedGroup)
   {
     /* set this group in the pvrmanager, so it becomes the selected group in other dialogs too */
     g_PVRManager.SetPlayingGroup(m_selectedGroup);

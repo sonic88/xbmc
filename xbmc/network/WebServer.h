@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -60,6 +59,8 @@ private:
   static int AskForAuthentication (struct MHD_Connection *connection);
   static bool IsAuthenticated (CWebServer *server, struct MHD_Connection *connection);
 
+  static void* UriRequestLogger(void *cls, const char *uri);
+
 #if (MHD_VERSION >= 0x00090200)
   static ssize_t ContentReaderCallback (void *cls, uint64_t pos, char *buf, size_t max);
 #elif (MHD_VERSION >= 0x00040001)
@@ -90,7 +91,7 @@ private:
   static int HandleRequest(IHTTPRequestHandler *handler, const HTTPRequest &request);
   static void ContentReaderFreeCallback (void *cls);
   static int CreateRedirect(struct MHD_Connection *connection, const std::string &strURL, struct MHD_Response *&response);
-  static int CreateFileDownloadResponse(struct MHD_Connection *connection, const std::string &strURL, HTTPMethod methodType, struct MHD_Response *&response);
+  static int CreateFileDownloadResponse(struct MHD_Connection *connection, const std::string &strURL, HTTPMethod methodType, struct MHD_Response *&response, int &responseCode);
   static int CreateErrorResponse(struct MHD_Connection *connection, int responseType, HTTPMethod method, struct MHD_Response *&response);
   static int CreateMemoryDownloadResponse(struct MHD_Connection *connection, void *data, size_t size, bool free, bool copy, struct MHD_Response *&response);
 

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,21 +14,19 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "guilib/GUIDialog.h"
-#include "GUIViewControl.h"
+#include "view/GUIViewControl.h"
+#include "../channels/PVRChannelGroup.h"
 
 class CFileItemList;
 
 namespace PVR
 {
-  class CPVRChannelGroup;
-
   class CGUIDialogPVRGroupManager : public CGUIDialog
   {
   public:
@@ -55,7 +53,7 @@ namespace PVR
     bool ActionButtonChannelGroups(CGUIMessage &message);
     bool OnMessageClick(CGUIMessage &message);
 
-    CPVRChannelGroup *m_selectedGroup;
+    CPVRChannelGroupPtr m_selectedGroup;
     bool              m_bIsRadio;
 
     unsigned int      m_iSelectedUngroupedChannel;

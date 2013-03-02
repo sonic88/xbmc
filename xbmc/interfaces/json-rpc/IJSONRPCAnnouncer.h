@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,9 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
+ *  along with XBMC; see the file COPYING.  If not, see
  *  the Free Software Foundation, 51 Franklin Street, Suite 500, Boston, MA 02110, USA.
- *  http://www.gnu.org/copyleft/gpl.html
  *
  */
 

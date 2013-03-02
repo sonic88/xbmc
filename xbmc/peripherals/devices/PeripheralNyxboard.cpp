@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2011 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -48,12 +47,6 @@ bool CPeripheralNyxboard::LookupSymAndUnicode(XBMC_keysym &keysym, uint8_t *key,
     /* switched to remote side */
     CLog::Log(LOGDEBUG, "%s - switched to remote side", __FUNCTION__);
     strCommand = GetSettingString("flip_remote");
-  }
-  else if (keysym.sym == XBMCK_F4 && keysym.mod == XBMCKMOD_NONE)
-  {
-    /* 'user' key pressed */
-    CLog::Log(LOGDEBUG, "%s - 'user' key pressed", __FUNCTION__);
-    strCommand = GetSettingString("key_user");
   }
 
   if (!strCommand.IsEmpty())

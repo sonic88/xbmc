@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -14,18 +14,26 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
-#include "tinyXML/tinyxml.h"
+#include "utils/XBMCTinyXML.h"
 #include "cores/IPlayer.h"
 #include "PlayerCoreFactory.h"
 #include "cores/dvdplayer/DVDPlayer.h"
 #include "cores/paplayer/PAPlayer.h"
+#if defined(HAS_AMLPLAYER)
+#include "cores/amlplayer/AMLPlayer.h"
+#endif
+#if defined(HAS_OMXPLAYER)
+#include "cores/omxplayer/OMXPlayer.h"
+#endif
 #include "cores/ExternalPlayer/ExternalPlayer.h"
+#ifdef HAS_UPNP
+#include "network/upnp/UPnPPlayer.h"
+#endif
 #include "utils/log.h"
 
 class CPlayerCoreConfig
@@ -33,9 +41,10 @@ class CPlayerCoreConfig
 friend class CPlayerCoreFactory;
 
 public:
-  CPlayerCoreConfig(CStdString name, const EPLAYERCORES eCore, const TiXmlElement* pConfig)
+  CPlayerCoreConfig(CStdString name, const EPLAYERCORES eCore, const TiXmlElement* pConfig, const CStdString& id = "")
   {
     m_name = name;
+    m_id = id;
     m_eCore = eCore;
     m_bPlaysAudio = false;
     m_bPlaysVideo = false;
@@ -65,15 +74,46 @@ public:
     return m_name;
   }
 
+  const CStdString& GetId() const
+  {
+    return m_id;
+  }
+
+  const EPLAYERCORES& GetType() const
+  {
+    return m_eCore;
+  }
+
   IPlayer* CreatePlayer(IPlayerCallback& callback) const
   {
     IPlayer* pPlayer;
     switch(m_eCore)
     {
       case EPC_MPLAYER:
+      // TODO: this hack needs removal until we have a better player selection
+#if defined(HAS_OMXPLAYER)
+      case EPC_DVDPLAYER: 
+        pPlayer = new COMXPlayer(callback); 
+        CLog::Log(LOGINFO, "Created player %s for core %d / OMXPlayer forced as DVDPlayer", "OMXPlayer", m_eCore);
+        break;
+      case EPC_PAPLAYER: 
+        pPlayer = new COMXPlayer(callback); 
+        CLog::Log(LOGINFO, "Created player %s for core %d / OMXPlayer forced as PAPLayer", "OMXPlayer", m_eCore);
+        break;
+#else
       case EPC_DVDPLAYER: pPlayer = new CDVDPlayer(callback); break;
       case EPC_PAPLAYER: pPlayer = new PAPlayer(callback); break;
+#endif
       case EPC_EXTPLAYER: pPlayer = new CExternalPlayer(callback); break;
+#if defined(HAS_AMLPLAYER)
+      case EPC_AMLPLAYER: pPlayer = new CAMLPlayer(callback); break;
+#endif
+#if defined(HAS_OMXPLAYER)
+      case EPC_OMXPLAYER: pPlayer = new COMXPlayer(callback); break;
+#endif
+#if defined(HAS_UPNP)
+      case EPC_UPNPPLAYER: pPlayer = new UPNP::CUPnPPlayer(callback, m_id.c_str()); break;
+#endif
       default: return NULL;
     }
 
@@ -90,6 +130,7 @@ public:
 
 private:
   CStdString m_name;
+  CStdString m_id;
   bool m_bPlaysAudio;
   bool m_bPlaysVideo;
   EPLAYERCORES m_eCore;

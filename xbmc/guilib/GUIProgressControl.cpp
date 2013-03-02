@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -131,6 +130,7 @@ bool CGUIProgressControl::OnMessage(CGUIMessage& message)
 
 void CGUIProgressControl::SetPercentage(float fPercent)
 {
+  fPercent = std::max(0.0f, std::min(fPercent, 100.0f));
   if (m_fPercent != fPercent)
     SetInvalid();
   m_fPercent = fPercent;
@@ -242,7 +242,12 @@ bool CGUIProgressControl::UpdateLayout(void)
     {
       bChanged |= m_guiMid.SetWidth(m_width);
       float x = posX, y = posY + offset, w = width, h = fScaleY * m_guiMid.GetTextureHeight();
-      m_guiMidClipRect = CRect(x, y, x + w, y + h);
+      CRect rect(x, y, x + w, y + h);
+      if (rect != m_guiMidClipRect)
+      {
+        m_guiMidClipRect = rect;
+        bChanged = true;
+      }
     }
     else
     {
@@ -276,7 +281,12 @@ bool CGUIProgressControl::UpdateLayout(void)
     {
       bChanged |= m_guiMid.SetWidth(fScaleX * fFullWidth);
       float x = posX, y = posY + offset, w =  fScaleX * fWidth, h = fScaleY * m_guiMid.GetTextureHeight();
-      m_guiMidClipRect = CRect(x, y, x + w, y + h);
+      CRect rect(x, y, x + w, y + h);
+      if (rect != m_guiMidClipRect)
+      {
+        m_guiMidClipRect = rect;
+        bChanged = true;
+      }
     }
     else
     {

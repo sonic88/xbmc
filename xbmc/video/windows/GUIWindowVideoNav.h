@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,14 +15,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "GUIWindowVideoBase.h"
-#include "ThumbLoader.h"
 
 class CFileItemList;
 
@@ -37,9 +35,18 @@ public:
   virtual bool OnMessage(CGUIMessage& message);
 
   virtual void OnPrepareFileItems(CFileItemList &items);
+
   virtual void OnInfo(CFileItem* pItem, ADDON::ScraperPtr &info);
   static bool CanDelete(const CStdString& strPath);
   static bool DeleteItem(CFileItem* pItem, bool bUnavailable=false);
+
+  /*! \brief Load video information from the database for these items (public static version)
+   Useful for grabbing information for file listings, from watched status to full metadata
+   \param items the items to load information for.
+   \param database open database object to retrieve the data from
+   \param allowReplaceLabels allow label replacement if according GUI setting is enabled
+   */
+  static void LoadVideoInfo(CFileItemList &items, CVideoDatabase &database, bool allowReplaceLabels = true);
 
 protected:
   /*! \brief Load video information from the database for these items
@@ -48,7 +55,15 @@ protected:
    */
   void LoadVideoInfo(CFileItemList &items);
 
-  virtual void OnItemLoaded(CFileItem* pItem);
+  /*! \brief Pop up a fanart chooser. Does not utilise remote URLs.
+   \param videoItem the item to choose fanart for.
+   */
+  void OnChooseFanart(const CFileItem &videoItem);
+
+  bool ApplyWatchedFilter(CFileItemList &items);
+  virtual bool GetFilteredItems(const CStdString &filter, CFileItemList &items);
+
+  virtual void OnItemLoaded(CFileItem* pItem) {};
   void OnLinkMovieToTvShow(int itemnumber, bool bRemove);
   // override base class methods
   virtual bool GetDirectory(const CStdString &strDirectory, CFileItemList &items);
@@ -62,6 +77,9 @@ protected:
   virtual CStdString GetStartFolder(const CStdString &dir);
 
   virtual CStdString GetQuickpathName(const CStdString& strPath) const;
+
+  bool GetItemsForTag(const CStdString &strHeading, const std::string &type, CFileItemList &items, int idTag = -1, bool showAll = true);
+  static CStdString GetLocalizedType(const std::string &strType);
 
   VECSOURCES m_shares;
 };

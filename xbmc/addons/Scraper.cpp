@@ -1,5 +1,5 @@
 /*
-*      Copyright (C) 2005-2008 Team XBMC
+*      Copyright (C) 2005-2013 Team XBMC
 *      http://www.xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
 *  GNU General Public License for more details.
 *
 *  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, write to
-*  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
-*  http://www.gnu.org/copyleft/gpl.html
+*  along with XBMC; see the file COPYING.  If not, see
+*  <http://www.gnu.org/licenses/>.
 *
 */
 #include "Scraper.h"
@@ -39,11 +38,15 @@
 #include "video/VideoDatabase.h"
 #include "music/Album.h"
 #include "music/Artist.h"
+#include "Util.h"
+#include "URL.h"
+
 #include <sstream>
 
 using namespace std;
 using namespace XFILE;
 using namespace MUSIC_GRABBER;
+using namespace VIDEO;
 
 namespace ADDON
 {
@@ -183,7 +186,7 @@ bool CScraper::SetPathSettings(CONTENT_TYPE content, const CStdString& xml)
   if (xml.IsEmpty())
     return true;
 
-  TiXmlDocument doc;
+  CXBMCTinyXML doc;
   doc.Parse(xml.c_str());
   m_userSettingsLoaded = SettingsFromXML(doc);
 
@@ -196,7 +199,7 @@ CStdString CScraper::GetPathSettings()
     return "";
 
   stringstream stream;
-  TiXmlDocument doc;
+  CXBMCTinyXML doc;
   SettingsToXML(doc);
   if (doc.RootElement())
     stream << *doc.RootElement();
@@ -255,7 +258,7 @@ vector<CStdString> CScraper::Run(const CStdString& function,
   if (!XMLUtils::HasUTF8Declaration(strXML))
     g_charsetConverter.unknownToUTF8(strXML);
 
-  TiXmlDocument doc;
+  CXBMCTinyXML doc;
   doc.Parse(strXML.c_str(),0,TIXML_ENCODING_UTF8);
   if (!doc.RootElement())
   {
@@ -285,6 +288,12 @@ vector<CStdString> CScraper::Run(const CStdString& function,
       }
       else
         scrURL2.ParseElement(xchain);
+      // Fix for empty chains. $$1 would still contain the
+      // previous value as there is no child of the xml node. 
+      // since $$1 will always either contain the data from an 
+      // url or the parameters to a chain, we can safely clear it here
+      // to fix this issue
+      m_parser.m_param[0].clear();
       vector<CStdString> result2 = RunNoThrow(szFunction,scrURL2,http,&extras);
       result.insert(result.end(),result2.begin(),result2.end());
     }
@@ -365,7 +374,7 @@ bool CScraper::Load()
 
       if (CAddonMgr::Get().GetAddon((*itr).first, dep))
       {
-        TiXmlDocument doc;
+        CXBMCTinyXML doc;
         if (dep->Type() == ADDON_SCRAPER_LIBRARY && doc.LoadFile(dep->LibPath()))
           m_parser.AddDocument(&doc);
       }
@@ -424,7 +433,7 @@ CScraperUrl CScraper::NfoUrl(const CStdString &sNfoContent)
   // or <url>...</url> or <url>...</url><id>...</id> on success
   for (unsigned int i=0; i < vcsOut.size(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(vcsOut[i], 0, TIXML_ENCODING_UTF8);
     CheckScraperError(doc.RootElement());
 
@@ -518,7 +527,7 @@ std::vector<CScraperUrl> CScraper::FindMovie(XFILE::CCurlFile &fcurl, const CStd
   bool fResults(false);
   for (CStdStringArray::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i, 0, TIXML_ENCODING_UTF8);
     if (!doc.RootElement())
     {
@@ -641,7 +650,7 @@ std::vector<CMusicAlbumInfo> CScraper::FindAlbum(CCurlFile &fcurl, const CStdStr
   // parse the returned XML into a vector of album objects
   for (CStdStringArray::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i, 0, TIXML_ENCODING_UTF8);
     TiXmlHandle xhDoc(&doc);
 
@@ -730,7 +739,7 @@ std::vector<CMusicArtistInfo> CScraper::FindArtist(CCurlFile &fcurl,
   // parse the returned XML into a vector of artist objects
   for (CStdStringArray::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i, 0, TIXML_ENCODING_UTF8);
     if (!doc.RootElement())
     {
@@ -758,7 +767,8 @@ std::vector<CMusicArtistInfo> CScraper::FindArtist(CCurlFile &fcurl,
         CMusicArtistInfo ari(pxnTitle->FirstChild()->Value(), scurlArtist);
         CStdString genre;
         XMLUtils::GetString(pxeArtist, "genre", genre);
-        ari.GetArtist().genre = StringUtils::Split(genre, g_advancedSettings.m_musicItemSeparator);
+        if (!genre.empty())
+          ari.GetArtist().genre = StringUtils::Split(genre, g_advancedSettings.m_musicItemSeparator);
         XMLUtils::GetString(pxeArtist, "year", ari.GetArtist().strBorn);
 
         vcari.push_back(ari);
@@ -771,14 +781,14 @@ std::vector<CMusicArtistInfo> CScraper::FindArtist(CCurlFile &fcurl,
 // fetch list of episodes from URL (from video database)
 EPISODELIST CScraper::GetEpisodeList(XFILE::CCurlFile &fcurl, const CScraperUrl &scurl)
 {
+  EPISODELIST vcep;
+  if (scurl.m_url.empty())
+    return vcep;
+  
   CLog::Log(LOGDEBUG, "%s: Searching '%s' using %s scraper "
     "(file: '%s', content: '%s', version: '%s')", __FUNCTION__,
     scurl.m_url[0].m_url.c_str(), Name().c_str(), Path().c_str(),
     ADDON::TranslateContent(Content()).c_str(), Version().c_str());
-
-  EPISODELIST vcep;
-  if (scurl.m_url.empty())
-    return vcep;
 
   vector<CStdString> vcsIn;
   vcsIn.push_back(scurl.m_url[0].m_url);
@@ -787,7 +797,7 @@ EPISODELIST CScraper::GetEpisodeList(XFILE::CCurlFile &fcurl, const CScraperUrl 
   // parse the XML response
   for (CStdStringArray::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i);
     if (!doc.RootElement())
     {
@@ -801,10 +811,14 @@ EPISODELIST CScraper::GetEpisodeList(XFILE::CCurlFile &fcurl, const CScraperUrl 
     {
       EPISODE ep;
       TiXmlElement *pxeLink = pxeMovie->FirstChildElement("url");
-      if (pxeLink && XMLUtils::GetInt(pxeMovie, "season", ep.key.first) &&
-        XMLUtils::GetInt(pxeMovie, "epnum", ep.key.second))
+      CStdString strEpNum;
+      if (pxeLink && XMLUtils::GetInt(pxeMovie, "season", ep.iSeason) &&
+        XMLUtils::GetString(pxeMovie, "epnum", strEpNum))
       {
         CScraperUrl &scurlEp(ep.cScraperUrl);
+        int dot = strEpNum.Find(".");
+        ep.iEpisode = atoi(strEpNum.c_str());
+        ep.iSubepisode = (dot > -1) ? atoi(strEpNum.Mid(dot + 1).c_str()) : 0;
         if (!XMLUtils::GetString(pxeMovie, "title", scurlEp.strTitle))
             scurlEp.strTitle = g_localizeStrings.Get(416);
         XMLUtils::GetString(pxeMovie, "id", scurlEp.strId);
@@ -824,25 +838,6 @@ EPISODELIST CScraper::GetEpisodeList(XFILE::CCurlFile &fcurl, const CScraperUrl 
         vcep.push_back(ep);
       }
     }
-  }
-
-  // find minimum in each season
-  map<int, int> mpMin;
-  for (EPISODELIST::const_iterator i = vcep.begin(); i != vcep.end(); ++i)
-  {
-    map<int, int>::iterator iMin = mpMin.find(i->key.first);
-    if (iMin == mpMin.end())
-      mpMin.insert(i->key);
-    else if (i->key.second < iMin->second)
-      iMin->second = i->key.second;
-  }
-
-  // correct episode numbers
-  for (EPISODELIST::iterator i = vcep.begin(); i != vcep.end(); ++i)
-  {
-    i->key.second -= mpMin[i->key.first];
-    if (mpMin[i->key.first] > 0)
-      ++i->key.second;
   }
 
   return vcep;
@@ -868,7 +863,7 @@ bool CScraper::GetVideoDetails(XFILE::CCurlFile &fcurl, const CScraperUrl &scurl
   bool fRet(false);
   for (CStdStringArray::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i, 0, TIXML_ENCODING_UTF8);
     if (!doc.RootElement())
     {
@@ -903,7 +898,7 @@ bool CScraper::GetAlbumDetails(CCurlFile &fcurl, const CScraperUrl &scurl, CAlbu
   bool fRet(false);
   for (CStdStringArray::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i, 0, TIXML_ENCODING_UTF8);
     if (!doc.RootElement())
     {
@@ -939,7 +934,7 @@ bool CScraper::GetArtistDetails(CCurlFile &fcurl, const CScraperUrl &scurl,
   bool fRet(false);
   for (vector<CStdString>::const_iterator i = vcsOut.begin(); i != vcsOut.end(); ++i)
   {
-    TiXmlDocument doc;
+    CXBMCTinyXML doc;
     doc.Parse(*i, 0, TIXML_ENCODING_UTF8);
     if (!doc.RootElement())
     {

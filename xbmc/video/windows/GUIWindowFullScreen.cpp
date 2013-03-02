@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -23,6 +22,7 @@
 #include "system.h"
 #include "GUIWindowFullScreen.h"
 #include "Application.h"
+#include "ApplicationMessenger.h"
 #include "Util.h"
 #ifdef HAS_VIDEO_PLAYBACK
 #include "cores/VideoRenderers/RenderManager.h"
@@ -59,7 +59,7 @@
 
 #include <stdio.h>
 #include <algorithm>
-#ifdef __APPLE__
+#if defined(TARGET_DARWIN)
 #include "linux/LinuxResourceCounter.h"
 #endif
 
@@ -70,38 +70,6 @@ using namespace PVR;
 #define LABEL_ROW2                       11
 #define LABEL_ROW3                       12
 #define CONTROL_GROUP_CHOOSER            503
-
-#define BTN_OSD_VIDEO                    13
-#define BTN_OSD_AUDIO                    14
-#define BTN_OSD_SUBTITLE                 15
-
-#define MENU_ACTION_AVDELAY               1
-#define MENU_ACTION_SEEK                  2
-#define MENU_ACTION_SUBTITLEDELAY         3
-#define MENU_ACTION_SUBTITLEONOFF         4
-#define MENU_ACTION_SUBTITLELANGUAGE      5
-#define MENU_ACTION_INTERLEAVED           6
-#define MENU_ACTION_FRAMERATECONVERSIONS  7
-#define MENU_ACTION_AUDIO_STREAM          8
-
-#define MENU_ACTION_NEW_BOOKMARK          9
-#define MENU_ACTION_NEXT_BOOKMARK        10
-#define MENU_ACTION_CLEAR_BOOKMARK       11
-
-#define MENU_ACTION_NOCACHE              12
-
-#define IMG_PAUSE                        16
-#define IMG_2X                           17
-#define IMG_4X                           18
-#define IMG_8X                           19
-#define IMG_16X                          20
-#define IMG_32X                          21
-
-#define IMG_2Xr                         117
-#define IMG_4Xr                         118
-#define IMG_8Xr                         119
-#define IMG_16Xr                        120
-#define IMG_32Xr                        121
 
 //Displays current position, visible after seek or when forced
 //Alt, use conditional visibility Player.DisplayAfterSeek
@@ -114,7 +82,7 @@ using namespace PVR;
 //Progressbar used for buffering status and after seeking
 #define CONTROL_PROGRESS                 23
 
-#ifdef __APPLE__
+#if defined(TARGET_DARWIN)
 static CLinuxResourceCounter m_resourceCounter;
 #endif
 
@@ -133,6 +101,7 @@ CGUIWindowFullScreen::CGUIWindowFullScreen(void)
   m_subsLayout = NULL;
   m_bGroupSelectShow = false;
   m_sliderAction = 0;
+  m_loadType = KEEP_IN_MEMORY;
   // audio
   //  - language
   //  - volume
@@ -154,19 +123,6 @@ CGUIWindowFullScreen::CGUIWindowFullScreen(void)
 
 CGUIWindowFullScreen::~CGUIWindowFullScreen(void)
 {}
-
-void CGUIWindowFullScreen::AllocResources(bool forceLoad)
-{
-  CGUIWindow::AllocResources(forceLoad);
-  DynamicResourceAlloc(false);
-}
-
-void CGUIWindowFullScreen::FreeResources(bool forceUnload)
-{
-  g_settings.Save();
-  DynamicResourceAlloc(true);
-  CGUIWindow::FreeResources(forceUnload);
-}
 
 bool CGUIWindowFullScreen::OnAction(const CAction &action)
 {
@@ -213,51 +169,31 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     break;
 
   case ACTION_STEP_BACK:
-    if (!g_application.CurrentFileItem().HasPVRChannelInfoTag())
-    {
-      if (m_timeCodePosition > 0)
-        SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_BACKWARD);
-      else
-        g_application.m_pPlayer->Seek(false, false);
-    }
+    if (m_timeCodePosition > 0)
+      SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_BACKWARD);
     else
-      SeekTV(false, false);
+      g_application.m_pPlayer->Seek(false, false);
     return true;
 
   case ACTION_STEP_FORWARD:
-    if (!g_application.CurrentFileItem().HasPVRChannelInfoTag())
-    {
-      if (m_timeCodePosition > 0)
-        SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_FORWARD);
-      else
-        g_application.m_pPlayer->Seek(true, false);
-    }
+    if (m_timeCodePosition > 0)
+      SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_FORWARD);
     else
-      SeekTV(true, false);
+      g_application.m_pPlayer->Seek(true, false);
     return true;
 
   case ACTION_BIG_STEP_BACK:
-    if (!g_application.CurrentFileItem().HasPVRChannelInfoTag())
-    {
-      if (m_timeCodePosition > 0)
-        SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_BACKWARD);
-      else
-        g_application.m_pPlayer->Seek(false, true);
-    }
+    if (m_timeCodePosition > 0)
+      SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_BACKWARD);
     else
-      SeekTV(false, true);
+      g_application.m_pPlayer->Seek(false, true);
     return true;
 
   case ACTION_BIG_STEP_FORWARD:
-    if (!g_application.CurrentFileItem().HasPVRChannelInfoTag())
-    {
-      if (m_timeCodePosition > 0)
-        SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_FORWARD);
-      else
-        g_application.m_pPlayer->Seek(true, true);
-    }
+    if (m_timeCodePosition > 0)
+      SeekToTimeCodeStamp(SEEK_RELATIVE, SEEK_FORWARD);
     else
-      SeekTV(true, true);
+      g_application.m_pPlayer->Seek(true, true);
     return true;
 
   case ACTION_NEXT_SCENE:
@@ -446,25 +382,36 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     {
       if (g_application.CurrentFileItem().IsLiveTV())
       {
-        CPVRChannel channel;
+          CPVRChannelPtr channel;
         int iChannelNumber = -1;
         g_PVRManager.GetCurrentChannel(channel);
 
         if (action.GetID() == REMOTE_0)
         {
           iChannelNumber = g_PVRManager.GetPreviousChannel();
+          if (iChannelNumber > 0)
+            CLog::Log(LOGDEBUG, "switch to channel number %d", iChannelNumber);
+          else
+            CLog::Log(LOGDEBUG, "no previous channel number found");
         }
         else
         {
-          int autoCloseTime = g_guiSettings.GetBool("pvrplayback.switchautoclose") ? 1500 : 0;
+          int autoCloseTime = g_guiSettings.GetBool("pvrplayback.confirmchannelswitch") ? 0 : g_advancedSettings.m_iPVRNumericChannelSwitchTimeout;
           CStdString strChannel;
           strChannel.Format("%i", action.GetID() - REMOTE_0);
           if (CGUIDialogNumeric::ShowAndGetNumber(strChannel, g_localizeStrings.Get(19000), autoCloseTime) || autoCloseTime)
             iChannelNumber = atoi(strChannel.c_str());
         }
 
-        if (iChannelNumber > 0 && iChannelNumber != channel.ChannelNumber())
+        if (iChannelNumber > 0 && iChannelNumber != channel->ChannelNumber())
+        {
+          CPVRChannelGroupPtr selectedGroup = g_PVRManager.GetPlayingGroup(channel->IsRadio());
+          CFileItemPtr channel = selectedGroup->GetByChannelNumber(iChannelNumber);
+          if (!channel || !channel->HasPVRChannelInfoTag())
+            return false;
+
           OnAction(CAction(ACTION_CHANNEL_SWITCH, (float)iChannelNumber));
+        }
       }
       else
       {
@@ -669,6 +616,18 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
 
       break;
     }
+  case ACTION_PREVIOUS_CHANNELGROUP:
+    {
+      if (g_application.CurrentFileItem().HasPVRChannelInfoTag())
+        ChangetheTVGroup(false);
+      return true;
+    }
+  case ACTION_NEXT_CHANNELGROUP:
+    {
+      if (g_application.CurrentFileItem().HasPVRChannelInfoTag())
+        ChangetheTVGroup(true);
+      return true;
+    }
   default:
       break;
   }
@@ -767,8 +726,6 @@ bool CGUIWindowFullScreen::OnMessage(CGUIMessage& message)
     }
   case GUI_MSG_WINDOW_DEINIT:
     {
-      CGUIWindow::OnMessage(message);
-
       CGUIDialog *pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_OSD_TELETEXT);
       if (pDialog) pDialog->Close(true);
       CGUIDialogSlider *slider = (CGUIDialogSlider *)g_windowManager.GetWindow(WINDOW_DIALOG_SLIDER);
@@ -786,7 +743,9 @@ bool CGUIWindowFullScreen::OnMessage(CGUIMessage& message)
       pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_OSD_CUTTER);
       if (pDialog) pDialog->Close(true);
 
-      FreeResources(true);
+      CGUIWindow::OnMessage(message);
+
+      g_settings.Save();
 
       CSingleLock lock (g_graphicsContext);
       g_graphicsContext.SetFullScreenVideo(false);
@@ -818,38 +777,40 @@ bool CGUIWindowFullScreen::OnMessage(CGUIMessage& message)
         OnMessage(msg);
         CStdString strLabel = msg.GetLabel();
 
-        CPVRChannel playingChannel;
+        CPVRChannelPtr playingChannel;
         if (g_PVRManager.GetCurrentChannel(playingChannel))
         {
-          CPVRChannelGroup *selectedGroup = (CPVRChannelGroup *) g_PVRChannelGroups->Get(playingChannel.IsRadio())->GetByName(strLabel);
+          CPVRChannelGroupPtr selectedGroup = g_PVRChannelGroups->Get(playingChannel->IsRadio())->GetByName(strLabel);
           if (selectedGroup)
           {
             g_PVRManager.SetPlayingGroup(selectedGroup);
             CLog::Log(LOGDEBUG, "%s - switched to group '%s'", __FUNCTION__, selectedGroup->GroupName().c_str());
 
-            if (!selectedGroup->IsGroupMember(playingChannel))
+            if (!selectedGroup->IsGroupMember(*playingChannel))
             {
-              CLog::Log(LOGDEBUG, "%s - channel '%s' is not a member of '%s', switching to channel 1 of the new group", __FUNCTION__, playingChannel.ChannelName().c_str(), selectedGroup->GroupName().c_str());
-              const CPVRChannel *switchChannel = selectedGroup->GetByChannelNumber(1);
-              if (switchChannel)
-                OnAction(CAction(ACTION_CHANNEL_SWITCH, (float) switchChannel->ChannelNumber()));
+              CLog::Log(LOGDEBUG, "%s - channel '%s' is not a member of '%s', switching to channel 1 of the new group",
+                  __FUNCTION__, playingChannel->ChannelName().c_str(), selectedGroup->GroupName().c_str());
+              CFileItemPtr switchChannel = selectedGroup->GetByChannelNumber(1);
+
+              if (switchChannel && switchChannel->HasPVRChannelInfoTag())
+                OnAction(CAction(ACTION_CHANNEL_SWITCH, (float) switchChannel->GetPVRChannelInfoTag()->ChannelNumber()));
               else
               {
                 CLog::Log(LOGERROR, "%s - cannot find channel '1' in group %s", __FUNCTION__, selectedGroup->GroupName().c_str());
-                g_application.getApplicationMessenger().MediaStop(false);
+                CApplicationMessenger::Get().MediaStop(false);
               }
             }
           }
           else
           {
             CLog::Log(LOGERROR, "%s - could not switch to group '%s'", __FUNCTION__, selectedGroup->GroupName().c_str());
-            g_application.getApplicationMessenger().MediaStop(false);
+            CApplicationMessenger::Get().MediaStop(false);
           }
         }
         else
         {
           CLog::Log(LOGERROR, "%s - cannot find the current channel", __FUNCTION__);
-          g_application.getApplicationMessenger().MediaStop(false);
+          CApplicationMessenger::Get().MediaStop(false);
         }
 
         // hide the control and reset focus
@@ -936,7 +897,7 @@ void CGUIWindowFullScreen::FrameMove()
     g_application.m_pPlayer->GetGeneralInfo(strGeneral);
     {
       CStdString strGeneralFPS;
-#ifdef __APPLE__
+#if defined(TARGET_DARWIN)
       // We show CPU usage for the entire process, as it's arguably more useful.
       double dCPU = m_resourceCounter.GetCPUUsage();
       CStdString strCores;
@@ -991,10 +952,15 @@ void CGUIWindowFullScreen::FrameMove()
     g_application.m_pPlayer->GetVideoRect(SrcRect, DestRect);
     g_application.m_pPlayer->GetVideoAspectRatio(fAR);
     {
+      // Splitres scaling factor
+      RESOLUTION res = g_graphicsContext.GetVideoResolution();
+      float xscale = (float)g_settings.m_ResInfo[res].iScreenWidth  / (float)g_settings.m_ResInfo[res].iWidth;
+      float yscale = (float)g_settings.m_ResInfo[res].iScreenHeight / (float)g_settings.m_ResInfo[res].iHeight;
+
       CStdString strSizing;
       strSizing.Format(g_localizeStrings.Get(245),
                        (int)SrcRect.Width(), (int)SrcRect.Height(),
-                       (int)DestRect.Width(), (int)DestRect.Height(),
+                       (int)(DestRect.Width() * xscale), (int)(DestRect.Height() * yscale),
                        g_settings.m_fZoomAmount, fAR*g_settings.m_fPixelRatio, 
                        g_settings.m_fPixelRatio, g_settings.m_fVerticalShift);
       CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), LABEL_ROW2);
@@ -1007,13 +973,13 @@ void CGUIWindowFullScreen::FrameMove()
       CStdString strStatus;
       if (g_Windowing.IsFullScreen())
         strStatus.Format("%s %ix%i@%.2fHz - %s",
-          g_localizeStrings.Get(13287), g_settings.m_ResInfo[iResolution].iWidth,
-          g_settings.m_ResInfo[iResolution].iHeight, g_settings.m_ResInfo[iResolution].fRefreshRate,
+          g_localizeStrings.Get(13287), g_settings.m_ResInfo[iResolution].iScreenWidth,
+          g_settings.m_ResInfo[iResolution].iScreenHeight, g_settings.m_ResInfo[iResolution].fRefreshRate,
           g_localizeStrings.Get(244));
       else
         strStatus.Format("%s %ix%i - %s",
-          g_localizeStrings.Get(13287), g_settings.m_ResInfo[iResolution].iWidth,
-          g_settings.m_ResInfo[iResolution].iHeight, g_localizeStrings.Get(242));
+          g_localizeStrings.Get(13287), g_settings.m_ResInfo[iResolution].iScreenWidth,
+          g_settings.m_ResInfo[iResolution].iScreenHeight, g_localizeStrings.Get(242));
 
       CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), LABEL_ROW3);
       msg.SetLabel(strStatus);
@@ -1098,7 +1064,14 @@ void CGUIWindowFullScreen::Render()
 
 void CGUIWindowFullScreen::RenderTTFSubtitles()
 {
-  if ((g_application.GetCurrentPlayer() == EPC_MPLAYER || g_application.GetCurrentPlayer() == EPC_DVDPLAYER) &&
+  if ((g_application.GetCurrentPlayer() == EPC_MPLAYER ||
+#if defined(HAS_AMLPLAYER)
+       g_application.GetCurrentPlayer() == EPC_AMLPLAYER ||
+#endif
+#if defined(HAS_OMXPLAYER)
+       g_application.GetCurrentPlayer() == EPC_OMXPLAYER ||
+#endif
+       g_application.GetCurrentPlayer() == EPC_DVDPLAYER) &&
       CUtil::IsUsingTTFSubtitles() && (g_application.m_pPlayer->GetSubtitleVisible()))
   {
     CSingleLock lock (m_fontLock);
@@ -1203,23 +1176,6 @@ void CGUIWindowFullScreen::SeekToTimeCodeStamp(SEEK_TYPE type, SEEK_DIRECTION di
   m_timeCodeShow = false;
 }
 
-void CGUIWindowFullScreen::SeekTV(bool bPlus, bool bLargeStep)
-{
-  if (bLargeStep)
-  {
-    if (bPlus)
-      OnAction(CAction(ACTION_NEXT_ITEM));
-    else
-      OnAction(CAction(ACTION_PREV_ITEM));
-    return;
-  }
-  else if (!bLargeStep)
-  {
-    ChangetheTVGroup(bPlus);
-    return;
-  }
-}
-
 double CGUIWindowFullScreen::GetTimeCodeStamp()
 {
   // Convert the timestamp into an integer
@@ -1294,25 +1250,8 @@ void CGUIWindowFullScreen::FillInTVGroups()
   g_windowManager.SendMessage(msgReset);
 
   const CPVRChannelGroups *groups = g_PVRChannelGroups->Get(g_PVRManager.IsPlayingRadio());
-  const CPVRChannelGroup *currentGroup = g_PVRManager.GetPlayingGroup(false);
-
-  int iListGroupPtr    = 0;
-  int iCurrentGroupPtr = 0;
-  for (int iGroupPtr = 0; iGroupPtr < (int) groups->size(); iGroupPtr++)
-  {
-    /* skip empty groups */
-    if (groups->at(iGroupPtr)->Size() == 0)
-      continue;
-
-    if (*groups->at(iGroupPtr) == *currentGroup)
-      iCurrentGroupPtr = iListGroupPtr;
-
-    CGUIMessage msg(GUI_MSG_LABEL_ADD, GetID(), CONTROL_GROUP_CHOOSER, iListGroupPtr++);
-    msg.SetLabel(groups->at(iGroupPtr)->GroupName());
-    g_windowManager.SendMessage(msg);
-  }
-  CGUIMessage msgSel(GUI_MSG_ITEM_SELECT, GetID(), CONTROL_GROUP_CHOOSER, iCurrentGroupPtr);
-  g_windowManager.SendMessage(msgSel);
+  if (groups)
+    groups->FillGroupsGUI(GetID(), CONTROL_GROUP_CHOOSER);
 }
 
 void CGUIWindowFullScreen::ChangetheTVGroup(bool next)

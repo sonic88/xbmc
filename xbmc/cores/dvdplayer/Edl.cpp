@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -26,8 +25,9 @@
 #include "filesystem/MythFile.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
-#include "tinyXML/tinyxml.h"
+#include "utils/XBMCTinyXML.h"
 #include "PlatformDefs.h"
+#include "URL.h"
 
 extern "C"
 {
@@ -112,7 +112,10 @@ bool CEdl::ReadEditDecisionLists(const CStdString& strMovie, const float fFrameR
    * Only check for edit decision lists if the movie is on the local hard drive, or accessed over a
    * network share.
    */
-  if ((URIUtils::IsHD(strMovie) ||  URIUtils::IsSmb(strMovie)) &&
+  if ((URIUtils::IsHD(strMovie)  || 
+       URIUtils::IsSmb(strMovie) || 
+       URIUtils::IsNfs(strMovie) || 
+       URIUtils::IsAfp(strMovie))         &&
       !URIUtils::IsPVRRecording(strMovie) &&
       !URIUtils::IsInternetStream(strMovie))
   {
@@ -219,7 +222,7 @@ bool CEdl::ReadEdl(const CStdString& strMovie, const float fFramesPerSecond)
         StringUtils::SplitString(strFields[i], ".", fieldParts);
         if (fieldParts.size() == 1) // No ms
         {
-          iCutStartEnd[i] = StringUtils::TimeStringToSeconds(fieldParts[0]) * 1000; // seconds to ms
+          iCutStartEnd[i] = StringUtils::TimeStringToSeconds(fieldParts[0]) * (int64_t)1000; // seconds to ms
         }
         else if (fieldParts.size() == 2) // Has ms. Everything after the dot (.) is ms
         {
@@ -238,7 +241,7 @@ bool CEdl::ReadEdl(const CStdString& strMovie, const float fFramesPerSecond)
           {
             fieldParts[1] = fieldParts[1].Left(3);
           }
-          iCutStartEnd[i] = StringUtils::TimeStringToSeconds(fieldParts[0]) * 1000 + atoi(fieldParts[1]); // seconds to ms
+          iCutStartEnd[i] = (int64_t)StringUtils::TimeStringToSeconds(fieldParts[0]) * 1000 + atoi(fieldParts[1]); // seconds to ms
         }
         else
         {
@@ -507,7 +510,7 @@ bool CEdl::ReadBeyondTV(const CStdString& strMovie)
   if (!CFile::Exists(beyondTVFilename))
     return false;
 
-  TiXmlDocument xmlDoc;
+  CXBMCTinyXML xmlDoc;
   if (!xmlDoc.LoadFile(beyondTVFilename))
   {
     CLog::Log(LOGERROR, "%s - Could not load Beyond TV file: %s. %s", __FUNCTION__, beyondTVFilename.c_str(),

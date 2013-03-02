@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2010 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -31,17 +30,19 @@
 #include "PVRTimers.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
+#include "pvr/channels/PVRChannelGroupInternal.h"
 #include "epg/EpgContainer.h"
 #include "pvr/addons/PVRClients.h"
 
 #include "epg/Epg.h"
 
+using namespace std;
 using namespace PVR;
 using namespace EPG;
 
 CPVRTimerInfoTag::CPVRTimerInfoTag(void)
 {
-  m_strTitle           = StringUtils::EmptyString;
+  m_strTitle           = g_localizeStrings.Get(19056); // New Timer
   m_strDirectory       = "/";
   m_strSummary         = StringUtils::EmptyString;
   m_iClientId          = g_PVRClients->GetFirstConnectedClientID();
@@ -54,8 +55,8 @@ CPVRTimerInfoTag::CPVRTimerInfoTag(void)
   m_strFileNameAndPath = StringUtils::EmptyString;
   m_iChannelNumber     = 0;
   m_bIsRadio           = false;
-  m_iEpgId             = -1;
-  m_channel            = NULL;
+  CEpgInfoTagPtr emptyTag;
+  m_epgTag             = emptyTag;
   m_iMarginStart       = g_guiSettings.GetInt("pvrrecord.marginstart");
   m_iMarginEnd         = g_guiSettings.GetInt("pvrrecord.marginend");
   m_iGenreType         = 0;
@@ -66,7 +67,7 @@ CPVRTimerInfoTag::CPVRTimerInfoTag(void)
   m_FirstDay.SetValid(false);
 }
 
-CPVRTimerInfoTag::CPVRTimerInfoTag(const PVR_TIMER &timer, CPVRChannel *channel, unsigned int iClientId)
+CPVRTimerInfoTag::CPVRTimerInfoTag(const PVR_TIMER &timer, CPVRChannelPtr channel, unsigned int iClientId)
 {
   m_strTitle           = timer.strTitle;
   m_strDirectory       = timer.strDirectory;
@@ -87,29 +88,26 @@ CPVRTimerInfoTag::CPVRTimerInfoTag(const PVR_TIMER &timer, CPVRChannel *channel,
   m_genre              = StringUtils::Split(CEpg::ConvertGenreIdToString(timer.iGenreType, timer.iGenreSubType), g_advancedSettings.m_videoItemSeparator);
   m_iGenreType         = timer.iGenreType;
   m_iGenreSubType      = timer.iGenreSubType;
-  m_iEpgId             = -1;
+  CEpgInfoTagPtr emptyTag;
+  m_epgTag             = emptyTag;
   m_channel            = channel;
   m_bIsRadio           = channel && channel->IsRadio();
   m_state              = timer.state;
   m_strFileNameAndPath.Format("pvr://client%i/timers/%i", m_iClientId, m_iClientIndex);
 
-  UpdateEpgEvent();
   UpdateSummary();
 }
 
 bool CPVRTimerInfoTag::operator ==(const CPVRTimerInfoTag& right) const
 {
-  if (this == &right) return true;
-
   bool bChannelsMatch = true;
   if (m_channel && right.m_channel)
     bChannelsMatch = *m_channel == *right.m_channel;
-  else if (!m_channel && right.m_channel)
-    bChannelsMatch = false;
-  else if (m_channel && !right.m_channel)
+  else if (m_channel != right.m_channel)
     bChannelsMatch = false;
 
-  return (m_iClientIndex       == right.m_iClientIndex &&
+  return (bChannelsMatch &&
+          m_iClientIndex       == right.m_iClientIndex &&
           m_strSummary         == right.m_strSummary &&
           m_iClientChannelUid  == right.m_iClientChannelUid &&
           m_bIsRepeating       == right.m_bIsRepeating &&
@@ -125,8 +123,7 @@ bool CPVRTimerInfoTag::operator ==(const CPVRTimerInfoTag& right) const
           m_iClientId          == right.m_iClientId &&
           m_iMarginStart       == right.m_iMarginStart &&
           m_iMarginEnd         == right.m_iMarginEnd &&
-          m_state              == right.m_state &&
-          bChannelsMatch);
+          m_state              == right.m_state);
 }
 
 CPVRTimerInfoTag &CPVRTimerInfoTag::operator=(const CPVRTimerInfoTag &orig)
@@ -156,9 +153,7 @@ CPVRTimerInfoTag &CPVRTimerInfoTag::operator=(const CPVRTimerInfoTag &orig)
 
 CPVRTimerInfoTag::~CPVRTimerInfoTag(void)
 {
-  CEpgInfoTag *tag = GetEpgInfoTag();
-  if (tag)
-    tag->OnTimerDeleted();
+  ClearEpgTag();
 }
 
 /**
@@ -166,8 +161,6 @@ CPVRTimerInfoTag::~CPVRTimerInfoTag(void)
  */
 bool CPVRTimerInfoTag::operator !=(const CPVRTimerInfoTag& right) const
 {
-  if (this == &right) return false;
-
   return !(*this == right);
 }
 
@@ -238,69 +231,69 @@ void CPVRTimerInfoTag::UpdateSummary(void)
 /**
  * Get the status string of this Timer, is used by the GUIInfoManager
  */
-const CStdString &CPVRTimerInfoTag::GetStatus() const
+CStdString CPVRTimerInfoTag::GetStatus() const
 {
+  CStdString strReturn = g_localizeStrings.Get(305);
   CSingleLock lock(m_critSection);
   if (m_strFileNameAndPath == "pvr://timers/add.timer")
-    return g_localizeStrings.Get(19026);
+    strReturn = g_localizeStrings.Get(19026);
   else if (m_state == PVR_TIMER_STATE_CANCELLED || m_state == PVR_TIMER_STATE_ABORTED)
-    return g_localizeStrings.Get(13106);
+    strReturn = g_localizeStrings.Get(13106);
   else if (m_state == PVR_TIMER_STATE_RECORDING)
-    return g_localizeStrings.Get(19162);
-  return g_localizeStrings.Get(305);
+    strReturn = g_localizeStrings.Get(19162);
+  else if (m_state == PVR_TIMER_STATE_CONFLICT_OK)
+    strReturn = g_localizeStrings.Get(19275);
+  else if (m_state == PVR_TIMER_STATE_CONFLICT_NOK)	
+    strReturn = g_localizeStrings.Get(19276);	
+  else if (m_state == PVR_TIMER_STATE_ERROR)
+    strReturn = g_localizeStrings.Get(257);
+
+  return strReturn;
 }
 
-bool CPVRTimerInfoTag::AddToClient(void)
+bool CPVRTimerInfoTag::AddToClient(void) const
 {
-  CSingleLock lock(m_critSection);
-  UpdateEpgEvent();
-  PVR_ERROR error;
-  if (!g_PVRClients->AddTimer(*this, &error))
+  PVR_ERROR error = g_PVRClients->AddTimer(*this);
+  if (error != PVR_ERROR_NO_ERROR)
   {
     DisplayError(error);
     return false;
   }
-  else
-    return true;
+
+  return true;
 }
 
-bool CPVRTimerInfoTag::DeleteFromClient(bool bForce /* = false */)
+bool CPVRTimerInfoTag::DeleteFromClient(bool bForce /* = false */) const
 {
-  bool bRemoved = false;
-  PVR_ERROR error;
-
-  CSingleLock lock(m_critSection);
-  bRemoved = g_PVRClients->DeleteTimer(*this, bForce, &error);
-  if (!bRemoved && error == PVR_ERROR_RECORDING_RUNNING)
+  PVR_ERROR error = g_PVRClients->DeleteTimer(*this, bForce);
+  if (error == PVR_ERROR_RECORDING_RUNNING)
   {
-    if (CGUIDialogYesNo::ShowAndGetInput(122,0,19122,0))
-      bRemoved = g_PVRClients->DeleteTimer(*this, true, &error);
-    else
+    // recording running. ask the user if it should be deleted anyway
+    if (!CGUIDialogYesNo::ShowAndGetInput(122,0,19122,0))
       return false;
+
+    error = g_PVRClients->DeleteTimer(*this, true);
   }
 
-  if (!bRemoved)
+  if (error != PVR_ERROR_NO_ERROR)
   {
     DisplayError(error);
     return false;
   }
 
-  CEpgInfoTag *epgTag = GetEpgInfoTag();
-  if (epgTag)
-  {
-    epgTag->OnTimerDeleted();
-    m_iEpgId = -1;
-  }
 
   return true;
 }
 
 bool CPVRTimerInfoTag::RenameOnClient(const CStdString &strNewName)
 {
-  PVR_ERROR error;
-  CSingleLock lock(m_critSection);
-  m_strTitle.Format("%s", strNewName);
-  if (!g_PVRClients->RenameTimer(*this, m_strTitle, &error))
+  {
+    CSingleLock lock(m_critSection);
+    m_strTitle = strNewName;
+  }
+
+  PVR_ERROR error = g_PVRClients->RenameTimer(*this, strNewName);
+  if (error != PVR_ERROR_NO_ERROR)
   {
     if (error == PVR_ERROR_NOT_IMPLEMENTED)
       return UpdateOnClient();
@@ -333,15 +326,11 @@ bool CPVRTimerInfoTag::UpdateEntry(const CPVRTimerInfoTag &tag)
   m_bIsRadio          = tag.m_bIsRadio;
   m_iMarginStart      = tag.m_iMarginStart;
   m_iMarginEnd        = tag.m_iMarginEnd;
-  m_iEpgId            = tag.m_iEpgId;
-  m_epgStart          = tag.m_epgStart;
+  m_epgTag            = tag.m_epgTag;
   m_genre             = tag.m_genre;
   m_iGenreType        = tag.m_iGenreType;
   m_iGenreSubType     = tag.m_iGenreSubType;
   m_strSummary        = tag.m_strSummary;
-
-  /* try to find an epg event */
-  UpdateEpgEvent();
 
   if (m_strSummary.IsEmpty())
     UpdateSummary();
@@ -349,69 +338,23 @@ bool CPVRTimerInfoTag::UpdateEntry(const CPVRTimerInfoTag &tag)
   return true;
 }
 
-void CPVRTimerInfoTag::UpdateEpgEvent(bool bClear /* = false */)
-{
-  CSingleLock lock(m_critSection);
-  if (bClear)
-  {
-    CEpgInfoTag *epgTag = GetEpgInfoTag();
-    if (epgTag)
-      epgTag->OnTimerDeleted();
-  }
-  else
-  {
-    /* already got an epg event set */
-    if (m_iEpgId != -1)
-      return;
-
-    /* try to get the channel */
-    CPVRChannel *channel = (CPVRChannel *) g_PVRChannelGroups->GetByUniqueID(m_iClientChannelUid, m_iClientId);
-    if (!channel)
-      return;
-
-    /* try to get the EPG table */
-    CEpg *epg = channel->GetEPG();
-    if (!epg)
-      return;
-
-    /* try to set the timer on the epg tag that matches with a 2 minute margin */
-    CEpgInfoTag *epgTag = (CEpgInfoTag *) epg->GetTagBetween(StartAsUTC() - CDateTimeSpan(0, 0, 2, 0), EndAsUTC() + CDateTimeSpan(0, 0, 2, 0));
-    if (!epgTag)
-      epgTag = (CEpgInfoTag *) epg->GetTagAround(StartAsUTC());
-
-    if (epgTag)
-    {
-      m_iEpgId = epgTag->m_iEpgId;
-      m_epgStart = epgTag->StartAsUTC();
-      m_genre = epgTag->Genre();
-      m_iGenreType = epgTag->GenreType();
-      m_iGenreSubType = epgTag->GenreSubType();
-      epgTag->SetTimer(this);
-    }
-  }
-}
-
 bool CPVRTimerInfoTag::UpdateOnClient()
 {
-  CSingleLock lock(m_critSection);
-  UpdateEpgEvent();
-  PVR_ERROR error;
-  if (!g_PVRClients->UpdateTimer(*this, &error))
+  PVR_ERROR error = g_PVRClients->UpdateTimer(*this);
+  if (error != PVR_ERROR_NO_ERROR)
   {
     DisplayError(error);
     return false;
   }
-  else
-    return true;
+
+  return true;
 }
 
 void CPVRTimerInfoTag::DisplayError(PVR_ERROR err) const
 {
   if (err == PVR_ERROR_SERVER_ERROR)
     CGUIDialogOK::ShowAndGetInput(19033,19111,19110,0); /* print info dialog "Server error!" */
-  else if (err == PVR_ERROR_NOT_SYNC)
-    CGUIDialogOK::ShowAndGetInput(19033,19112,19110,0); /* print info dialog "Timers not in sync!" */
-  else if (err == PVR_ERROR_NOT_SAVED)
+  else if (err == PVR_ERROR_REJECTED)
     CGUIDialogOK::ShowAndGetInput(19033,19109,19110,0); /* print info dialog "Couldn't delete timer!" */
   else if (err == PVR_ERROR_ALREADY_PRESENT)
     CGUIDialogOK::ShowAndGetInput(19033,19109,0,19067); /* print info dialog */
@@ -419,60 +362,38 @@ void CPVRTimerInfoTag::DisplayError(PVR_ERROR err) const
     CGUIDialogOK::ShowAndGetInput(19033,19147,19110,0); /* print info dialog "Unknown error!" */
 }
 
-void CPVRTimerInfoTag::SetEpgInfoTag(CEpgInfoTag *tag)
+void CPVRTimerInfoTag::SetEpgInfoTag(CEpgInfoTagPtr tag)
 {
   CSingleLock lock(m_critSection);
-  if (tag)
-  {
-    if (m_iEpgId != tag->m_iEpgId || m_epgStart != tag->StartAsUTC())
-    {
-      CLog::Log(LOGINFO, "cPVRTimerInfoTag: timer %s set to epg event %s", m_strTitle.c_str(), tag->Title().c_str());
-      m_iEpgId = tag->m_iEpgId;
-      m_epgStart = tag->StartAsUTC();
-    }
-  }
-  else
-  {
-    if (m_iEpgId != -1)
-      CLog::Log(LOGINFO, "cPVRTimerInfoTag: timer %s set to no epg event", m_strTitle.c_str());
-    m_iEpgId = -1;
-  }
-}
-
-void CPVRTimerInfoTag::OnEpgTagDeleted(void)
-{
-  CSingleLock lock(m_critSection);
-  m_iEpgId = -1;
+  if (tag && m_epgTag != tag)
+    CLog::Log(LOGINFO, "cPVRTimerInfoTag: timer %s set to epg event %s", m_strTitle.c_str(), tag->Title().c_str());
+  else if (!tag && m_epgTag)
+    CLog::Log(LOGINFO, "cPVRTimerInfoTag: timer %s set to no epg event", m_strTitle.c_str());
+  m_epgTag = tag;
 }
 
 int CPVRTimerInfoTag::ChannelNumber() const
 {
-  CSingleLock lock(m_critSection);
-  const CPVRChannel *channeltag = g_PVRChannelGroups->GetByUniqueID(m_iClientChannelUid, m_iClientId);
-  if (channeltag)
-    return channeltag->ChannelNumber();
-  else
-    return 0;
+  CPVRChannelPtr channeltag = ChannelTag();
+  return channeltag ? channeltag->ChannelNumber() : 0;
 }
 
 CStdString CPVRTimerInfoTag::ChannelName() const
 {
-  CSingleLock lock(m_critSection);
-  const CPVRChannel *channeltag = g_PVRChannelGroups->GetByUniqueID(m_iClientChannelUid, m_iClientId);
+  CStdString strReturn;
+  CPVRChannelPtr channeltag = ChannelTag();
   if (channeltag)
-    return channeltag->ChannelName();
-  else
-    return StringUtils::EmptyString;
+    strReturn = channeltag->ChannelName();
+  return strReturn;
 }
 
 CStdString CPVRTimerInfoTag::ChannelIcon() const
 {
-  CSingleLock lock(m_critSection);
-  const CPVRChannel *channeltag = g_PVRChannelGroups->GetByUniqueID(m_iClientChannelUid, m_iClientId);
+  CStdString strReturn;
+  CPVRChannelPtr channeltag = ChannelTag();
   if (channeltag)
-    return channeltag->IconPath();
-  else
-    return StringUtils::EmptyString;
+    strReturn = channeltag->IconPath();
+  return strReturn;
 }
 
 bool CPVRTimerInfoTag::SetDuration(int iDuration)
@@ -498,10 +419,11 @@ CPVRTimerInfoTag *CPVRTimerInfoTag::CreateFromEpg(const CEpgInfoTag &tag)
   }
 
   /* check if a valid channel is set */
-  const CPVRChannel *channel = tag.ChannelTag();
-  if (channel == NULL)
+  CPVRChannelPtr channel = tag.ChannelTag();
+  if (!channel)
   {
     CLog::Log(LOGERROR, "%s - no channel set", __FUNCTION__);
+    delete newTag;
     return NULL;
   }
 
@@ -509,6 +431,7 @@ CPVRTimerInfoTag *CPVRTimerInfoTag::CreateFromEpg(const CEpgInfoTag &tag)
   if (tag.EndAsLocalTime() < CDateTime::GetCurrentDateTime())
   {
     CLog::Log(LOGERROR, "%s - end time is in the past", __FUNCTION__);
+    delete newTag;
     return NULL;
   }
 
@@ -516,19 +439,20 @@ CPVRTimerInfoTag *CPVRTimerInfoTag::CreateFromEpg(const CEpgInfoTag &tag)
   CDateTime newStart = tag.StartAsUTC();
   CDateTime newEnd = tag.EndAsUTC();
   newTag->m_iClientIndex      = -1;
-  newTag->m_strTitle          = tag.Title().IsEmpty() ? channel->ChannelName() : tag.Title();
+  newTag->m_strTitle          = tag.Title().empty() ? channel->ChannelName() : tag.Title();
   newTag->m_iChannelNumber    = channel->ChannelNumber();
   newTag->m_iClientChannelUid = channel->UniqueID();
   newTag->m_iClientId         = channel->ClientID();
   newTag->m_bIsRadio          = channel->IsRadio();
   newTag->m_iGenreType        = tag.GenreType();
   newTag->m_iGenreSubType     = tag.GenreSubType();
+  newTag->m_channel           = channel;
   newTag->SetStartFromUTC(newStart);
   newTag->SetEndFromUTC(newEnd);
 
-  if (tag.Plot().IsEmpty())
+  if (tag.Plot().empty())
   {
-    newTag->m_strSummary.Format("%s %s %s %s %s",
+      newTag->m_strSummary.Format("%s %s %s %s %s",
         newTag->StartAsLocalTime().GetAsLocalizedDate(),
         g_localizeStrings.Get(19159),
         newTag->StartAsLocalTime().GetAsLocalizedTime(StringUtils::EmptyString, false),
@@ -540,8 +464,7 @@ CPVRTimerInfoTag *CPVRTimerInfoTag::CreateFromEpg(const CEpgInfoTag &tag)
     newTag->m_strSummary = tag.Plot();
   }
 
-  newTag->m_iEpgId = tag.m_iEpgId;
-  newTag->m_epgStart = tag.StartAsUTC();
+  newTag->m_epgTag = g_EpgContainer.GetById(tag.EpgID())->GetTag(tag.StartAsUTC());
 
   /* unused only for reference */
   newTag->m_strFileNameAndPath = "pvr://timers/new";
@@ -549,31 +472,43 @@ CPVRTimerInfoTag *CPVRTimerInfoTag::CreateFromEpg(const CEpgInfoTag &tag)
   return newTag;
 }
 
-const CDateTime &CPVRTimerInfoTag::StartAsLocalTime(void) const
+CDateTime CPVRTimerInfoTag::StartAsUTC(void) const
 {
-  static CDateTime tmp;
-  CSingleLock lock(m_critSection);
-  tmp.SetFromUTCDateTime(m_StartTime);
-
-  return tmp;
+  CDateTime retVal = m_StartTime;
+  return retVal;
 }
 
-const CDateTime &CPVRTimerInfoTag::EndAsLocalTime(void) const
+CDateTime CPVRTimerInfoTag::StartAsLocalTime(void) const
 {
-  static CDateTime tmp;
-  CSingleLock lock(m_critSection);
-  tmp.SetFromUTCDateTime(m_StopTime);
-
-  return tmp;
+  CDateTime retVal;
+  retVal.SetFromUTCDateTime(m_StartTime);
+  return retVal;
 }
 
-const CDateTime &CPVRTimerInfoTag::FirstDayAsLocalTime(void) const
+CDateTime CPVRTimerInfoTag::EndAsUTC(void) const
 {
-  static CDateTime tmp;
-  CSingleLock lock(m_critSection);
-  tmp.SetFromUTCDateTime(m_FirstDay);
+  CDateTime retVal = m_StopTime;
+  return retVal;
+}
 
-  return tmp;
+CDateTime CPVRTimerInfoTag::EndAsLocalTime(void) const
+{
+  CDateTime retVal;
+  retVal.SetFromUTCDateTime(m_StopTime);
+  return retVal;
+}
+
+CDateTime CPVRTimerInfoTag::FirstDayAsUTC(void) const
+{
+  CDateTime retVal = m_FirstDay;
+  return retVal;
+}
+
+CDateTime CPVRTimerInfoTag::FirstDayAsLocalTime(void) const
+{
+  CDateTime retVal;
+  retVal.SetFromUTCDateTime(m_FirstDay);
+  return retVal;
 }
 
 void CPVRTimerInfoTag::GetNotificationText(CStdString &strText) const
@@ -594,6 +529,13 @@ void CPVRTimerInfoTag::GetNotificationText(CStdString &strText) const
   case PVR_TIMER_STATE_COMPLETED:
     strText.Format("%s: '%s'", g_localizeStrings.Get(19227), m_strTitle.c_str());
     break;
+  case PVR_TIMER_STATE_CONFLICT_OK:	
+  case PVR_TIMER_STATE_CONFLICT_NOK:	
+    strText.Format("%s: '%s'", g_localizeStrings.Get(19277), m_strTitle.c_str());
+    break;
+  case PVR_TIMER_STATE_ERROR:
+    strText.Format("%s: '%s'", g_localizeStrings.Get(19278), m_strTitle.c_str());
+    break;
   default:
     break;
   }
@@ -611,17 +553,60 @@ void CPVRTimerInfoTag::QueueNotification(void) const
   }
 }
 
-EPG::CEpgInfoTag *CPVRTimerInfoTag::GetEpgInfoTag(void) const
+CEpgInfoTagPtr CPVRTimerInfoTag::GetEpgInfoTag(void) const
 {
-  CSingleLock lock(m_critSection);
-  CEpg *epg = m_iEpgId != -1 ? g_EpgContainer.GetById(m_iEpgId) : NULL;
-  if (epg)
-    return epg->GetTag(-1, m_epgStart);
-  return NULL;
+  return m_epgTag;
 }
 
 bool CPVRTimerInfoTag::SupportsFolders() const
 {
-  return g_PVRClients->GetAddonCapabilities(m_iClientId).bSupportsRecordingFolders;
+  return g_PVRClients->SupportsRecordingFolders(m_iClientId);
 }
 
+void CPVRTimerInfoTag::ClearEpgTag(void)
+{
+  CEpgInfoTagPtr deletedTag;
+
+  {
+    CSingleLock lock(m_critSection);
+    deletedTag = m_epgTag;
+
+    CEpgInfoTagPtr emptyTag;
+    m_epgTag = emptyTag;
+  }
+
+  if (deletedTag)
+    deletedTag->ClearTimer();
+}
+
+CPVRChannelPtr CPVRTimerInfoTag::ChannelTag(void) const
+{
+  return m_channel;
+}
+
+void CPVRTimerInfoTag::UpdateChannel(void)
+{
+  CSingleLock lock(m_critSection);
+  m_channel = g_PVRChannelGroups->Get(m_bIsRadio)->GetGroupAll()->GetByClient(m_iClientChannelUid, m_iClientId);
+}
+
+CStdString CPVRTimerInfoTag::Title(void) const
+{
+  CStdString strReturn;
+  strReturn = m_strTitle;
+  return strReturn;
+}
+
+CStdString CPVRTimerInfoTag::Summary(void) const
+{
+  CStdString strReturn;
+  strReturn = m_strSummary;
+  return strReturn;
+}
+
+CStdString CPVRTimerInfoTag::Path(void) const
+{
+  CStdString strReturn;
+  strReturn = m_strFileNameAndPath;
+  return strReturn;
+}

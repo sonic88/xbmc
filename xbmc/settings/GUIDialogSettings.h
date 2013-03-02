@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2008 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -15,9 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -30,14 +29,16 @@ class CGUIRadioButtonControl;
 class CGUISettingsSliderControl;
 class CGUIEditControl;
 class CGUIImage;
+class CGUIEditControl;
 
 typedef std::vector<CStdString> SETTINGSTRINGS;
 typedef CStdString (*FORMATFUNCTION) (float value, float min);
+typedef CStdString (*RANGEFORMATFUNCTION) (float valueLower, float valueUpper, float min);
 
 class SettingInfo
 {
 public:
-  enum SETTING_TYPE { NONE=0, EDIT, EDIT_NUM, BUTTON, BUTTON_DIALOG, CHECK, CHECK_UCHAR, SPIN, SLIDER, SEPARATOR, STRING };
+  enum SETTING_TYPE { NONE=0, EDIT, EDIT_NUM, BUTTON, BUTTON_DIALOG, CHECK, CHECK_UCHAR, SPIN, SLIDER, SEPARATOR, STRING, RANGE };
   SettingInfo()
   {
     id = 0;
@@ -47,7 +48,7 @@ public:
     min = 0;
     max = 0;
     interval = 0;
-    formatFunction = NULL;
+    formatFunction.standard = NULL;
   };
   SETTING_TYPE type;
   CStdString name;
@@ -56,7 +57,11 @@ public:
   float min;
   float max;
   float interval;
-  FORMATFUNCTION formatFunction;
+  union
+  {
+    FORMATFUNCTION standard;
+    RANGEFORMATFUNCTION range;
+  } formatFunction;
   std::vector<std::pair<int, CStdString> > entry;
   bool enabled;
 };
@@ -97,6 +102,7 @@ protected:
   void AddSpin(unsigned int id, int label, int *current, std::vector<std::pair<int, CStdString> > &values);
   void AddSpin(unsigned int id, int label, int *current, std::vector<std::pair<int, int> > &values);
   void AddSlider(unsigned int id, int label, float *current, float min, float interval, float max, FORMATFUNCTION formatFunction, bool allowPopup = true);
+  void AddRangeSlider(unsigned int id, int label, float *currentLower, float* currentUpper, float min, float interval, float max, RANGEFORMATFUNCTION formatFunction);
   void AddSeparator(unsigned int id);
 
   CGUIEditControl *m_pOriginalEdit;

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2009 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -37,14 +37,22 @@
 #include "utils/URIUtils.h"
 #include "addons/AddonManager.h"
 #include "addons/Addon.h"
+#include "Application.h"
+#include "ApplicationMessenger.h"
 
 #include "XBPyThread.h"
 #include "XBPython.h"
+#include "LanguageHook.h"
 
-#include "xbmcmodule/pyutil.h"
-#include "xbmcmodule/pythreadstate.h"
+#include "interfaces/legacy/Exception.h"
+#include "interfaces/legacy/CallbackHandler.h"
+#include "interfaces/legacy/AddonUtils.h"
+#include "interfaces/legacy/ModuleXbmc.h"
+
+#include "interfaces/python/pythreadstate.h"
+#include "interfaces/python/swig.h"
 #include "utils/CharsetConverter.h"
-
+#include "PyContext.h"
 
 #ifdef _WIN32
 extern "C" FILE *fopen_utf8(const char *_Filename, const char *_Mode);
@@ -53,6 +61,9 @@ extern "C" FILE *fopen_utf8(const char *_Filename, const char *_Mode);
 #endif
 
 #define PY_PATH_SEP DELIM
+
+// Time before ill-behaved scripts are terminated
+#define PYTHON_SCRIPT_TIMEOUT 5000 // ms
 
 extern "C"
 {
@@ -70,15 +81,16 @@ XBPyThread::XBPyThread(XBPython *pExecuter, int id) : CThread("XBPyThread")
   m_argv        = NULL;
   m_source      = NULL;
   m_argc        = 0;
+  m_type        = 0;
 }
 
 XBPyThread::~XBPyThread()
 {
   stop();
   g_pythonParser.PulseGlobalEvent();
-  CLog::Log(LOGDEBUG,"waiting for python thread %d to stop", m_id);
+  CLog::Log(LOGDEBUG,"waiting for python thread %d (%s) to stop", m_id, (m_source ? m_source : "unknown script"));
   StopThread();
-  CLog::Log(LOGDEBUG,"python thread %d destructed", m_id);
+  CLog::Log(LOGDEBUG,"python thread %d (%s) destructed", m_id, (m_source ? m_source : "unknown script"));
   delete [] m_source;
   if (m_argv)
   {
@@ -86,12 +98,19 @@ XBPyThread::~XBPyThread()
       delete [] m_argv[i];
     delete [] m_argv;
   }
+  g_pythonParser.FinalizeScript();
 }
 
 void XBPyThread::setSource(const CStdString &src)
 {
+  if (m_source) 
+    delete [] m_source;
 #ifdef TARGET_WINDOWS
-  CStdString strsrc = src;
+  CStdString strsrc;
+  if (m_type == 'F')
+    strsrc = CSpecialProtocol::TranslatePath(src);
+  else
+    strsrc = src;
   g_charsetConverter.utf8ToSystem(strsrc);
   m_source  = new char[strsrc.GetLength()+1];
   strcpy(m_source, strsrc);
@@ -129,6 +148,27 @@ int XBPyThread::setArgv(const std::vector<CStdString> &argv)
   return 0;
 }
 
+#define GC_SCRIPT \
+  "import gc\n" \
+  "gc.collect(2)\n"
+
+static const CStdString getListOfAddonClassesAsString(XBMCAddon::AddonClass::Ref<XBMCAddon::Python::LanguageHook>& languageHook)
+{
+  CStdString message;
+  XBMCAddon::AddonClass::Synchronize l(*(languageHook.get()));
+  std::set<XBMCAddon::AddonClass*>& acs = languageHook->GetRegisteredAddonClasses();
+  bool firstTime = true;
+  for (std::set<XBMCAddon::AddonClass*>::iterator iter = acs.begin();
+       iter != acs.end(); iter++)
+  {
+    if (!firstTime) message += ",";
+    else firstTime = false;
+    message += (*iter)->GetClassname().c_str();
+  }
+
+  return message;
+}
+
 void XBPyThread::Process()
 {
   CLog::Log(LOGDEBUG,"Python thread: start processing");
@@ -146,6 +186,9 @@ void XBPyThread::Process()
   }
   // swap in my thread state
   PyThreadState_Swap(state);
+
+  XBMCAddon::AddonClass::Ref<XBMCAddon::Python::LanguageHook> languageHook(new XBMCAddon::Python::LanguageHook(state->interp));
+  languageHook->RegisterMe();
 
   m_pExecuter->InitializeInterpreter(addon);
 
@@ -188,8 +231,8 @@ void XBPyThread::Process()
       PyObject *e = PyList_GetItem(pathObj, i); // borrowed ref, no need to delete
       if( e && PyString_Check(e) )
       {
-          path += PyString_AsString(e); // returns internal data, don't delete or modify
-          path += PY_PATH_SEP;
+        path += PyString_AsString(e); // returns internal data, don't delete or modify
+        path += PY_PATH_SEP;
       }
     }
   }
@@ -218,7 +261,7 @@ void XBPyThread::Process()
 
   // we need to check if we was asked to abort before we had inited
   bool stopping = false;
-  { CSingleLock lock(m_pExecuter->m_critSection);
+  { CSingleLock lock(m_critSec);
     m_threadState = state;
     stopping = m_stopping;
   }
@@ -228,6 +271,8 @@ void XBPyThread::Process()
 
   if (!stopping)
   {
+    try
+    {
     if (m_type == 'F')
     {
       // run script from file
@@ -253,6 +298,7 @@ void XBPyThread::Process()
           CLog::Log(LOGDEBUG,"Instantiating addon using automatically obtained id of \"%s\" dependent on version %s of the xbmc.python api",addon->ID().c_str(),version.c_str());
         }
         Py_DECREF(f);
+        XBMCAddon::Python::PyContext pycontext; // this is a guard class that marks this callstack as being in a python context
         PyRun_FileExFlags(fp, CSpecialProtocol::TranslatePath(m_source).c_str(), m_Py_file_input, moduleDict, moduleDict,1,NULL);
       }
       else
@@ -263,61 +309,34 @@ void XBPyThread::Process()
       //run script
       PyRun_String(m_source, m_Py_file_input, moduleDict, moduleDict);
     }
+    }
+    catch (const XbmcCommons::Exception& e)
+    {
+      e.LogThrowMessage();
+    }
+    catch (...)
+    {
+      CLog::Log(LOGERROR, "failure in %s", m_source);
+    }
   }
 
+  bool systemExitThrown = false;
   if (!PyErr_Occurred())
     CLog::Log(LOGINFO, "Scriptresult: Success");
   else if (PyErr_ExceptionMatches(PyExc_SystemExit))
+  {
+    systemExitThrown = true;
     CLog::Log(LOGINFO, "Scriptresult: Aborted");
+  }
   else
   {
-    PyObject* exc_type;
-    PyObject* exc_value;
-    PyObject* exc_traceback;
-    PyObject* pystring;
-    pystring = NULL;
+    PythonBindings::PythonToCppException e;
+    e.LogThrowMessage();
 
-    PyErr_Fetch(&exc_type, &exc_value, &exc_traceback);
-    if (exc_type == 0 && exc_value == 0 && exc_traceback == 0)
     {
-      CLog::Log(LOGINFO, "Strange: No Python exception occured");
-    }
-    else
-    {
-      if (exc_type != NULL && (pystring = PyObject_Str(exc_type)) != NULL && (PyString_Check(pystring)))
-      {
-          PyObject *tracebackModule;
+      CPyThreadState releaseGil;
+      CSingleLock gc(g_graphicsContext);
 
-          CLog::Log(LOGINFO, "-->Python script returned the following error<--");
-          CLog::Log(LOGERROR, "Error Type: %s", PyString_AsString(PyObject_Str(exc_type)));
-          if (PyObject_Str(exc_value))
-            CLog::Log(LOGERROR, "Error Contents: %s", PyString_AsString(PyObject_Str(exc_value)));
-
-          tracebackModule = PyImport_ImportModule((char*)"traceback");
-          if (tracebackModule != NULL)
-          {
-            PyObject *tbList, *emptyString, *strRetval;
-
-            tbList = PyObject_CallMethod(tracebackModule, (char*)"format_exception", (char*)"OOO", exc_type, exc_value == NULL ? Py_None : exc_value, exc_traceback == NULL ? Py_None : exc_traceback);
-            emptyString = PyString_FromString("");
-            strRetval = PyObject_CallMethod(emptyString, (char*)"join", (char*)"O", tbList);
-
-            CLog::Log(LOGERROR, "%s", PyString_AsString(strRetval));
-
-            Py_DECREF(tbList);
-            Py_DECREF(emptyString);
-            Py_DECREF(strRetval);
-            Py_DECREF(tracebackModule);
-          }
-          CLog::Log(LOGINFO, "-->End of Python script error report<--");
-      }
-      else
-      {
-        pystring = NULL;
-        CLog::Log(LOGINFO, "<unknown exception type>");
-      }
-
-      PYXBMC::PyXBMCGUILock();
       CGUIDialogKaiToast *pDlgToast = (CGUIDialogKaiToast*)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
       if (pDlgToast)
       {
@@ -335,13 +354,7 @@ void XBPyThread::Process()
         desc.Format(g_localizeStrings.Get(2100), script);
         pDlgToast->QueueNotification(CGUIDialogKaiToast::Error, g_localizeStrings.Get(257), desc);
       }
-      PYXBMC::PyXBMCGUIUnlock();
     }
-
-    Py_XDECREF(exc_type);
-    Py_XDECREF(exc_value); // caller owns all 3
-    Py_XDECREF(exc_traceback); // already NULL'd out
-    Py_XDECREF(pystring);
   }
 
   PyObject *m = PyImport_AddModule((char*)"xbmc");
@@ -370,19 +383,19 @@ void XBPyThread::Process()
   }
 
   // pending calls must be cleared out
-  PyXBMC_ClearPendingCalls(state);
+  XBMCAddon::RetardedAsynchCallbackHandler::clearPendingCalls(state);
 
   PyThreadState_Swap(NULL);
   PyEval_ReleaseLock();
 
   //set stopped event - this allows ::stop to run and kill remaining threads
-  //this event has to be fired without holding m_pExecuter->m_critSection
-  //before
+  //this event has to be fired without holding m_critSec
+  //
   //Also the GIL (PyEval_AcquireLock) must not be held
   //if not obeyed there is still no deadlock because ::stop waits with timeout (smart one!)
   stoppedEvent.Set();
 
-  { CSingleLock lock(m_pExecuter->m_critSection);
+  { CSingleLock lock(m_critSec);
     m_threadState = NULL;
   }
 
@@ -391,10 +404,30 @@ void XBPyThread::Process()
 
   m_pExecuter->DeInitializeInterpreter();
 
+  // run the gc before finishing
+  //
+  // if the script exited by throwing a SystemExit excepton then going back
+  // into the interpreter causes this python bug to get hit:
+  //    http://bugs.python.org/issue10582
+  // and that causes major failures. So we are not going to go back in
+  // to run the GC if that's the case.
+  if (!m_stopping && languageHook->HasRegisteredAddonClasses() && !systemExitThrown &&
+      PyRun_SimpleString(GC_SCRIPT) == -1)
+    CLog::Log(LOGERROR,"Failed to run the gc to clean up after running prior to shutting down the Interpreter %s",m_source);
+
   Py_EndInterpreter(state);
-  PyThreadState_Swap(NULL);
+
+  // If we still have objects left around, produce an error message detailing what's been left behind
+  if (languageHook->HasRegisteredAddonClasses())
+    CLog::Log(LOGWARNING, "The python script \"%s\" has left several "
+              "classes in memory that we couldn't clean up. The classes include: %s",
+              m_source, getListOfAddonClassesAsString(languageHook).c_str());
+
+  // unregister the language hook
+  languageHook->UnregisterMe();
 
   PyEval_ReleaseLock();
+
 }
 
 void XBPyThread::OnExit()
@@ -407,7 +440,7 @@ void XBPyThread::OnException()
   PyThreadState_Swap(NULL);
   PyEval_ReleaseLock();
 
-  CSingleLock lock(m_pExecuter->m_critSection);
+  CSingleLock lock(m_critSec);
   m_threadState = NULL;
   CLog::Log(LOGERROR,"%s, abnormally terminating python thread", __FUNCTION__);
   m_pExecuter->setDone(m_id);
@@ -419,7 +452,7 @@ bool XBPyThread::isStopping() {
 
 void XBPyThread::stop()
 {
-  CSingleLock lock(m_pExecuter->m_critSection);
+  CSingleLock lock(m_critSec);
   if(m_stopping)
     return;
 
@@ -430,30 +463,69 @@ void XBPyThread::stop()
     PyEval_AcquireLock();
     PyThreadState* old = PyThreadState_Swap((PyThreadState*)m_threadState);
 
+    //tell xbmc.Monitor to call onAbortRequested()
+    if (addon)
+      g_pythonParser.OnAbortRequested(addon->ID());
+
     PyObject *m;
     m = PyImport_AddModule((char*)"xbmc");
     if(!m || PyObject_SetAttrString(m, (char*)"abortRequested", PyBool_FromLong(1)))
       CLog::Log(LOGERROR, "XBPyThread::stop - failed to set abortRequested");
 
     PyThreadState_Swap(old);
+    old = NULL;
     PyEval_ReleaseLock();
 
-    if(!stoppedEvent.WaitMSec(5000))//let the script 5 secs for shut stuff down
+    XbmcThreads::EndTime timeout(PYTHON_SCRIPT_TIMEOUT);
+    while (!stoppedEvent.WaitMSec(15))
     {
-      CLog::Log(LOGERROR, "XBPyThread::stop - script didn't stop in proper time - lets kill it");
+      if (timeout.IsTimePast())
+      {
+        CLog::Log(LOGERROR, "XBPyThread::stop - script %s didn't stop in %d seconds - let's kill it", m_source, PYTHON_SCRIPT_TIMEOUT / 1000);
+        break;
+      }
+      // We can't empty-spin in the main thread and expect scripts to be able to
+      // dismantle themselves. Python dialogs aren't normal XBMC dialogs, they rely
+      // on TMSG_GUI_PYTHON_DIALOG messages, so pump the message loop.
+      if (g_application.IsCurrentThread())
+      {
+        CSingleExit ex(g_graphicsContext);
+        CApplicationMessenger::Get().ProcessMessages();
+      }
     }
+    // Useful for add-on performance metrics
+    if (!timeout.IsTimePast())
+      CLog::Log(LOGDEBUG, "XBPyThread::stop - script termination took %dms", PYTHON_SCRIPT_TIMEOUT - timeout.MillisLeft());
     
     //everything which didn't exit by now gets killed
-    PyEval_AcquireLock();
-    old = PyThreadState_Swap((PyThreadState*)m_threadState);    
-    for(PyThreadState* state = ((PyThreadState*)m_threadState)->interp->tstate_head; state; state = state->next)
     {
-      Py_XDECREF(state->async_exc);
-      state->async_exc = PyExc_SystemExit;
-      Py_XINCREF(state->async_exc);
+      // grabbing the PyLock while holding the m_critSec is asking for a deadlock
+      CSingleExit ex2(m_critSec);
+      PyEval_AcquireLock();
     }
 
-    PyThreadState_Swap(old);
+    // Since we released the m_critSec it's possible that the state is cleaned up 
+    // so we need to recheck for m_threadState == NULL
+    if (m_threadState)
+    {
+      old = PyThreadState_Swap((PyThreadState*)m_threadState);    
+      for(PyThreadState* state = ((PyThreadState*)m_threadState)->interp->tstate_head; state; state = state->next)
+      {
+        // Raise a SystemExit exception in python threads
+        Py_XDECREF(state->async_exc);
+        state->async_exc = PyExc_SystemExit;
+        Py_XINCREF(state->async_exc);
+      }
+
+      // If a dialog entered its doModal(), we need to wake it to see the exception
+      g_pythonParser.PulseGlobalEvent();
+
+    }
+
+    if (old != NULL)
+      PyThreadState_Swap(old);
+
+    lock.Leave();
     PyEval_ReleaseLock();
   }
 }

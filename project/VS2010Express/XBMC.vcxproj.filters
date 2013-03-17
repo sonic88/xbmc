@@ -313,6 +313,9 @@
     <Filter Include="cores\DSPlayer\Filters\Source">
       <UniqueIdentifier>{c356be07-4c7d-42dc-9a99-2beea6f8dc56}</UniqueIdentifier>
     </Filter>
+    <Filter Include="cores\DSPlayer\iMON">
+      <UniqueIdentifier>{c9cfe4a7-b0c3-4b86-aca2-908c801742b5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\xbmc\win32\pch.cpp">
@@ -3098,6 +3101,12 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\DSPlayerDatabase.cpp">
       <Filter>cores\DSPlayer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplay.cpp">
+      <Filter>cores\DSPlayer\iMON</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\utils\LCDFactory.cpp">
+      <Filter>utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -6067,6 +6076,18 @@
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\DSPlayerDatabase.h">
       <Filter>cores\DSPlayer</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplayDefines.h">
+      <Filter>cores\DSPlayer\iMON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplay.h">
+      <Filter>cores\DSPlayer\iMON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplayDll.h">
+      <Filter>cores\DSPlayer\iMON</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\utils\LCDFactory.h">
+      <Filter>utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\xbmc\win32\XBMC_PC.rc">
@@ -6105,6 +6126,9 @@
     </None>
     <None Include="..\..\system\players\dsplayer\mediasconfig.xml">
       <Filter>cores\DSPlayer\FilterCoreFactory</Filter>
+    </None>
+    <None Include="..\..\userdata\iMONDisplay.xml">
+      <Filter>cores\DSPlayer\iMON</Filter>
     </None>
   </ItemGroup>
 </Project>

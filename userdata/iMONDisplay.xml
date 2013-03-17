@@ -1,0 +1,29 @@
+<lcd>
+   <discbottomcircle>true</discbottomcircle>
+   <discrotate>true</discrotate>
+   <discrotatespeed>300</discrotatespeed>
+   <navigation>
+      <line>$INFO[System.CurrentWindow] $INFO[Container.FolderName]</line>
+   </navigation>
+   <music>
+      <line>$INFO[MusicPlayer.Title]</line>
+   </music>
+   <video>
+      <line>$INFO[VideoPlayer.Title]</line>
+   </video>
+   <general>
+      <line>$INFO[System.Time] $INFO[System.Date]</line>
+   </general>
+   <screensaver>
+      <line>$INFO[System.Time] $INFO[System.Date]</line>
+   </screensaver>
+   <xbelaunch>
+      <line>Playing $INFO[System.LaunchXBE]</line>
+   </xbelaunch>
+   <pvrtv>
+      <line>$INFO[VideoPlayer.ChannelName] $INFO[VideoPlayer.Title]</line>
+   </pvrtv>
+   <pvrradio>
+      <line>$INFO[MusicPlayer.ChannelName] $INFO[MusicPlayer.Title]</line>
+   </pvrradio>
+</lcd>

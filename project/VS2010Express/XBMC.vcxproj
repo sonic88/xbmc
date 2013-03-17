@@ -416,6 +416,7 @@
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\Filters\XBMCFileReader.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\Filters\XBMCFileSource.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\GraphFilters.cpp" />
+    <ClCompile Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplay.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\PixelShaderCompiler.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\PixelShaderList.cpp" />
     <ClCompile Include="..\..\xbmc\cores\DSPlayer\ShadersSelectionRule.cpp" />
@@ -1094,6 +1095,9 @@
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\Filters\XBMCFileReader.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\Filters\XBMCFileSource.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\GraphFilters.h" />
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplay.h" />
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplayDefines.h" />
+    <ClInclude Include="..\..\xbmc\cores\DSPlayer\iMON\iMONDisplayDll.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\moreuuids.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\PixelShaderCompiler.h" />
     <ClInclude Include="..\..\xbmc\cores\DSPlayer\PixelShaderList.h" />
@@ -1168,6 +1172,7 @@
     <ClInclude Include="..\..\xbmc\interfaces\python\PyContext.h" />
     <ClInclude Include="..\..\xbmc\interfaces\python\pythreadstate.h" />
     <ClInclude Include="..\..\xbmc\music\karaoke\karaokevideobackground.h" />
+    <ClInclude Include="..\..\xbmc\utils\LCDFactory.h" />
     <ClInclude Include="..\..\xbmc\video\FFmpegVideoDecoder.h" />
     <ClInclude Include="..\..\xbmc\interfaces\python\swig.h" />
     <ClInclude Include="..\..\xbmc\interfaces\python\XBPython.h" />
@@ -1304,6 +1309,7 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\AddonsOperations.h" />
     <ClCompile Include="..\..\xbmc\ThumbLoader.cpp" />
+    <ClCompile Include="..\..\xbmc\utils\LCDFactory.cpp" />
     <ClCompile Include="..\..\xbmc\utils\test\TestUrlOptions.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (DirectX)|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (OpenGL)|Win32'">true</ExcludedFromBuild>
@@ -3038,8 +3044,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\system\players\dsplayer\filtersconfig.xml" />
-    <None Include="..\..\system\players\dsplayer\mediasconfig.xml" />
+    <None Include="..\..\system\players\dsplayer\mediasconfig.xml">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="..\..\system\players\dsplayer\Shaders\shaders.xml" />
+    <None Include="..\..\userdata\iMONDisplay.xml">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="..\..\xbmc\interfaces\swig\ControlListAddItemMethods.i" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

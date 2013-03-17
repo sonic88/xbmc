@@ -45,6 +45,7 @@
 
 #ifdef HAS_DS_PLAYER
 #include "DSPlayer.h"
+#include "iMON/iMONDisplay.h"
 #endif
 
 #ifdef _WIN32
@@ -798,6 +799,11 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
     case BONJOUR_BROWSER_EVENT:
       CZeroconfBrowser::GetInstance()->ProcessResults();
       break;
+#ifdef HAS_DS_PLAYER
+	case WM_DSP_PLUGIN_NOTIFY:
+		CImonDisplay::PostMessage(uMsg, wParam, lParam);
+		break;
+#endif
   }
   return(DefWindowProc(hWnd, uMsg, wParam, lParam));
 }

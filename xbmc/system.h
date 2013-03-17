@@ -126,6 +126,9 @@
 #define HAVE_LIBVORBISENC
 #define HAS_MYSQL
 #define HAS_UPNP
+#ifdef HAS_DS_PLAYER
+#define HAS_LCD
+#endif
 
 #define DECLARE_UNUSED(a,b) a b;
 #endif

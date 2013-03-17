@@ -68,7 +68,12 @@ public:
   CStdString GetBigDigit( UINT _nCharset, int _nDigit, UINT _nLine, UINT _nMinSize, UINT _nMaxSize, bool _bSpacePadding );
   void LoadSkin(const CStdString &xmlFile);
   void Reset();
+#ifdef HAS_DS_PLAYER
+  virtual void Render(LCD_MODE mode);
+#else
   void Render(LCD_MODE mode);
+#endif
+
  ILCD() : CThread("ILCD"),
           m_disableOnPlay(DISABLE_ON_PLAY_NONE), 
           m_eCurrentCharset(CUSTOM_CHARSET_DEFAULT) {}

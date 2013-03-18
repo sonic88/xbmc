@@ -613,6 +613,9 @@ bool CApplication::Create()
   CopyUserDataIfNeeded("special://masterprofile/", "favourites.xml");
   CopyUserDataIfNeeded("special://masterprofile/", "Lircmap.xml");
   CopyUserDataIfNeeded("special://masterprofile/", "LCD.xml");
+#ifdef HAS_DS_PLAYER
+  CopyUserDataIfNeeded("special://masterprofile/", "iMONDisplay.xml");
+#endif
 
   if (!CLog::Init(CSpecialProtocol::TranslatePath(g_settings.m_logFolder).c_str()))
   {

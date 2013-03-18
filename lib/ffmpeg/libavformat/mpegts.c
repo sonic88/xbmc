@@ -1604,6 +1604,17 @@ static void pat_cb(MpegTSFilter *filter, const uint8_t *section, int section_len
             add_pid_to_pmt(ts, sid, pmt_pid);
         }
     }
+
+    if (sid < 0) {
+        int i,j;
+        for (j=0; j<ts->stream->nb_programs; j++) {
+            for (i=0; i<ts->nb_prg; i++)
+                if (ts->prg[i].id == ts->stream->programs[j]->id)
+                    break;
+            if (i==ts->nb_prg)
+                clear_avprogram(ts, ts->stream->programs[j]->id);
+        }
+    }
 }
 
 static void sdt_cb(MpegTSFilter *filter, const uint8_t *section, int section_len)

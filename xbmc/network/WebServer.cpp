@@ -254,7 +254,7 @@ int CWebServer::HandlePostField(void *cls, enum MHD_ValueKind kind, const char *
 {
   ConnectionHandler *conHandler = (ConnectionHandler *)cls;
 
-  if (conHandler == NULL || conHandler->requestHandler == NULL || size == 0)
+  if (conHandler == NULL || conHandler->requestHandler == NULL || data == NULL || size == 0)
     return MHD_NO;
 
   conHandler->requestHandler->AddPostField(key, string(data, size));

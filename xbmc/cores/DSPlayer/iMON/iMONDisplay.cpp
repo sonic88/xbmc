@@ -296,7 +296,7 @@ void CImonDisplay::SetLine(int iLine, const CStdString& strLine)
 	{
 		m_ImonDisplayDll.IMON_Display_SetVfdText((LPCTSTR)m_strLine1.c_str(), (LPCTSTR)m_strLine2.c_str());
 	} 
-	else if(m_bLcdConnected && (m_bLcdScrollDone || bUpdate)) 
+	if(m_bLcdConnected && (m_bLcdScrollDone || bUpdate)) 
 	{
 		m_ImonDisplayDll.IMON_Display_SetLcdText((LPCTSTR)m_strLine1.c_str());
 		m_bLcdScrollDone = false;

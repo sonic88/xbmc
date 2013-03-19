@@ -286,12 +286,13 @@ void CImonDisplay::SetLine(int iLine, const CStdString& strLine)
 		bUpdate = true;
 		m_strLine1 = strW;
 	}
-	else if (iLine == 1 && m_bVfdConnected) 
+	else if (iLine == 1 && m_bVfdConnected && m_strLine2.Compare(strW) != 0) 
 	{
+		bUpdate = true;
 		m_strLine2 = strW;
 	}
 
-	if(m_bVfdConnected)	
+	if(m_bVfdConnected && bUpdate)	
 	{
 		m_ImonDisplayDll.IMON_Display_SetVfdText((LPCTSTR)m_strLine1.c_str(), (LPCTSTR)m_strLine2.c_str());
 	} 

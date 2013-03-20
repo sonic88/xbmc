@@ -86,7 +86,7 @@ public:
   CDVDDemuxFFmpeg();
   virtual ~CDVDDemuxFFmpeg();
 
-  bool Open(CDVDInputStream* pInput);
+  bool Open(CDVDInputStream* pInput, bool streaminfo = true);
   void Dispose();
   void Reset();
   void Flush();
@@ -153,5 +153,7 @@ protected:
     int      result;    // result from av_read_packet
     double   pts;       // our current pts at the time we got the packet
   }m_AVPacket;
+
+  bool m_streaminfo;
 };
 

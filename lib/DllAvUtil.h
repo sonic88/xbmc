@@ -197,6 +197,7 @@ class DllAvUtilBase : public DllDynamic, DllAvUtilInterface
   DEFINE_METHOD1(int, av_get_bytes_per_sample, (enum AVSampleFormat p1))
   DEFINE_METHOD4(AVDictionaryEntry *, av_dict_get, (AVDictionary *p1, const char *p2, const AVDictionaryEntry *p3, int p4))
   DEFINE_METHOD4(int, av_dict_set, (AVDictionary **p1, const char *p2, const char *p3, int p4));
+  DEFINE_METHOD1(void, av_dict_free, (AVDictionary **p1));
   DEFINE_METHOD5(int, av_samples_get_buffer_size, (int *p1, int p2, int p3, enum AVSampleFormat p4, int p5))
   DEFINE_METHOD1(int64_t, av_get_default_channel_layout, (int p1))
 
@@ -224,6 +225,7 @@ class DllAvUtilBase : public DllDynamic, DllAvUtilInterface
     RESOLVE_METHOD(av_get_bytes_per_sample)
     RESOLVE_METHOD(av_dict_get)
     RESOLVE_METHOD(av_dict_set)
+    RESOLVE_METHOD(av_dict_free)
     RESOLVE_METHOD(av_samples_get_buffer_size)
     RESOLVE_METHOD(av_get_default_channel_layout)
   END_METHOD_RESOLVE()

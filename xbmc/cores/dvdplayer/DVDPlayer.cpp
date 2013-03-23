@@ -1151,11 +1151,15 @@ void CDVDPlayer::Process()
       else if (m_pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
       {
         CDVDInputStreamPVRManager* pStream = static_cast<CDVDInputStreamPVRManager*>(m_pInputStream);
-        if (pStream->IsEOF())
-          break;
 
-        Sleep(100);
-        continue;
+        if (pStream->IsLiveStream())
+        {
+          if (pStream->IsEOF())
+            break;
+
+          Sleep(100);
+          continue;
+        }
       }
 
       // make sure we tell all players to finish it's data

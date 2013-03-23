@@ -393,3 +393,10 @@ bool CDVDInputStreamPVRManager::SupportsChannelSwitch(void) const
   return g_PVRClients->GetPlayingClient(client) &&
          client->HandlesInputStream();
 }
+
+bool CDVDInputStreamPVRManager::IsLiveStream()
+{
+  if (!m_pFile)
+    return false;
+  return m_pFile->SkipNext();
+}

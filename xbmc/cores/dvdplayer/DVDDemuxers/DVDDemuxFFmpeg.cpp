@@ -440,7 +440,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo)
   if (m_streaminfo)
   {
     /* too speed up dvd switches, only analyse very short */
-    if(m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD) || m_pInput->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
+    if(m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD))
       m_pFormatContext->max_analyze_duration = 500000;
 
 

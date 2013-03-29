@@ -24,6 +24,7 @@
 #include "utils/URIUtils.h"
 #include "settings/Settings.h"
 #include "guilib/Key.h"
+#include "guilib/WindowIDs.h"
 #include "input/XBMC_keysym.h"
 #include "input/XBMC_keytable.h"
 #include "filesystem/File.h"
@@ -223,6 +224,9 @@ static const ActionMapping actions[] =
         {"channeldown"           , ACTION_CHANNEL_DOWN},
         {"previouschannelgroup"  , ACTION_PREVIOUS_CHANNELGROUP},
         {"nextchannelgroup"      , ACTION_NEXT_CHANNELGROUP},
+        {"playpvr"               , ACTION_PVR_PLAY},
+        {"playpvrtv"             , ACTION_PVR_PLAY_TV},
+        {"playpvrradio"          , ACTION_PVR_PLAY_RADIO},
 
         // Mouse actions
         {"leftclick"         , ACTION_MOUSE_LEFT_CLICK},
@@ -1357,7 +1361,7 @@ uint32_t CButtonTranslator::TranslateKeyboardButton(TiXmlElement *pButton)
       const char *str = strID.c_str();
       char *endptr;
       long int id = strtol(str, &endptr, 0);
-      if (endptr - str != strlen(str) || id <= 0 || id > 0x00FFFFFF)
+      if (endptr - str != (int)strlen(str) || id <= 0 || id > 0x00FFFFFF)
         CLog::Log(LOGDEBUG, "%s - invalid key id %s", __FUNCTION__, strID.c_str());
       else
         button_id = (uint32_t) id;

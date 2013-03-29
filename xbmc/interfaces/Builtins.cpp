@@ -31,6 +31,7 @@
 #include "addons/GUIDialogAddonSettings.h"
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "guilib/GUIKeyboardFactory.h"
+#include "guilib/Key.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "dialogs/GUIDialogProgress.h"
@@ -45,7 +46,7 @@
 #include "addons/PluginSource.h"
 #include "utils/log.h"
 #include "storage/MediaManager.h"
-#include "utils/RssReader.h"
+#include "utils/RssManager.h"
 #include "PartyModeManager.h"
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
@@ -53,6 +54,7 @@
 #include "Util.h"
 #include "URL.h"
 #include "music/MusicDatabase.h"
+#include "cores/IPlayer.h"
 
 #include "filesystem/PluginDirectory.h"
 #ifdef HAS_FILESYSTEM_RAR
@@ -667,9 +669,7 @@ int CBuiltins::Execute(const CStdString& execString)
   }
   else if (execute.Equals("refreshrss"))
   {
-    g_rssManager.Stop();
-    g_settings.LoadRSSFeeds();
-    g_rssManager.Start();
+    CRssManager::Get().Reload();
   }
   else if (execute.Equals("playercontrol"))
   {

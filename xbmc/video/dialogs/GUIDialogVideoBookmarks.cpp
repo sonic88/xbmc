@@ -34,6 +34,7 @@
 #include "FileItem.h"
 #include "guilib/Texture.h"
 #include "utils/Crc32.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -41,6 +42,7 @@
 #include "utils/log.h"
 #include "utils/Variant.h"
 #include "Util.h"
+#include "cores/IPlayer.h"
 
 using namespace std;
 
@@ -262,21 +264,26 @@ void CGUIDialogVideoBookmarks::AddBookmark(CVideoInfoTag* tag)
   {
 #ifdef HAS_VIDEO_PLAYBACK
     CRenderCapture* thumbnail = g_renderManager.AllocRenderCapture();
-    g_renderManager.Capture(thumbnail, width, height, CAPTUREFLAG_IMMEDIATELY);
-    if (thumbnail->GetUserState() == CAPTURESTATE_DONE)
-    {
-      Crc32 crc;
-      crc.ComputeFromLowerCase(g_application.CurrentFile());
-      bookmark.thumbNailImage.Format("%08x_%i.jpg", (unsigned __int32) crc, m_vecItems->Size() + 1);
-      bookmark.thumbNailImage = URIUtils::AddFileToFolder(g_settings.GetBookmarksThumbFolder(), bookmark.thumbNailImage);
-      if (!CPicture::CreateThumbnailFromSurface(thumbnail->GetPixels(), width, height, thumbnail->GetWidth() * 4,
-                                          bookmark.thumbNailImage))
-        bookmark.thumbNailImage.Empty();
-    }
-    else
-      CLog::Log(LOGERROR,"CGUIDialogVideoBookmarks: failed to create thumbnail");
 
-    g_renderManager.ReleaseRenderCapture(thumbnail);
+    if (thumbnail)
+    {
+      g_renderManager.Capture(thumbnail, width, height, CAPTUREFLAG_IMMEDIATELY);
+
+      if (thumbnail->GetUserState() == CAPTURESTATE_DONE)
+      {
+        Crc32 crc;
+        crc.ComputeFromLowerCase(g_application.CurrentFile());
+        bookmark.thumbNailImage.Format("%08x_%i.jpg", (unsigned __int32) crc, m_vecItems->Size() + 1);
+        bookmark.thumbNailImage = URIUtils::AddFileToFolder(g_settings.GetBookmarksThumbFolder(), bookmark.thumbNailImage);
+        if (!CPicture::CreateThumbnailFromSurface(thumbnail->GetPixels(), width, height, thumbnail->GetWidth() * 4,
+                                            bookmark.thumbNailImage))
+          bookmark.thumbNailImage.Empty();
+      }
+      else
+        CLog::Log(LOGERROR,"CGUIDialogVideoBookmarks: failed to create thumbnail");
+
+      g_renderManager.ReleaseRenderCapture(thumbnail);
+    }
 #endif
   }
   videoDatabase.Open();

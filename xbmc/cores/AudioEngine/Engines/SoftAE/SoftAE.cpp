@@ -1498,7 +1498,7 @@ inline void CSoftAE::ProcessSuspend()
   while (m_isSuspended || ((m_softSuspend && (curSystemClock > m_softSuspendTimer)) &&
           m_running     && !m_reOpen))
   {
-    if (!m_isSuspended && m_sink && !m_sinkIsSuspended)
+    if (m_sink && !m_sinkIsSuspended)
     {
       /* put the sink in Suspend mode */
       CExclusiveLock sinkLock(m_sinkLock);

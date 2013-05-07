@@ -111,6 +111,7 @@ public:
   bool Aborted();
 
   AVFormatContext* m_pFormatContext;
+  CDVDInputStream* m_pInput;
 
 protected:
   friend class CDemuxStreamAudioFFmpeg;
@@ -142,7 +143,6 @@ protected:
   unsigned m_program;
   XbmcThreads::EndTime  m_timeout;
 
-  CDVDInputStream* m_pInput;
 
   // Due to limitations of ffmpeg, we only can detect a program change
   // with a packet. This struct saves the packet for the next read and

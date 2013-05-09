@@ -109,6 +109,7 @@ namespace INFO
 #define PLAYER_CAN_SEEK              51
 #define PLAYER_START_TIME            52
 #define PLAYER_TITLE                 53
+#define PLAYER_ISINTERNETSTREAM      54
 
 #define WEATHER_CONDITIONS          100
 #define WEATHER_TEMPERATURE         101
@@ -408,6 +409,7 @@ namespace INFO
 #define SLIDESHOW_ISPAUSED          800
 #define SLIDESHOW_ISRANDOM          801
 #define SLIDESHOW_ISACTIVE          802
+#define SLIDESHOW_ISVIDEO           803
 
 #define SLIDE_INFO_START            900
 #define SLIDE_INFO_END              980
@@ -416,6 +418,8 @@ namespace INFO
 #define FANART_COLOR2               1001
 #define FANART_COLOR3               1002
 #define FANART_IMAGE                1003
+
+#define SYSTEM_PROFILEAUTOLOGIN     1004
 
 #define PVR_CONDITIONS_START        1100
 #define PVR_IS_RECORDING            (PVR_CONDITIONS_START)
@@ -483,7 +487,7 @@ namespace INFO
 
 #define VERSION_MAJOR 13
 #define VERSION_MINOR 0
-#define VERSION_TAG "-ALPHA3"
+#define VERSION_TAG "-ALPHA4"
 
 #define LISTITEM_START              35000
 #define LISTITEM_THUMB              (LISTITEM_START)

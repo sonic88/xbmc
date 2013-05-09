@@ -85,7 +85,15 @@ void CTCPServer::StopServer(bool bWait)
   }
 }
 
-CTCPServer::CTCPServer(int port, bool nonlocal) : CThread("CTCPServer")
+bool CTCPServer::IsRunning()
+{
+  if (ServerInstance == NULL)
+    return false;
+
+  return ((CThread*)ServerInstance)->IsRunning();
+}
+
+CTCPServer::CTCPServer(int port, bool nonlocal) : CThread("TCPServer")
 {
   m_port = port;
   m_nonlocal = nonlocal;

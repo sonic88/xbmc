@@ -27,8 +27,8 @@
 #include "GUIInfoManager.h"
 #include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
-#include "settings/GUISettings.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
 #include "addons/Skin.h"
 #include "GUITexture.h"
 #include "windowing/WindowingFactory.h"
@@ -360,7 +360,7 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const vector<CStd
   // virtual music window which returns the last open music window (aka the music start window)
   if (iWindowID == WINDOW_MUSIC)
   {
-    iWindowID = g_guiSettings.GetInt("mymusic.startwindow");
+    iWindowID = CSettings::Get().GetInt("mymusic.startwindow");
     // ensure the music virtual window only returns music files and music library windows
     if (iWindowID != WINDOW_MUSIC_NAV)
       iWindowID = WINDOW_MUSIC_FILES;
@@ -511,11 +511,8 @@ void CGUIWindowManager::Process(unsigned int currentTime)
       pWindow->DoProcess(currentTime, dirtyregions);
   }
 
-  if (g_application.m_AppActive)
-  {
-    for (CDirtyRegionList::iterator itr = dirtyregions.begin(); itr != dirtyregions.end(); itr++)
-      m_tracker.MarkDirtyRegion(*itr);
-  }
+  for (CDirtyRegionList::iterator itr = dirtyregions.begin(); itr != dirtyregions.end(); itr++)
+    m_tracker.MarkDirtyRegion(*itr);
 }
 
 void CGUIWindowManager::MarkDirty()

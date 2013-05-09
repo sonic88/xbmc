@@ -37,7 +37,7 @@
 #include "dialogs/GUIDialogOK.h"
 #include "interfaces/AnnouncementManager.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/GUIWindowManager.h"
@@ -57,7 +57,7 @@ using namespace ADDON;
 namespace VIDEO
 {
 
-  CVideoInfoScanner::CVideoInfoScanner() : CThread("CVideoInfoScanner")
+  CVideoInfoScanner::CVideoInfoScanner() : CThread("VideoInfoScanner")
   {
     m_bRunning = false;
     m_handle = NULL;
@@ -81,7 +81,7 @@ namespace VIDEO
 
       m_database.Open();
 
-      if (m_showDialog && !g_guiSettings.GetBool("videolibrary.backgroundupdate"))
+      if (m_showDialog && !CSettings::Get().GetBool("videolibrary.backgroundupdate"))
       {
         CGUIDialogExtendedProgressBar* dialog =
           (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
@@ -1260,7 +1260,7 @@ namespace VIDEO
 
     // parent folder to apply the thumb to and to search for local actor thumbs
     CStdString parentDir = GetParentDir(*pItem);
-    if (g_guiSettings.GetBool("videolibrary.actorthumbs"))
+    if (CSettings::Get().GetBool("videolibrary.actorthumbs"))
       FetchActorThumbs(movieDetails.m_cast, actorArtPath.empty() ? parentDir : actorArtPath);
     if (bApplyToDir)
       ApplyThumbToFolder(parentDir, art["thumb"]);
@@ -1351,9 +1351,12 @@ namespace VIDEO
       if (result == CNfoFile::FULL_NFO)
       {
         m_nfoReader.GetDetails(*item.GetVideoInfoTag());
-        // override with episode and season number
-        item.GetVideoInfoTag()->m_iEpisode = file->iEpisode;
-        item.GetVideoInfoTag()->m_iSeason = file->iSeason;
+        // override with episode and season number from file if available
+        if (file->iEpisode > -1)
+        {
+          item.GetVideoInfoTag()->m_iEpisode = file->iEpisode;
+          item.GetVideoInfoTag()->m_iSeason = file->iSeason;
+        }
         if (AddVideo(&item, CONTENT_TVSHOWS, file->isFolder, true, &showInfo) < 0)
           return INFO_ERROR;
         continue;
@@ -1770,7 +1773,10 @@ namespace VIDEO
   void CVideoInfoScanner::FetchActorThumbs(vector<SActorInfo>& actors, const CStdString& strPath)
   {
     CFileItemList items;
-    CDirectory::GetDirectory(URIUtils::AddFileToFolder(strPath, ".actors"), items, ".png|.jpg|.tbn", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_NO_FILE_INFO);
+    CStdString actorsDir = URIUtils::AddFileToFolder(strPath, ".actors");
+    if (CDirectory::Exists(actorsDir))
+      CDirectory::GetDirectory(actorsDir, items, ".png|.jpg|.tbn", DIR_FLAG_NO_FILE_DIRS |
+                               DIR_FLAG_NO_FILE_INFO);
     for (vector<SActorInfo>::iterator i = actors.begin(); i != actors.end(); ++i)
     {
       if (i->thumb.IsEmpty())
@@ -1802,7 +1808,7 @@ namespace VIDEO
         || (info->Content() == CONTENT_TVSHOWS && !pItem->m_bIsFolder))
       strNfoFile = GetnfoFile(pItem, bGrabAny);
     if (info->Content() == CONTENT_TVSHOWS && pItem->m_bIsFolder)
-      URIUtils::AddFileToFolder(pItem->GetPath(), "tvshow.nfo", strNfoFile);
+      strNfoFile = URIUtils::AddFileToFolder(pItem->GetPath(), "tvshow.nfo");
 
     CNfoFile::NFOResult result=CNfoFile::NO_NFO;
     if (!strNfoFile.IsEmpty() && CFile::Exists(strNfoFile))

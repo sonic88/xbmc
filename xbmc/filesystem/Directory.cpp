@@ -24,7 +24,7 @@
 #include "commons/Exception.h"
 #include "FileItem.h"
 #include "DirectoryCache.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/log.h"
 #include "utils/Job.h"
 #include "utils/JobManager.h"
@@ -209,7 +209,7 @@ bool CDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items, c
       // TODO: we shouldn't be checking the gui setting here;
       // callers should use getHidden instead
       if ((!item->m_bIsFolder && !pDirectory->IsAllowed(item->GetPath())) ||
-          (item->GetProperty("file:hidden").asBoolean() && !(hints.flags & DIR_FLAG_GET_HIDDEN) && !g_guiSettings.GetBool("filelists.showhidden")))
+          (item->GetProperty("file:hidden").asBoolean() && !(hints.flags & DIR_FLAG_GET_HIDDEN) && !CSettings::Get().GetBool("filelists.showhidden")))
       {
         items.Remove(i);
         i--; // don't confuse loop
@@ -255,15 +255,16 @@ bool CDirectory::Exists(const CStdString& strPath, bool bUseCache /* = true */)
 {
   try
   {
+    CStdString realPath = URIUtils::SubstitutePath(strPath);
     if (bUseCache)
     {
       bool bPathInCache;
-      if (g_directoryCache.FileExists(strPath, bPathInCache))
+      URIUtils::AddSlashAtEnd(realPath);
+      if (g_directoryCache.FileExists(realPath, bPathInCache))
         return true;
       if (bPathInCache)
         return false;
     }
-    CStdString realPath = URIUtils::SubstitutePath(strPath);
     auto_ptr<IDirectory> pDirectory(CDirectoryFactory::Create(realPath));
     if (pDirectory.get())
       return pDirectory->Exists(realPath.c_str());

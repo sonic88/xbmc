@@ -28,6 +28,8 @@
 #include "threads/CriticalSection.h"
 #include "threads/SystemClock.h"
 
+#include <map>
+
 class CDVDDemuxFFmpeg;
 
 class CDemuxStreamVideoFFmpeg
@@ -97,7 +99,6 @@ public:
   DemuxPacket* Read();
 
   bool SeekTime(int time, bool backwords = false, double* startpts = NULL);
-  bool SeekTimeDiscont(int64_t pts, bool backwards);
   bool SeekByte(int64_t pos);
   int GetStreamLength();
   CDemuxStream* GetStream(int iStreamId);
@@ -120,16 +121,19 @@ protected:
   friend class CDemuxStreamSubtitleFFmpeg;
 
   int ReadFrame(AVPacket *packet);
-  void AddStream(int iId);
+  CDemuxStream* AddStream(int iId);
+  void AddStream(int iId, CDemuxStream* stream);
+  CDemuxStream* GetStreamInternal(int iStreamId);
+  void CreateStreams(unsigned int program = UINT_MAX);
+  void DisposeStreams();
 
   double ConvertTimestamp(int64_t pts, int den, int num);
   void UpdateCurrentPTS();
-  bool IsActiveStream(int idx);
-  bool IsStreamChange();
+  bool IsProgramChange();
 
   CCriticalSection m_critSection;
-  #define MAX_STREAMS 100
-  CDemuxStream* m_streams[MAX_STREAMS]; // maximum number of streams that ffmpeg can handle
+  std::map<int, CDemuxStream*> m_streams;
+  std::vector<std::map<int, CDemuxStream*>::iterator> m_stream_index;
 
   AVIOContext* m_ioContext;
 
@@ -144,8 +148,13 @@ protected:
   unsigned m_program;
   XbmcThreads::EndTime  m_timeout;
 
-
-  bool m_bPtsWrap, m_bPtsWrapChecked;
-  int64_t m_iStartTime, m_iMaxTime, m_iEndTime;
+  // Due to limitations of ffmpeg, we only can detect a program change
+  // with a packet. This struct saves the packet for the next read and
+  // signals STREAMCHANGE to player
+  struct
+  {
+    AVPacket pkt;       // packet ffmpeg returned
+    int      result;    // result from av_read_packet
+  }m_pkt;
 };
 

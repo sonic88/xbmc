@@ -81,6 +81,7 @@
 #include "video/VideoDatabase.h"
 #include "cores/IPlayer.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
+#include "cores/VideoRenderers/BaseRenderer.h"
 
 #define SYSHEATUPDATEINTERVAL 60000
 
@@ -199,6 +200,7 @@ const infomap player_labels[] =  {{ "hasmedia",         PLAYER_HAS_MEDIA },     
                                   { "starrating",       PLAYER_STAR_RATING },
                                   { "folderpath",       PLAYER_PATH },
                                   { "filenameandpath",  PLAYER_FILEPATH },
+                                  { "isinternetstream", PLAYER_ISINTERNETSTREAM },
                                   { "pauseenabled",     PLAYER_CAN_PAUSE },
                                   { "seekenabled",      PLAYER_CAN_SEEK }};
 
@@ -268,6 +270,7 @@ const infomap system_labels[] =  {{ "hasnetwork",       SYSTEM_ETHERNET_LINK_ACT
                                   { "profilename",      SYSTEM_PROFILENAME },
                                   { "profilethumb",     SYSTEM_PROFILETHUMB },
                                   { "profilecount",     SYSTEM_PROFILECOUNT },
+                                  { "profileautologin", SYSTEM_PROFILEAUTOLOGIN },
                                   { "progressbar",      SYSTEM_PROGRESS_BAR },
                                   { "batterylevel",     SYSTEM_BATTERY_LEVEL },
                                   { "friendlyname",     SYSTEM_FRIENDLY_NAME },
@@ -649,6 +652,7 @@ const infomap pvr[] =            {{ "isrecording",              PVR_IS_RECORDING
 
 const infomap slideshow[] =      {{ "ispaused",         SLIDESHOW_ISPAUSED },
                                   { "isactive",         SLIDESHOW_ISACTIVE },
+                                  { "isvideo",          SLIDESHOW_ISVIDEO },
                                   { "israndom",         SLIDESHOW_ISRANDOM }};
 
 const int picture_slide_map[]  = {/* LISTITEM_PICTURE_RESOLUTION => */ SLIDE_RESOLUTION,
@@ -1337,7 +1341,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     URIUtils::RemoveExtension(strLabel);
     break;
   case WEATHER_PLUGIN:
-    strLabel = g_guiSettings.GetString("weather.addon");
+    strLabel = CSettings::Get().GetString("weather.addon");
     break;
   case SYSTEM_DATE:
     strLabel = GetDate();
@@ -1410,7 +1414,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
           CEpgInfoTag tag;
           return m_currentFile->GetPVRChannelInfoTag()->GetEPGNow(tag) ?
                    tag.Title() :
-                   g_guiSettings.GetBool("epg.hidenoinfoavailable") ?
+                   CSettings::Get().GetBool("epg.hidenoinfoavailable") ?
                      StringUtils::EmptyString :
                      g_localizeStrings.Get(19055); // no information available
         }
@@ -1714,7 +1718,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     return g_localizeStrings.Get(g_windowManager.GetFocusedWindow());
     break;
   case SYSTEM_STARTUP_WINDOW:
-    strLabel.Format("%i", g_guiSettings.GetInt("lookandfeel.startupwindow"));
+    strLabel.Format("%i", CSettings::Get().GetInt("lookandfeel.startupwindow"));
     break;
   case SYSTEM_CURRENT_CONTROL:
     {
@@ -1750,8 +1754,15 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
   case SYSTEM_PROFILECOUNT:
     strLabel.Format("%i", CProfilesManager::Get().GetNumberOfProfiles());
     break;
+  case SYSTEM_PROFILEAUTOLOGIN:
+    {
+      int profileId = CProfilesManager::Get().GetAutoLoginProfileId();
+      if ((profileId < 0) || (!CProfilesManager::Get().GetProfileName(profileId, strLabel)))
+        strLabel = g_localizeStrings.Get(37014); // Last used profile
+    }
+    break;
   case SYSTEM_LANGUAGE:
-    strLabel = g_guiSettings.GetString("locale.language");
+    strLabel = CSettings::Get().GetString("locale.language");
     break;
   case SYSTEM_TEMPERATURE_UNITS:
     strLabel = g_langInfo.GetTempUnitString();
@@ -1765,7 +1776,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     break;
   case SYSTEM_FRIENDLY_NAME:
     {
-      CStdString friendlyName = g_guiSettings.GetString("services.devicename");
+      CStdString friendlyName = CSettings::Get().GetString("services.devicename");
       if (friendlyName.Equals("XBMC"))
         strLabel.Format("%s (%s)", friendlyName.c_str(), g_application.getNetwork().GetHostName().c_str());
       else
@@ -1774,10 +1785,10 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
     break;
 
   case SKIN_THEME:
-    strLabel = g_guiSettings.GetString("lookandfeel.skintheme");
+    strLabel = CSettings::Get().GetString("lookandfeel.skintheme");
     break;
   case SKIN_COLOUR_THEME:
-    strLabel = g_guiSettings.GetString("lookandfeel.skincolors");
+    strLabel = CSettings::Get().GetString("lookandfeel.skincolors");
     break;
   case SKIN_ASPECT_RATIO:
     if (g_SkinInfo)
@@ -1856,7 +1867,7 @@ CStdString CGUIInfoManager::GetLabel(int info, int contextWindow, CStdString *fa
   case VISUALISATION_NAME:
     {
       AddonPtr addon;
-      strLabel = g_guiSettings.GetString("musicplayer.visualisation");
+      strLabel = CSettings::Get().GetString("musicplayer.visualisation");
       if (CAddonMgr::Get().GetAddon(strLabel,addon) && addon)
         strLabel = addon->Name();
     }
@@ -2182,7 +2193,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
   else if (condition == SYSTEM_ISINHIBIT)
     bReturn = g_application.IsIdleShutdownInhibited();
   else if (condition == SYSTEM_HAS_SHUTDOWN)
-    bReturn = (g_guiSettings.GetInt("powermanagement.shutdowntime") > 0);
+    bReturn = (CSettings::Get().GetInt("powermanagement.shutdowntime") > 0);
   else if (condition == SYSTEM_LOGGEDON)
     bReturn = !(g_windowManager.GetActiveWindow() == WINDOW_LOGIN_SCREEN);
   else if (condition == SYSTEM_SHOW_EXIT_BUTTON)
@@ -2304,6 +2315,11 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
     CGUIWindowSlideShow *slideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
     bReturn = (slideShow && slideShow->InSlideShow());
   }
+  else if (condition == SLIDESHOW_ISVIDEO)
+  {
+    CGUIWindowSlideShow *slideShow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
+    bReturn = (slideShow && slideShow->GetCurrentSlide() && slideShow->GetCurrentSlide()->IsVideo());
+  }
   else if (g_application.IsPlaying())
   {
     switch (condition)
@@ -2392,6 +2408,9 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
     case PLAYER_PASSTHROUGH:
       bReturn = g_application.m_pPlayer && g_application.m_pPlayer->IsPassthrough();
       break;
+    case PLAYER_ISINTERNETSTREAM:
+      bReturn = m_currentFile && URIUtils::IsInternetStream(m_currentFile->GetPath());
+      break;
     case MUSICPM_ENABLED:
       bReturn = g_partyModeManager.IsEnabled();
     break;
@@ -2419,7 +2438,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       }
       break;
     case VIDEOPLAYER_USING_OVERLAYS:
-      bReturn = (g_guiSettings.GetInt("videoplayer.rendermethod") == RENDER_OVERLAYS);
+      bReturn = (CSettings::Get().GetInt("videoplayer.rendermethod") == RENDER_OVERLAYS);
     break;
     case VIDEOPLAYER_ISFULLSCREEN:
       bReturn = g_windowManager.GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO;
@@ -2461,7 +2480,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       }
     break;
     case VISUALISATION_ENABLED:
-      bReturn = !g_guiSettings.GetString("musicplayer.visualisation").IsEmpty();
+      bReturn = !CSettings::Get().GetString("musicplayer.visualisation").empty();
     break;
     case VIDEOPLAYER_HAS_EPG:
       if (m_currentFile->HasPVRChannelInfoTag())
@@ -2533,7 +2552,7 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
         break;
       case SKIN_HAS_THEME:
         {
-          CStdString theme = g_guiSettings.GetString("lookandfeel.skintheme");
+          CStdString theme = CSettings::Get().GetString("lookandfeel.skintheme");
           theme.ToLower();
           URIUtils::RemoveExtension(theme);
           bReturn = theme.Equals(m_stringParameters[info.GetData1()]);
@@ -2703,7 +2722,7 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
         bReturn = g_alarmClock.HasAlarm(m_stringParameters[info.GetData1()]);
         break;
       case SYSTEM_GET_BOOL:
-        bReturn = g_guiSettings.GetBool(m_stringParameters[info.GetData1()]);
+        bReturn = CSettings::Get().GetBool(m_stringParameters[info.GetData1()]);
         break;
       case SYSTEM_HAS_CORE_ID:
         bReturn = g_cpuInfo.HasCoreId(info.GetData1());
@@ -3230,9 +3249,9 @@ CStdString CGUIInfoManager::LocalizeTime(const CDateTime &time, TIME_FORMAT form
   case TIME_FORMAT_HH_MM_XX:
       return time.GetAsLocalizedTime(use12hourclock ? "h:mm xx" : "HH:mm", false);
   case TIME_FORMAT_HH_MM_SS:
-    return time.GetAsLocalizedTime("hh:mm:ss", true);
+    return time.GetAsLocalizedTime(use12hourclock ? "hh:mm:ss" : "HH:mm:ss", true);
   case TIME_FORMAT_HH_MM_SS_XX:
-    return time.GetAsLocalizedTime("hh:mm:ss xx", true);
+    return time.GetAsLocalizedTime(use12hourclock ? "hh:mm:ss xx" : "HH:mm:ss", true);
   case TIME_FORMAT_H:
     return time.GetAsLocalizedTime("h", false);
   case TIME_FORMAT_H_MM_SS:
@@ -3569,7 +3588,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
     case VIDEOPLAYER_ORIGINALTITLE:
       return tag->GetEPGNow(epgTag) ?
           epgTag.Title() :
-          g_guiSettings.GetBool("epg.hidenoinfoavailable") ?
+          CSettings::Get().GetBool("epg.hidenoinfoavailable") ?
               StringUtils::EmptyString :
               g_localizeStrings.Get(19055); // no information available
     case VIDEOPLAYER_GENRE:
@@ -3587,7 +3606,7 @@ CStdString CGUIInfoManager::GetVideoLabel(int item)
     case VIDEOPLAYER_NEXT_TITLE:
       return tag->GetEPGNext(epgTag) ?
           epgTag.Title() :
-          g_guiSettings.GetBool("epg.hidenoinfoavailable") ?
+          CSettings::Get().GetBool("epg.hidenoinfoavailable") ?
               StringUtils::EmptyString :
               g_localizeStrings.Get(19055); // no information available
     case VIDEOPLAYER_NEXT_GENRE:
@@ -4200,7 +4219,7 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
       CEpgInfoTag epgTag;
       return item->GetPVRChannelInfoTag()->GetEPGNow(epgTag) ?
           epgTag.Title() :
-          g_guiSettings.GetBool("epg.hidenoinfoavailable") ?
+          CSettings::Get().GetBool("epg.hidenoinfoavailable") ?
               StringUtils::EmptyString :
               g_localizeStrings.Get(19055); // no information available
     }
@@ -4436,7 +4455,7 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
     if (item->HasVideoInfoTag())
     {
       if (!(!item->GetVideoInfoTag()->m_strShowTitle.IsEmpty() && item->GetVideoInfoTag()->m_iSeason == -1)) // dont apply to tvshows
-        if (item->GetVideoInfoTag()->m_playCount == 0 && !g_guiSettings.GetBool("videolibrary.showunwatchedplots"))
+        if (item->GetVideoInfoTag()->m_playCount == 0 && !CSettings::Get().GetBool("videolibrary.showunwatchedplots"))
           return g_localizeStrings.Get(20370);
 
       return item->GetVideoInfoTag()->m_strPlot;

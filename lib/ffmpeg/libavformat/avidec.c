@@ -954,11 +954,6 @@ start_sync:
             st = s->streams[n];
             ast = st->priv_data;
 
-            if (!ast) {
-                av_log(s, AV_LOG_WARNING, "Skiping foreign stream %d packet\n", n);
-                continue;
-            }
-
             if(s->nb_streams>=2){
                 AVStream *st1  = s->streams[1];
                 AVIStream *ast1= st1->priv_data;
@@ -1199,7 +1194,7 @@ resync:
             }
             ast->frame_offset += get_duration(ast, pkt->size);
         }
-        ast->remaining -= err;
+        ast->remaining -= size;
         if(!ast->remaining){
             avi->stream_index= -1;
             ast->packet_size= 0;
@@ -1221,7 +1216,7 @@ resync:
                 avi->dts_max = dts;
         }
 
-        return 0;
+        return size;
     }
 
     if ((err = avi_sync(s, 0)) < 0)

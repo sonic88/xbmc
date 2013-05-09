@@ -122,11 +122,10 @@ static av_cold int flashsv_decode_init(AVCodecContext *avctx)
 }
 
 
-static int flashsv2_prime(FlashSVContext *s, uint8_t *src,
-                          int size, int unp_size)
+static void flashsv2_prime(FlashSVContext *s, uint8_t *src,
+                           int size, int unp_size)
 {
     z_stream zs;
-    int zret; // Zlib return code
 
     zs.zalloc = NULL;
     zs.zfree  = NULL;
@@ -138,8 +137,7 @@ static int flashsv2_prime(FlashSVContext *s, uint8_t *src,
     s->zstream.avail_out = s->block_size * 3;
     inflate(&s->zstream, Z_SYNC_FLUSH);
 
-    if (deflateInit(&zs, 0) != Z_OK)
-        return -1;
+    deflateInit(&zs, 0);
     zs.next_in   = s->tmpblock;
     zs.avail_in  = s->block_size * 3 - s->zstream.avail_out;
     zs.next_out  = s->deflate_block;
@@ -147,18 +145,13 @@ static int flashsv2_prime(FlashSVContext *s, uint8_t *src,
     deflate(&zs, Z_SYNC_FLUSH);
     deflateEnd(&zs);
 
-    if ((zret = inflateReset(&s->zstream)) != Z_OK) {
-        av_log(s->avctx, AV_LOG_ERROR, "Inflate reset error: %d\n", zret);
-        return AVERROR_UNKNOWN;
-    }
+    inflateReset(&s->zstream);
 
     s->zstream.next_in   = s->deflate_block;
     s->zstream.avail_in  = s->deflate_block_size - zs.avail_out;
     s->zstream.next_out  = s->tmpblock;
     s->zstream.avail_out = s->block_size * 3;
     inflate(&s->zstream, Z_SYNC_FLUSH);
-
-    return 0;
 }
 
 static int flashsv_decode_block(AVCodecContext *avctx, AVPacket *avpkt,
@@ -171,14 +164,11 @@ static int flashsv_decode_block(AVCodecContext *avctx, AVPacket *avpkt,
     int k;
     int ret = inflateReset(&s->zstream);
     if (ret != Z_OK) {
-        av_log(avctx, AV_LOG_ERROR, "Inflate reset error: %d\n", ret);
-        return AVERROR_UNKNOWN;
+        //return -1;
     }
     if (s->zlibprime_curr || s->zlibprime_prev) {
-        ret = flashsv2_prime(s, s->blocks[blk_idx].pos, s->blocks[blk_idx].size,
+        flashsv2_prime(s, s->blocks[blk_idx].pos, s->blocks[blk_idx].size,
                        s->blocks[blk_idx].unp_size);
-        if (ret < 0)
-            return ret;
     }
     s->zstream.next_in   = avpkt->data + get_bits_count(gb) / 8;
     s->zstream.avail_in  = block_size;

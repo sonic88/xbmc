@@ -505,7 +505,7 @@ static int alloc_buffer(AVCodecContext *s, InputStream *ist, FrameBuffer **pbuf)
         const int v_shift = i==0 ? 0 : v_chroma_shift;
         if (s->flags & CODEC_FLAG_EMU_EDGE)
             buf->data[i] = buf->base[i];
-        else if (buf->base[i])
+        else
             buf->data[i] = buf->base[i] +
                            FFALIGN((buf->linesize[i]*edge >> v_shift) +
                                    (pixel_size*edge >> h_shift), 32);

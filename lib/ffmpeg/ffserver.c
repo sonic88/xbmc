@@ -3457,9 +3457,6 @@ static AVStream *add_av_stream1(FFStream *stream, AVCodecContext *codec, int cop
 {
     AVStream *fst;
 
-    if(stream->nb_streams >= FF_ARRAY_ELEMS(stream->streams))
-        return NULL;
-
     fst = av_mallocz(sizeof(AVStream));
     if (!fst)
         return NULL;
@@ -3804,9 +3801,6 @@ static void compute_bandwidth(void)
 static void add_codec(FFStream *stream, AVCodecContext *av)
 {
     AVStream *st;
-
-    if(stream->nb_streams >= FF_ARRAY_ELEMS(stream->streams))
-        return NULL;
 
     /* compute default parameters */
     switch(av->codec_type) {

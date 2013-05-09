@@ -565,10 +565,8 @@ static AVStream * new_stream(AVFormatContext *s, AVStream *st, int sid, int code
         if (!wst)
             return NULL;
         st = avformat_new_stream(s, NULL);
-        if (!st) {
-            av_free(wst);
+        if (!st)
             return NULL;
-        }
         st->id = sid;
         st->priv_data = wst;
     }

@@ -122,7 +122,6 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
     case GUI_MSG_WINDOW_INIT:
     {
       m_delayedSetting.reset();
-      m_currentSetting.reset();
       if (message.GetParam1() != WINDOW_INVALID && !m_returningFromSkinLoad)
       { // coming to this window first time (ie not returning back from some other window)
         // so we reset our section and control states
@@ -156,15 +155,17 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
       CGUIWindow::OnMessage(message);
       if (!m_returningFromSkinLoad)
       {
-        // cancel any delayed changes
-        if (m_delayedSetting != NULL)
+        int focusedControl = GetFocusedControlID();
+
+        // cancel any delayed changes if the focused control has changed
+        if (m_delayedSetting != NULL && m_delayedSetting->GetID() != focusedControl)
         {
           m_delayedTimer.Stop();
           CGUIMessage message(GUI_MSG_UPDATE_ITEM, GetID(), GetID(), 1); // param1 = 1 for "reset the control if it's invalid"
-          OnMessage(message);
+          g_windowManager.SendThreadMessage(message, GetID());
+          return true;
         }
 
-        int focusedControl = GetFocusedControlID();
         // check if we have changed the category and need to create new setting controls
         if (focusedControl >= CONTROL_START_BUTTONS && focusedControl < (int)(CONTROL_START_BUTTONS + m_categories.size()) &&
             focusedControl - CONTROL_START_BUTTONS != m_iCategory)
@@ -179,8 +180,6 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
           m_iCategory = focusedControl - CONTROL_START_BUTTONS;
           CreateSettings();
         }
-        else if (focusedControl >= CONTROL_START_CONTROL && focusedControl < (int)(CONTROL_START_CONTROL + m_settingControls.size()))
-          m_currentSetting = GetSettingControl(focusedControl);
       }
       return true;
     }
@@ -205,12 +204,18 @@ bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
     {
       if (m_delayedSetting != NULL)
       {
+        // first get the delayed setting and reset its member variable
+        // to avoid handling the delayed setting twice in case the OnClick()
+        // performed later causes the window to be deinitialized (e.g. when
+        // changing the language)
+        BaseSettingControlPtr delayedSetting = m_delayedSetting;
+        m_delayedSetting.reset();
+
         // if updating the setting fails and param1 has been specifically set
         // we need to call OnSettingChanged() to restore a valid value in the
         // setting control
-        if (!m_delayedSetting->OnClick() && message.GetParam1() != 0)
-          OnSettingChanged(m_delayedSetting->GetSetting());
-        m_delayedSetting.reset();
+        if (!delayedSetting->OnClick() && message.GetParam1() != 0)
+          OnSettingChanged(delayedSetting->GetSetting());
         return true;
       }
       break;
@@ -474,8 +479,6 @@ void CGUIWindowSettingsCategory::FreeControls()
 
 void CGUIWindowSettingsCategory::FreeSettingsControls()
 {
-  m_currentSetting.reset();
-
   // clear the settings group
   CGUIControlGroupList *control = (CGUIControlGroupList *)GetControl(SETTINGS_GROUP_ID);
   if (control)

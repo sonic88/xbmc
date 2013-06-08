@@ -446,7 +446,6 @@
     <ClCompile Include="..\..\xbmc\epg\EpgInfoTag.cpp" />
     <ClCompile Include="..\..\xbmc\epg\EpgSearchFilter.cpp" />
     <ClCompile Include="..\..\xbmc\epg\GUIEPGGridContainer.cpp" />
-    <ClCompile Include="..\..\xbmc\Favourites.cpp" />
     <ClCompile Include="..\..\xbmc\FileItem.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\AddonsDirectory.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\AFPDirectory.cpp" />
@@ -470,6 +469,7 @@
     <ClCompile Include="..\..\xbmc\filesystem\DllLibCurl.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\File.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\FileCache.cpp" />
+    <ClCompile Include="..\..\xbmc\filesystem\FavouritesDirectory.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\FileDirectoryFactory.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\FileFactory.cpp" />
     <ClCompile Include="..\..\xbmc\filesystem\FileReaderFile.cpp" />
@@ -1192,6 +1192,7 @@
     <ClInclude Include="..\..\xbmc\network\httprequesthandler\IHTTPRequestHandler.h" />
     <ClInclude Include="..\..\xbmc\filesystem\CircularCache.h" />
     <ClInclude Include="..\..\xbmc\filesystem\DirectoryCache.h" />
+    <ClInclude Include="..\..\xbmc\filesystem\FavouritesDirectory.h" />
     <ClInclude Include="..\..\xbmc\filesystem\FileCache.h" />
     <ClInclude Include="..\..\xbmc\filesystem\MemBufferCache.h" />
     <ClInclude Include="..\..\xbmc\filesystem\AddonsDirectory.h" />
@@ -1326,8 +1327,6 @@
     <ClCompile Include="..\..\xbmc\utils\CPUInfo.cpp" />
     <ClCompile Include="..\..\xbmc\utils\Crc32.cpp" />
     <ClCompile Include="..\..\xbmc\utils\DatabaseUtils.cpp" />
-    <ClCompile Include="..\..\xbmc\utils\DownloadQueue.cpp" />
-    <ClCompile Include="..\..\xbmc\utils\DownloadQueueManager.cpp" />
     <ClCompile Include="..\..\xbmc\utils\EdenVideoArtUpdater.cpp" />
     <ClCompile Include="..\..\xbmc\utils\EndianSwap.cpp" />
     <ClCompile Include="..\..\xbmc\utils\Fanart.cpp" />
@@ -1664,19 +1663,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release (DirectX)|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release (OpenGL)|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\utils\test\TestDownloadQueue.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (DirectX)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (OpenGL)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release (DirectX)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release (OpenGL)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Testsuite|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\utils\test\TestDownloadQueueManager.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (DirectX)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (OpenGL)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release (DirectX)|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release (OpenGL)|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\utils\test\TestEndianSwap.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (DirectX)|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug (OpenGL)|Win32'">true</ExcludedFromBuild>
@@ -1743,7 +1729,6 @@
     <ClCompile Include="..\..\xbmc\win32\stdio_utf8.cpp" />
     <ClCompile Include="..\..\xbmc\win32\strverscmp.cpp" />
     <ClCompile Include="..\..\xbmc\win32\Win32DelayedDllLoad.cpp" />
-    <ClCompile Include="..\..\xbmc\win32\win32env.cpp" />
     <ClCompile Include="..\..\xbmc\win32\WIN32Util.cpp" />
     <ClCompile Include="..\..\xbmc\win32\WindowHelper.cpp" />
     <ClCompile Include="..\..\xbmc\win32\XBMC_PC.cpp">
@@ -2077,7 +2062,6 @@
     <ClInclude Include="..\..\xbmc\epg\EpgInfoTag.h" />
     <ClInclude Include="..\..\xbmc\epg\EpgSearchFilter.h" />
     <ClInclude Include="..\..\xbmc\epg\GUIEPGGridContainer.h" />
-    <ClInclude Include="..\..\xbmc\Favourites.h" />
     <ClInclude Include="..\..\xbmc\FileItem.h" />
     <ClInclude Include="..\..\xbmc\filesystem\PVRDirectory.h" />
     <ClInclude Include="..\..\xbmc\filesystem\PVRFile.h" />
@@ -2439,8 +2423,6 @@
     <ClInclude Include="..\..\xbmc\utils\CPUInfo.h" />
     <ClInclude Include="..\..\xbmc\utils\Crc32.h" />
     <ClInclude Include="..\..\xbmc\utils\DatabaseUtils.h" />
-    <ClInclude Include="..\..\xbmc\utils\DownloadQueue.h" />
-    <ClInclude Include="..\..\xbmc\utils\DownloadQueueManager.h" />
     <ClInclude Include="..\..\xbmc\utils\EdenVideoArtUpdater.h" />
     <ClInclude Include="..\..\xbmc\utils\EndianSwap.h" />
     <ClInclude Include="..\..\xbmc\utils\Fanart.h" />

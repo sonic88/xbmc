@@ -95,6 +95,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     static CAdvancedSettings* getInstance();
 
     virtual void OnSettingsLoaded();
+    virtual void OnSettingsUnloaded();
 
     virtual void OnSettingChanged(const CSetting *setting);
 
@@ -363,6 +364,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     unsigned int m_addonPackageFolderSize;
 
     unsigned int m_cacheMemBufferSize;
+    bool m_alwaysForceBuffer;
 
     bool m_jsonOutputCompact;
     unsigned int m_jsonTcpPort;

@@ -25,7 +25,10 @@ using namespace jni;
 
 CJNIIntent::CJNIIntent(const std::string &action) : CJNIBase("android/content/Intent")
 {
-  m_object = new_object(GetClassName());
+  if(action.empty())
+    m_object = new_object(GetClassName());
+  else
+    m_object = new_object(GetClassName(), "<init>", "(Ljava/lang/String;)V", jcast<jhstring>(action));
 }
 
 std::string CJNIIntent::getAction()
@@ -90,7 +93,7 @@ void CJNIIntent::setData(const std::string &uri)
 
 void CJNIIntent::setDataAndType(const CJNIURI &uri, const std::string &type)
 {
-  call_method<jhobject>(m_object, "setDataAndType", "(Landroid/net/Uri;Ljava/lang/String;)Landroid/content/Intent;", uri.get(), jcast<jhstring>(type));
+  call_method<jhobject>(m_object, "setDataAndType", "(Landroid/net/Uri;Ljava/lang/String;)Landroid/content/Intent;", uri.get_raw(), jcast<jhstring>(type));
 }
 
 void CJNIIntent::setFlags(int flags)
@@ -108,3 +111,7 @@ void CJNIIntent::setType(const std::string &type)
   call_method<jhobject>(m_object, "setType", "(Ljava/lang/String;)Landroid/content/Intent;", jcast<jhstring>(type));
 }
 
+CJNIURI CJNIIntent::getData() const
+{
+  return (CJNIURI)call_method<jhobject>(m_object, "getData","()Landroid/net/Uri;");
+}

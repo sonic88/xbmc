@@ -103,10 +103,10 @@ public:
   bool GetHDDInfo(CStdString& strHDDModel, CStdString& strHDDSerial,CStdString& strHDDFirmware,CStdString& strHDDpw,CStdString& strHDDLockState);
   bool GetRefurbInfo(CStdString& rfi_FirstBootTime, CStdString& rfi_PowerCycleCount);
 
-#if defined(_LINUX) && !defined(TARGET_DARWIN) && !defined(__FreeBSD__)
+#if defined(TARGET_LINUX)
   CStdString GetLinuxDistro();
 #endif
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   CStdString GetUnameVersion();
 #endif
 #if defined(TARGET_WINDOWS)
@@ -115,7 +115,6 @@ public:
   CStdString GetUserAgent();
   bool HasInternet();
   bool IsAppleTV2();
-  bool HasVDADecoder();
   bool HasVideoToolBoxDecoder();
   bool IsAeroDisabled();
   static bool IsWindowsVersion(WindowsVersion ver);

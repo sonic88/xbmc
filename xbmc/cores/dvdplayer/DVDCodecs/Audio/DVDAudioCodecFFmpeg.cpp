@@ -19,7 +19,7 @@
  */
 
 #include "DVDAudioCodecFFmpeg.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include "XMemUtils.h"
 #endif
 #include "../../DVDStreamInfo.h"
@@ -34,7 +34,7 @@ CDVDAudioCodecFFmpeg::CDVDAudioCodecFFmpeg() : CDVDAudioCodec()
 {
   m_iBufferSize1 = 0;
   m_iBufferSize2 = 0;
-  m_pBuffer2     = (BYTE*)_aligned_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE + FF_INPUT_BUFFER_PADDING_SIZE, 16);
+  m_pBuffer2     = (uint8_t*)_aligned_malloc(AVCODEC_MAX_AUDIO_FRAME_SIZE + FF_INPUT_BUFFER_PADDING_SIZE, 16);
   memset(m_pBuffer2, 0, AVCODEC_MAX_AUDIO_FRAME_SIZE + FF_INPUT_BUFFER_PADDING_SIZE);
 
   m_iBuffered = 0;
@@ -147,7 +147,7 @@ void CDVDAudioCodecFFmpeg::Dispose()
   m_iBuffered = 0;
 }
 
-int CDVDAudioCodecFFmpeg::Decode(BYTE* pData, int iSize)
+int CDVDAudioCodecFFmpeg::Decode(uint8_t* pData, int iSize)
 {
   int iBytesUsed, got_frame;
   if (!m_pCodecContext) return -1;
@@ -192,7 +192,7 @@ void CDVDAudioCodecFFmpeg::ConvertToFloat()
 {
   if(m_pCodecContext->sample_fmt != AV_SAMPLE_FMT_FLT && m_iBufferSize1 > 0)
   {
-    if(m_pConvert && m_pCodecContext->sample_fmt != m_iSampleFormat)
+    if(m_pConvert && (m_pCodecContext->sample_fmt != m_iSampleFormat || m_channels != m_pCodecContext->channels))
       m_dllSwResample.swr_free(&m_pConvert);
 
     if(!m_pConvert)
@@ -226,7 +226,7 @@ void CDVDAudioCodecFFmpeg::ConvertToFloat()
   }
 }
 
-int CDVDAudioCodecFFmpeg::GetData(BYTE** dst)
+int CDVDAudioCodecFFmpeg::GetData(uint8_t** dst)
 {
   if(m_iBufferSize1)
   {

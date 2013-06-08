@@ -45,9 +45,9 @@
 #elif defined(HAS_SDL_JOYSTICK)
 #include "input/SDLJoystick.h"
 #endif // defined(HAS_SDL_JOYSTICK)
-#if defined(TARGET_LINUX)
+#if defined(TARGET_POSIX)
 #include "linux/LinuxTimezone.h"
-#endif // defined(TARGET_LINUX)
+#endif // defined(TARGET_POSIX)
 #include "network/NetworkServices.h"
 #include "network/upnp/UPnPSettings.h"
 #include "network/WakeOnAccess.h"
@@ -250,8 +250,6 @@ bool CSettings::Initialize()
   if (!InitializeDefinitions())
     return false;
 
-  InitializeVisibility();
-  InitializeDefaults();
   m_settingsManager->SetInitialized();
 
   InitializeISettingsHandlers();  
@@ -457,21 +455,6 @@ CSettingSection* CSettings::GetSection(const std::string &section) const
   return m_settingsManager->GetSection(section);
 }
 
-SettingDependencyMap CSettings::GetDependencies(const std::string &id) const
-{
-  return m_settingsManager->GetDependencies(id);
-}
-
-SettingDependencyMap CSettings::GetDependencies(const CSetting *setting) const
-{
-  return m_settingsManager->GetDependencies(setting);
-}
-
-void* CSettings::GetSettingOptionsFiller(const CSetting *setting)
-{
-  return m_settingsManager->GetSettingOptionsFiller(setting);
-}
-
 bool CSettings::GetBool(const std::string &id) const
 {
   return m_settingsManager->GetBool(id);
@@ -550,9 +533,6 @@ bool CSettings::InitializeDefinitions()
 #if defined(TARGET_WINDOWS)
   if (CFile::Exists(SETTINGS_XML_FOLDER "win32.xml") && !Initialize(SETTINGS_XML_FOLDER "win32.xml"))
     CLog::Log(LOGFATAL, "Unable to load win32-specific settings definitions");
-#elif defined(TARGET_LINUX)
-  if (CFile::Exists(SETTINGS_XML_FOLDER "linux.xml") && !Initialize(SETTINGS_XML_FOLDER "linux.xml"))
-    CLog::Log(LOGFATAL, "Unable to load linux-specific settings definitions");
 #elif defined(TARGET_ANDROID)
   if (CFile::Exists(SETTINGS_XML_FOLDER "android.xml") && !Initialize(SETTINGS_XML_FOLDER "android.xml"))
     CLog::Log(LOGFATAL, "Unable to load android-specific settings definitions");
@@ -562,6 +542,9 @@ bool CSettings::InitializeDefinitions()
 #elif defined(TARGET_FREEBSD)
   if (CFile::Exists(SETTINGS_XML_FOLDER "freebsd.xml") && !Initialize(SETTINGS_XML_FOLDER "freebsd.xml"))
     CLog::Log(LOGFATAL, "Unable to load freebsd-specific settings definitions");
+#elif defined(TARGET_LINUX)
+  if (CFile::Exists(SETTINGS_XML_FOLDER "linux.xml") && !Initialize(SETTINGS_XML_FOLDER "linux.xml"))
+    CLog::Log(LOGFATAL, "Unable to load linux-specific settings definitions");
 #elif defined(TARGET_DARWIN)
   if (CFile::Exists(SETTINGS_XML_FOLDER "darwin.xml") && !Initialize(SETTINGS_XML_FOLDER "darwin.xml"))
     CLog::Log(LOGFATAL, "Unable to load darwin-specific settings definitions");
@@ -577,6 +560,12 @@ bool CSettings::InitializeDefinitions()
 #endif
 #endif
 #endif
+
+  // load any custom visibility and default values before loading the special
+  // appliance.xml so that appliances are able to overwrite even those values
+  InitializeVisibility();
+  InitializeDefaults();
+
   if (CFile::Exists(SETTINGS_XML_FOLDER "appliance.xml") && !Initialize(SETTINGS_XML_FOLDER "appliance.xml"))
     CLog::Log(LOGFATAL, "Unable to load appliance-specific settings definitions");
 
@@ -593,24 +582,15 @@ void CSettings::InitializeSettingTypes()
 void CSettings::InitializeVisibility()
 {
   // hide some settings if necessary
-#if defined(TARGET_LINUX) || defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN)
   CSettingString* timezonecountry = (CSettingString*)m_settingsManager->GetSetting("locale.timezonecountry");
   CSettingString* timezone = (CSettingString*)m_settingsManager->GetSetting("locale.timezone");
 
-#if defined(TARGET_DARWIN)
   if (!g_sysinfo.IsAppleTV2() || GetIOSVersion() >= 4.3)
   {
     timezonecountry->SetVisible(false);
     timezone->SetVisible(false);
   }
-#endif
- 
-#if defined(TARGET_LINUX)
-  if (timezonecountry->IsVisible())
-    timezonecountry->SetDefault(g_timezone.GetCountryByTimezone(g_timezone.GetOSConfiguredTimezone()));
-  if (timezone->IsVisible())
-    timezone->SetDefault(g_timezone.GetOSConfiguredTimezone());
-#endif
 #endif
 }
 
@@ -620,6 +600,16 @@ void CSettings::InitializeDefaults()
 #if defined(HAS_SKIN_TOUCHED) && defined(TARGET_DARWIN_IOS) && !defined(TARGET_DARWIN_IOS_ATV2)
   ((CSettingAddon*)m_settingsManager->GetSetting("lookandfeel.skin"))->SetDefault("skin.touched");
 #endif
+
+#if defined(TARGET_POSIX)
+  CSettingString* timezonecountry = (CSettingString*)m_settingsManager->GetSetting("locale.timezonecountry");
+  CSettingString* timezone = (CSettingString*)m_settingsManager->GetSetting("locale.timezone");
+
+  if (timezonecountry->IsVisible())
+    timezonecountry->SetDefault(g_timezone.GetCountryByTimezone(g_timezone.GetOSConfiguredTimezone()));
+  if (timezone->IsVisible())
+    timezone->SetDefault(g_timezone.GetOSConfiguredTimezone());
+#endif // defined(TARGET_POSIX)
 
 #if defined(TARGET_WINDOWS)
   #if defined(HAS_DX)
@@ -739,11 +729,6 @@ void CSettings::InitializeConditions()
 #endif
 #ifdef HAVE_LIBVA
   m_settingsManager->AddCondition("have_libva");
-#endif
-#ifdef HAVE_LIBVDADECODER
-  m_settingsManager->AddCondition("have_libvdadecoder");
-  if (g_sysinfo.HasVDADecoder())
-    m_settingsManager->AddCondition("hasvdadecoder");
 #endif
 #ifdef HAVE_LIBVDPAU
   m_settingsManager->AddCondition("have_libvdpau");

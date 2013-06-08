@@ -79,7 +79,7 @@ public:
 
   virtual bool Open(const char* strFile, const std::string& content);
   virtual void Close();
-  virtual int Read(BYTE* buf, int buf_size);
+  virtual int Read(uint8_t* buf, int buf_size);
   virtual int64_t Seek(int64_t offset, int whence);
   virtual bool Pause(double dTime) { return false; };
   virtual int GetBlockSize() { return DVDSTREAM_BLOCK_SIZE_DVD; }
@@ -135,12 +135,11 @@ public:
   float GetVideoAspectRatio();
 
   bool SeekTime(int iTimeInMsec); //seek within current pg(c)
-  virtual int GetCurrentGroupId() { return m_icurrentGroupId; }
 
   double GetTimeStampCorrection() { return (double)(m_iVobUnitCorrection * 1000) / 90; }
 protected:
 
-  int ProcessBlock(BYTE* buffer, int* read);
+  int ProcessBlock(uint8_t* buffer, int* read);
 
   void CheckButtons();
 
@@ -165,7 +164,6 @@ protected:
   bool m_bCheckButtons;
   bool m_bEOF;
 
-  unsigned int m_icurrentGroupId;
   int m_holdmode;
 
   int m_iTotalTime;
@@ -188,7 +186,7 @@ protected:
 
   IDVDPlayer* m_pDVDPlayer;
 
-  BYTE m_lastblock[DVD_VIDEO_BLOCKSIZE];
-  int  m_lastevent;
+  uint8_t m_lastblock[DVD_VIDEO_BLOCKSIZE];
+  int     m_lastevent;
 };
 

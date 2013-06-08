@@ -52,10 +52,10 @@ class CPlayerController;
 #include "settings/ISettingsHandler.h"
 #include "settings/ISettingCallback.h"
 #include "settings/ISubSettings.h"
-#if !defined(_WIN32) && defined(HAS_DVD_DRIVE)
+#if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
 #include "storage/DetectDVDType.h"
 #endif
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "win32/WIN32Util.h"
 #endif
 #include "utils/Stopwatch.h"
@@ -269,7 +269,7 @@ public:
   MEDIA_DETECT::CAutorun* m_Autorun;
 #endif
 
-#if !defined(_WIN32) && defined(HAS_DVD_DRIVE)
+#if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
   MEDIA_DETECT::CDetectDVDMedia m_DetectDVDType;
 #endif
 
@@ -301,8 +301,6 @@ public:
   CStdString m_strPlayListFile;
 
   int GlobalIdleTime();
-  void NewFrame();
-  bool WaitFrame(unsigned int timeout);
 
   void EnablePlatformDirectories(bool enable=true)
   {
@@ -340,8 +338,6 @@ public:
   {
     return m_bTestMode;
   }
-
-  bool IsPresentFrame();
 
   void Minimize();
   bool ToggleDPMS(bool manual);
@@ -386,7 +382,7 @@ protected:
   ADDON::AddonPtr m_screenSaver;
 
   // timer information
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
   CWinIdleTimer m_idleTimer;
   CWinIdleTimer m_screenSaverTimer;
 #else
@@ -432,10 +428,6 @@ protected:
   bool m_bEnableLegacyRes;
   bool m_bTestMode;
   bool m_bSystemScreenSaverEnable;
-
-  int        m_frameCount;
-  CCriticalSection m_frameMutex;
-  XbmcThreads::ConditionVariable  m_frameCond;
 
   VIDEO::CVideoInfoScanner *m_videoInfoScanner;
   MUSIC_INFO::CMusicInfoScanner *m_musicInfoScanner;

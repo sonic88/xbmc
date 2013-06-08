@@ -33,10 +33,6 @@ ifeq ($(OS),osx)
   EXCLUDED_DEPENDS = libusb
 endif
 
-ifeq ($(OS),android)
-  EXCLUDED_DEPENDS = libshairplay
-endif
-
 DEPENDS := $(filter-out $(EXCLUDED_DEPENDS),$(DEPENDS))
 
 ZLIB=
@@ -72,7 +68,6 @@ libvorbis: libogg
 libflac: libogg gettext
 libass: fontconfig libpng freetype2 expat $(ICONV)
 librtmp: openssl
-libxml2: $(ICONV)
 libmicrohttpd: openssl libgpg-error libgcrypt
 python26: expat gettext libxml2 sqlite3 openssl libffi
 libcdio: $(ICONV)

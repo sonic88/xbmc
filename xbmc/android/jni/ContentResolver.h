@@ -1,7 +1,6 @@
 #pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
+ *      Copyright (C) 2013 Team XBMC
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,20 +18,24 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#include "JNIBase.h"
 
-#include "utils/StdString.h"
-
-class CFileItemList;
-class CFileItem;
-
-class CFavourites
+class CJNICursor;
+class CJNIURI;
+class CJNIContentResolver : public CJNIBase
 {
 public:
-  static bool Load(CFileItemList& items);
-  static bool LoadFavourites(CStdString& strPath, CFileItemList& items);
-  static bool AddOrRemove(CFileItem *item, int contextWindow);
-  static bool Save(const CFileItemList& items);
-  static bool IsFavourite(CFileItem *item, int contextWindow);
+  CJNIContentResolver(const jni::jhobject &object) : CJNIBase(object){};
+
+  static std::string SCHEME_CONTENT;
+  static std::string SCHEME_ANDROID_RESOURCE;
+  static std::string SCHEME_FILE;
+  static std::string CURSOR_ITEM_BASE_TYPE;
+  static std::string CURSOR_DIR_BASE_TYPE;
+
+  CJNICursor query(const CJNIURI &uri, const std::vector<std::string> &projection, const std::string &selection, const std::vector<std::string> &selectionArgs, const std::string &sortOrder);
+
+  static void PopulateStaticFields();
 private:
-  static CStdString GetExecutePath(const CFileItem *item, int contextWindow);
+  CJNIContentResolver();
 };

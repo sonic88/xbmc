@@ -44,7 +44,7 @@
 #include "guilib/GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
-#include "Favourites.h"
+#include "filesystem/FavouritesDirectory.h"
 #include "playlists/PlayList.h"
 #include "utils/AsyncFileCopy.h"
 #include "storage/MediaManager.h"
@@ -496,7 +496,7 @@ bool CGUIWindowFileManager::Update(int iList, const CStdString &strDirectory)
   {
     CFileItemPtr pItem = m_vecItems[iList]->Get(i);
     if (pItem->IsHD() &&
-        URIUtils::GetExtension(pItem->GetPath()).CompareNoCase(".tbn") == 0)
+        URIUtils::HasExtension(pItem->GetPath(), ".tbn"))
     {
       pItem->SetArt("thumb", pItem->GetPath());
     }
@@ -991,7 +991,7 @@ void CGUIWindowFileManager::OnPopupMenu(int list, int item, bool bContextDriven 
   {
     choices.Add(1, 188); // SelectAll
     if (!pItem->IsParentFolder())
-      choices.Add(2, CFavourites::IsFavourite(pItem.get(), GetID()) ? 14077 : 14076); // Add/Remove Favourite
+      choices.Add(2,  XFILE::CFavouritesDirectory::IsFavourite(pItem.get(), GetID()) ? 14077 : 14076); // Add/Remove Favourite
     if (vecCores.size() > 1)
       choices.Add(3, 15213); // Play Using...
     if (CanRename(list) && !pItem->IsParentFolder())
@@ -1021,7 +1021,7 @@ void CGUIWindowFileManager::OnPopupMenu(int list, int item, bool bContextDriven 
   }
   if (btnid == 2)
   {
-    CFavourites::AddOrRemove(pItem.get(), GetID());
+    XFILE::CFavouritesDirectory::AddOrRemove(pItem.get(), GetID());
     return;
   }
   if (btnid == 3)

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.4], [http://trac.xbmc.org])
+AC_INIT([xbmc], [12.9.5], [http://trac.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
 m4_include([m4/ax_python_devel.m4])
@@ -141,8 +141,6 @@ vaapi_not_found="== Could not find libva. VAAPI support disabled. =="
 vaapi_disabled="== VAAPI support manually disabled. =="
 crystalhd_not_found="== Could not find libcrystalhd. CrystalHD support disabled. =="
 crystalhd_disabled="== CrystalHD support manually disabled. =="
-vdadecoder_enabled="== VDADecoder support enabled. =="
-vdadecoder_disabled="== VDADecoder support manually disabled. =="
 vtbdecoder_enabled="== VTBDecoder support enabled. =="
 vtbdecoder_disabled="== VTBDecoder support manually disabled. =="
 openmax_disabled="== OpenMax support manually disabled. =="
@@ -262,12 +260,6 @@ AC_ARG_ENABLE([crystalhd],
   [enable CrystalHD decoding (default is auto)])],
   [use_crystalhd=$enableval],
   [use_crystalhd=auto])
-
-AC_ARG_ENABLE([vdadecoder],
-  [AS_HELP_STRING([--enable-vdadecoder],
-  [enable VDADecoder decoding (default is auto)])],
-  [use_vdadecoder=$enableval],
-  [use_vdadecoder=auto])
 
 AC_ARG_ENABLE([vtbdecoder],
   [AS_HELP_STRING([--enable-vtbdecoder],
@@ -608,7 +600,6 @@ case $host in
      use_neon=yes
      use_libcec=no
      use_crystalhd=no
-     use_vdadecoder=no
      use_vtbdecoder=yes
      use_optical_drive=no
      use_dvdcss=no
@@ -633,7 +624,6 @@ case $host in
      ;;
   powerpc-apple-darwin*)
      use_joystick=no
-     use_vdadecoder=no
      use_vtbdecoder=no
      use_crystalhd=no
      ARCH="powerpc-osx"
@@ -708,7 +698,6 @@ case $use_platform in
      use_cpu=arm1176jzf-s
      use_hardcoded_tables="yes"
      use_alsa="no"
-     USE_TEXTUREPACKER_NATIVE_ROOT="$TEXTUREPACKER_NATIVE_ROOT"
      ARCH="arm"
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL -DTARGET_RASPBERRY_PI")
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
@@ -1821,26 +1810,6 @@ else
   USE_CRYSTALHD=0
 fi
 
-# VDADecoder
-if test "x$use_vdadecoder" != "xno"; then
-  if test "$host_vendor" = "apple" ; then
-    HAVE_LIBVDADECODER=1
-    AC_DEFINE([HAVE_LIBVDADECODER], [1], [Define to 1 if you have the 'VDADecoder' library.])
-    AC_MSG_NOTICE($vdadecoder_enabled)
-    USE_VDA=1
-  else
-    if test "x$use_vdadecoder" = "xyes"; then
-      AC_MSG_ERROR([VDA Decoder not supported on this platform])
-    else
-      use_vdadecoder="no"
-      AC_MSG_NOTICE($vdadecoder_disabled)
-    fi
-    USE_VDA=0
-  fi
-else
-  AC_MSG_NOTICE($vdadecoder_disabled)
-fi
-
 # VTBDecoder
 if test "x$use_vtbdecoder" != "xno"; then
   if test "$host_vendor" = "apple" ; then
@@ -2036,12 +2005,6 @@ if test "x$use_crystalhd" != "xno"; then
   final_message="$final_message\n  CrystalHD:\tYes"
 else
   final_message="$final_message\n  CrystalHD:\tNo"
-fi
-
-if test "x$use_vdadecoder" != "xno"; then
-  final_message="$final_message\n  VDADecoder:\tYes"
-else
-  final_message="$final_message\n  VDADecoder:\tNo"
 fi
 
 if test "x$use_vtbdecoder" != "xno"; then
@@ -2511,7 +2474,6 @@ AC_SUBST(USE_LIBSMBCLIENT)
 AC_SUBST(USE_LIBNFS)
 AC_SUBST(USE_LIBAFPCLIENT)
 AC_SUBST(USE_AIRPLAY)
-AC_SUBST(USE_VDA)
 AC_SUBST(USE_OPENMAX)
 AC_SUBST(USE_PULSE)
 AC_SUBST(USE_XRANDR)
@@ -2590,7 +2552,7 @@ XB_CONFIG_MODULE([lib/ffmpeg], [
     ffmpg_config="$ffmpg_config --disable-devices  --disable-doc"
     ffmpg_config="$ffmpg_config --disable-ffplay   --disable-ffmpeg"
     ffmpg_config="$ffmpg_config --disable-ffprobe  --disable-ffserver"
-    ffmpg_config="$ffmpg_config --disable-vda      --disable-crystalhd"
+    ffmpg_config="$ffmpg_config --enable-vda       --disable-crystalhd"
     ffmpg_config="$ffmpg_config --disable-decoder=mpeg_xvmc"
 
     # handle conditional enables/disables

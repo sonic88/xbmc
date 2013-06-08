@@ -187,7 +187,7 @@ bool CMusicDatabase::CreateTables()
     CLog::Log(LOGINFO, "create song index3");
     m_pDS->exec("CREATE INDEX idxSong3 ON song(idAlbum)");
     CLog::Log(LOGINFO, "create song index6");
-    m_pDS->exec("CREATE UNIQUE INDEX idxSong6 ON song( idPath, strFileName(255) )");
+    m_pDS->exec("CREATE INDEX idxSong6 ON song( idPath, strFileName(255) )");
     CLog::Log(LOGINFO, "create song index7");
     m_pDS->exec("CREATE UNIQUE INDEX idxSong7 ON song( idAlbum, strMusicBrainzTrackID(36) )");
 
@@ -2022,8 +2022,7 @@ bool CMusicDatabase::CleanupSongsByIds(const CStdString &strSongIds)
       //  Special case for streams inside an ogg file. (oggstream)
       //  The last dir in the path is the ogg file that
       //  contains the stream, so test if its there
-      CStdString strExtension=URIUtils::GetExtension(strFileName);
-      if (strExtension==".oggstream" || strExtension==".nsfstream")
+      if (URIUtils::HasExtension(strFileName, ".oggstream|.nsfstream"))
       {
         CStdString strFileAndPath=strFileName;
         URIUtils::GetDirectory(strFileAndPath, strFileName);
@@ -2191,6 +2190,12 @@ bool CMusicDatabase::CleanupPaths()
     CLog::Log(LOGERROR, "Exception in CMusicDatabase::CleanupPaths() or was aborted");
   }
   return false;
+}
+
+bool CMusicDatabase::InsideScannedPath(const CStdString& path)
+{
+  CStdString sql = PrepareSQL("select idPath from path where SUBSTR(strPath,1,%i)='%s' LIMIT 1", path.size(), path.c_str());
+  return !GetSingleValue(sql).empty();
 }
 
 bool CMusicDatabase::CleanupArtists()
@@ -3724,7 +3729,7 @@ bool CMusicDatabase::UpdateOldVersion(int version)
   if (version < 33)
   {
     m_pDS->exec("DROP INDEX idxSong6 ON song");
-    m_pDS->exec("CREATE UNIQUE INDEX idxSong6 on song( idPath, strFileName(255) )");
+    m_pDS->exec("CREATE INDEX idxSong6 on song( idPath, strFileName(255) )");
   }
 
   if (version < 34)
@@ -3777,6 +3782,13 @@ bool CMusicDatabase::UpdateOldVersion(int version)
       }
     }
   }
+ 
+  if (version < 37)
+  {
+    m_pDS->exec("DROP INDEX idxSong6 ON song");
+    m_pDS->exec("CREATE INDEX idxSong6 on song( idPath, strFileName(255) )");
+  }
+    
   // always recreate the views after any table change
   CreateViews();
 
@@ -3785,7 +3797,7 @@ bool CMusicDatabase::UpdateOldVersion(int version)
 
 int CMusicDatabase::GetMinVersion() const
 {
-  return 36;
+  return 37;
 }
 
 unsigned int CMusicDatabase::GetSongIDs(const Filter &filter, vector<pair<int,int> > &songIDs)

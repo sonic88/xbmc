@@ -375,7 +375,7 @@ int CBuiltins::Execute(const CStdString& execString)
     {
       // disable the screensaver
       g_application.WakeUpScreenSaverAndDPMS();
-#if defined(__APPLE__) && defined(__arm__)
+#if defined(TARGET_DARWIN_IOS)
       if (params[0].Equals("shutdownmenu"))
         CBuiltins::Execute("Quit");
 #endif
@@ -401,8 +401,7 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("runscript") && params.size())
   {
 #if defined(TARGET_DARWIN_OSX)
-    if (URIUtils::GetExtension(strParameterCaseIntact) == ".applescript" ||
-        URIUtils::GetExtension(strParameterCaseIntact) == ".scpt")
+    if (URIUtils::HasExtension(strParameterCaseIntact, ".applescript|.scpt"))
     {
       CStdString osxPath = CSpecialProtocol::TranslatePath(strParameterCaseIntact);
       Cocoa_DoAppleScriptFile(osxPath.c_str());
@@ -473,7 +472,6 @@ int CBuiltins::Execute(const CStdString& execString)
     if (g_graphicsContext.IsValidResolution(res))
     {
       CDisplaySettings::Get().SetCurrentResolution(res, true);
-      g_graphicsContext.SetVideoResolution(res);
       g_application.ReloadSkin();
     }
   }

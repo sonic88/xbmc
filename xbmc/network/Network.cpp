@@ -26,6 +26,9 @@
 #include "ApplicationMessenger.h"
 #include "network/NetworkServices.h"
 #include "utils/log.h"
+#ifdef TARGET_WINDOWS
+#include "utils/SystemInfo.h"
+#endif
 
 using namespace std;
 
@@ -273,7 +276,7 @@ bool CNetwork::WakeOnLan(const char* mac)
 static const char* ConnectHostPort(SOCKET soc, const struct sockaddr_in& addr, struct timeval& timeOut, bool tryRead)
 {
   // set non-blocking
-#ifdef _MSC_VER
+#ifdef TARGET_WINDOWS
   u_long nonblocking = 1;
   int result = ioctlsocket(soc, FIONBIO, &nonblocking);
 #else
@@ -287,7 +290,7 @@ static const char* ConnectHostPort(SOCKET soc, const struct sockaddr_in& addr, s
 
   if (result < 0)
   {
-#ifdef _MSC_VER
+#ifdef TARGET_WINDOWS
     if (WSAGetLastError() != WSAEWOULDBLOCK)
 #else
     if (errno != EINPROGRESS)
@@ -374,7 +377,7 @@ bool CNetwork::PingHost(unsigned long ipaddr, unsigned short port, unsigned int 
 
   if (err_msg && *err_msg)
   {
-#ifdef _MSC_VER
+#ifdef TARGET_WINDOWS
     CStdString sock_err = WUSysMsg(WSAGetLastError());
 #else
     CStdString sock_err = strerror(errno);
@@ -396,10 +399,16 @@ int CreateTCPServerSocket(const int port, const bool bindLocal, const int backlo
   struct sockaddr_in  *s4;
   int    sock;
   bool   v4_fallback = false;
+#ifdef TARGET_WINDOWS
+  // Windows XP and earlier don't support the IPV6_V6ONLY socket option
+  // so always fall back to IPv4 directly to keep old functionality
+  if (CSysInfo::GetWindowsVersion() <= CSysInfo::WindowsVersionWinXP)
+    v4_fallback = true;
+#endif
 
 #ifdef WINSOCK_VERSION
-  const char yes = 1;
-  const char no = 0;
+  int yes = 1;
+  int no = 0;
 #else
   unsigned int yes = 1;
   unsigned int no = 0;
@@ -407,23 +416,33 @@ int CreateTCPServerSocket(const int port, const bool bindLocal, const int backlo
   
   memset(&addr, 0, sizeof(addr));
   
-  if ((sock = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0)
+  if (!v4_fallback &&
+     (sock = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)) >= 0)
+  {
+    // in case we're on ipv6, make sure the socket is dual stacked
+    if (setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&no, sizeof(no)) < 0)
+    {
+#ifdef _MSC_VER
+      CStdString sock_err = WUSysMsg(WSAGetLastError());
+#else
+      CStdString sock_err = strerror(errno);
+#endif
+      CLog::Log(LOGWARNING, "%s Server: Only IPv6 supported (%s)", callerName, sock_err.c_str());
+    }
+  }
+  else
+  {
     v4_fallback = true;
-  
-  //in case we're on ipv6, make sure the socket is dual stacked
-  if (!v4_fallback)
-    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)); 
-  
-  if (v4_fallback)
     sock = socket(PF_INET, SOCK_STREAM, 0);
-
-  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+  }
   
   if (sock == INVALID_SOCKET)
   {
     CLog::Log(LOGERROR, "%s Server: Failed to create serversocket", callerName);
     return INVALID_SOCKET;
   }
+
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes));
   
   if (v4_fallback)
   {

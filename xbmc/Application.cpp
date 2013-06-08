@@ -105,7 +105,7 @@
 #include <SDL/SDL.h>
 #endif
 
-#if defined(FILESYSTEM) && !defined(_LINUX)
+#if defined(FILESYSTEM) && !defined(TARGET_POSIX)
 #include "filesystem/FileDAAP.h"
 #endif
 #ifdef HAS_UPNP
@@ -113,7 +113,7 @@
 #include "network/upnp/UPnPSettings.h"
 #include "filesystem/UPnPDirectory.h"
 #endif
-#if defined(_LINUX) && defined(HAS_FILESYSTEM_SMB)
+#if defined(TARGET_POSIX) && defined(HAS_FILESYSTEM_SMB)
 #include "filesystem/SMBDirectory.h"
 #endif
 #ifdef HAS_FILESYSTEM_NFS
@@ -136,7 +136,7 @@
 #endif
 #include "network/Zeroconf.h"
 #include "network/ZeroconfBrowser.h"
-#ifndef _LINUX
+#ifndef TARGET_POSIX
 #include "threads/platform/win/Win32Exception.h"
 #endif
 #ifdef HAS_EVENT_SERVER
@@ -320,7 +320,7 @@
 #include "settings/SkinSettings.h"
 #include "view/ViewStateSettings.h"
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include "XHandle.h"
 #endif
 
@@ -339,10 +339,6 @@
 
 #if defined(TARGET_ANDROID)
 #include "android/activity/XBMCApp.h"
-#endif
-
-#ifdef TARGET_LINUX
-#include "linux/LinuxTimezone.h"
 #endif
 
 #ifdef TARGET_WINDOWS
@@ -419,8 +415,6 @@ CApplication::CApplication(void)
   m_pKaraokeMgr = new CKaraokeLyricsManager();
 #endif
   m_currentStack = new CFileItemList;
-
-  m_frameCount = 0;
 
   m_bPresentFrame = false;
   m_bPlatformDirectories = true;
@@ -505,10 +499,7 @@ bool CApplication::OnEvent(XBMC_Event& newEvent)
         // when fullscreen, remain fullscreen and resize to the dimensions of the new screen
         RESOLUTION newRes = (RESOLUTION) g_Windowing.DesktopResolution(g_Windowing.GetCurrentScreen());
         if (newRes != g_graphicsContext.GetVideoResolution())
-        {
           CDisplaySettings::Get().SetCurrentResolution(newRes, true);
-          g_graphicsContext.SetVideoResolution(newRes);
-        }
       }
       else
 #endif
@@ -607,14 +598,14 @@ bool CApplication::Create()
     g_graphicsContext.ResetOverscan((RESOLUTION)i, CDisplaySettings::Get().GetResolutionInfo(i).Overscan);
   }
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   tzset();   // Initialize timezone information variables
 #endif
 
   // Grab a handle to our thread to be used later in identifying the render thread.
   m_threadID = CThread::GetCurrentThreadId();
 
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   //floating point precision to 24 bits (faster performance)
   _controlfp(_PC_24, _MCW_PC);
 
@@ -654,11 +645,11 @@ bool CApplication::Create()
   CLog::Log(LOGNOTICE, "Starting XBMC (%s), Platform: Darwin OSX (%s). Built on %s", g_infoManager.GetVersion().c_str(), g_sysinfo.GetUnameVersion().c_str(), __DATE__);
 #elif defined(TARGET_DARWIN_IOS)
   CLog::Log(LOGNOTICE, "Starting XBMC (%s), Platform: Darwin iOS (%s). Built on %s", g_infoManager.GetVersion().c_str(), g_sysinfo.GetUnameVersion().c_str(), __DATE__);
-#elif defined(__FreeBSD__)
+#elif defined(TARGET_FREEBSD)
   CLog::Log(LOGNOTICE, "Starting XBMC (%s), Platform: FreeBSD (%s). Built on %s", g_infoManager.GetVersion().c_str(), g_sysinfo.GetUnameVersion().c_str(), __DATE__);
-#elif defined(_LINUX)
+#elif defined(TARGET_POSIX)
   CLog::Log(LOGNOTICE, "Starting XBMC (%s), Platform: Linux (%s, %s). Built on %s", g_infoManager.GetVersion().c_str(), g_sysinfo.GetLinuxDistro().c_str(), g_sysinfo.GetUnameVersion().c_str(), __DATE__);
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
   CLog::Log(LOGNOTICE, "Starting XBMC (%s), Platform: %s. Built on %s (compiler %i)", g_infoManager.GetVersion().c_str(), g_sysinfo.GetKernelVersion().c_str(), __DATE__, _MSC_VER);
   CLog::Log(LOGNOTICE, g_cpuInfo.getCPUModel().c_str());
   CLog::Log(LOGNOTICE, CWIN32Util::GetResInfoString());
@@ -703,9 +694,9 @@ bool CApplication::Create()
   // for python scripts that check the OS
 #if defined(TARGET_DARWIN)
   setenv("OS","OS X",true);
-#elif defined(_LINUX)
+#elif defined(TARGET_POSIX)
   setenv("OS","Linux",true);
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
   CEnvironment::setenv("OS", "win32");
 #endif
 
@@ -848,13 +839,13 @@ bool CApplication::CreateGUI()
   //depending on how it's compiled, SDL periodically calls XResetScreenSaver when it's fullscreen
   //this might bring the monitor out of standby, so we have to disable it explicitly
   //by passing 0 for overwrite to setsenv, the user can still override this by setting the environment variable
-#if defined(_LINUX) && !defined(TARGET_DARWIN)
+#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
   setenv("SDL_VIDEO_ALLOW_SCREENSAVER", "1", 0);
 #endif
 
 #endif // HAS_SDL
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   // for nvidia cards - vsync currently ALWAYS enabled.
   // the reason is that after screen has been setup changing this env var will make no difference.
   setenv("__GL_SYNC_TO_VBLANK", "1", 0);
@@ -999,7 +990,7 @@ bool CApplication::InitDirectoriesLinux()
          might be mixed case.
 */
 
-#if defined(_LINUX) && !defined(TARGET_DARWIN)
+#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
   CStdString userName;
   if (getenv("USER"))
     userName = getenv("USER");
@@ -1173,7 +1164,7 @@ bool CApplication::InitDirectoriesOSX()
 
 bool CApplication::InitDirectoriesWin32()
 {
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
   CStdString xbmcPath;
 
   CUtil::GetHomePath(xbmcPath);
@@ -1216,12 +1207,12 @@ void CApplication::CreateUserDirs()
 
 bool CApplication::Initialize()
 {
-#if defined(HAS_DVD_DRIVE) && !defined(_WIN32) // somehow this throws an "unresolved external symbol" on win32
+#if defined(HAS_DVD_DRIVE) && !defined(TARGET_WINDOWS) // somehow this throws an "unresolved external symbol" on win32
   // turn off cdio logging
   cdio_loglevel_default = CDIO_LOG_ERROR;
 #endif
 
-#ifdef _LINUX // TODO: Win32 has no special://home/ mapping by default, so we
+#ifdef TARGET_POSIX // TODO: Win32 has no special://home/ mapping by default, so we
               //       must create these here. Ideally this should be using special://home/ and
               //       be platform agnostic (i.e. unify the InitDirectories*() functions)
   if (!m_bPlatformDirectories)
@@ -1520,7 +1511,7 @@ void CApplication::StopPVRManager()
 
 void CApplication::StartServices()
 {
-#if !defined(_WIN32) && defined(HAS_DVD_DRIVE)
+#if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
   // Start Thread for DVD Mediatype detection
   CLog::Log(LOGNOTICE, "start dvd mediatype detection");
   m_DetectDVDType.Create(false, THREAD_MINSTACKSIZE);
@@ -1538,7 +1529,7 @@ void CApplication::StopServices()
 {
   m_network->NetworkMessage(CNetwork::SERVICES_DOWN, 0);
 
-#if !defined(_WIN32) && defined(HAS_DVD_DRIVE)
+#if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
   CLog::Log(LOGNOTICE, "stop dvd detect media");
   m_DetectDVDType.StopThread();
 #endif
@@ -1774,13 +1765,10 @@ void CApplication::LoadSkin(const SkinPtr& skin)
     if (bPreviousPlayingState)
       g_application.m_pPlayer->Pause();
 #ifdef HAS_VIDEO_PLAYBACK
-    if (!g_renderManager.Paused())
+    if (g_windowManager.GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO)
     {
-      if (g_windowManager.GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO)
-     {
-        g_windowManager.ActivateWindow(WINDOW_HOME);
-        bPreviousRenderingState = true;
-      }
+      g_windowManager.ActivateWindow(WINDOW_HOME);
+      bPreviousRenderingState = true;
     }
 #endif
   }
@@ -2013,13 +2001,7 @@ bool CApplication::RenderNoPresent()
   // dont show GUI when playing full screen video
   if (g_graphicsContext.IsFullScreenVideo())
   {
-    if (m_bPresentFrame && IsPlaying() && !IsPaused())
-    {
-      ResetScreenSaver();
-      g_renderManager.Present();
-    }
-    else
-      g_renderManager.RenderUpdate(true);
+    g_renderManager.Render(true, 0, 255);
 
     // close window overlays
     CGUIDialog *overlay = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_VIDEO_OVERLAY);
@@ -2049,32 +2031,6 @@ float CApplication::GetDimScreenSaverLevel() const
   return 100.0f;
 }
 
-bool CApplication::WaitFrame(unsigned int timeout)
-{
-  bool done = false;
-
-  // Wait for all other frames to be presented
-  CSingleLock lock(m_frameMutex);
-  //wait until event is set, but modify remaining time
-
-  TightConditionVariable<InversePredicate<int&> > cv(m_frameCond, InversePredicate<int&>(m_frameCount));
-  cv.wait(lock,timeout);
-  done = m_frameCount == 0;
-
-  return done;
-}
-
-void CApplication::NewFrame()
-{
-  // We just posted another frame. Keep track and notify.
-  {
-    CSingleLock lock(m_frameMutex);
-    m_frameCount++;
-  }
-
-  m_frameCond.notifyAll();
-}
-
 void CApplication::Render()
 {
   // do not render if we are stopped or in background
@@ -2085,7 +2041,6 @@ void CApplication::Render()
 
   int vsync_mode = CSettings::Get().GetInt("videoscreen.vsync");
 
-  bool decrement = false;
   bool hasRendered = false;
   bool limitFrames = false;
   unsigned int singleFrameTime = 10; // default limit 100 fps
@@ -2099,13 +2054,7 @@ void CApplication::Render()
     m_bPresentFrame = false;
     if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !IsPaused() && g_renderManager.RendererHandlesPresent())
     {
-      CSingleLock lock(m_frameMutex);
-
-      TightConditionVariable<int&> cv(m_frameCond,m_frameCount);
-      cv.wait(lock,100);
-
-      m_bPresentFrame = m_frameCount > 0;
-      decrement = m_bPresentFrame;
+      m_bPresentFrame = g_renderManager.FrameWait(100);
       hasRendered = true;
     }
     else
@@ -2130,7 +2079,6 @@ void CApplication::Render()
           singleFrameTime = 200;  // 5 fps, <=200 ms latency to wake up
       }
 
-      decrement = true;
     }
   }
 
@@ -2144,12 +2092,19 @@ void CApplication::Render()
   else if (vsync_mode != VSYNC_DRIVER)
     g_Windowing.SetVSync(false);
 
+  if (m_bPresentFrame && IsPlaying() && !IsPaused())
+    ResetScreenSaver();
+
   if(!g_Windowing.BeginRender())
     return;
+
+  g_renderManager.FrameMove();
 
   CDirtyRegionList dirtyRegions = g_windowManager.GetDirty();
   if (RenderNoPresent())
     hasRendered = true;
+
+  g_renderManager.FrameFinish();
 
   g_Windowing.EndRender();
 
@@ -2192,13 +2147,6 @@ void CApplication::Render()
 
   g_renderManager.UpdateResolution();
   g_renderManager.ManageCaptures();
-
-  {
-    CSingleLock lock(m_frameMutex);
-    if(m_frameCount > 0 && decrement)
-      m_frameCount--;
-  }
-  m_frameCond.notifyAll();
 }
 
 void CApplication::SetStandAlone(bool value)
@@ -3312,7 +3260,7 @@ bool CApplication::Cleanup()
     CSettings::Get().Uninitialize();
     g_advancedSettings.Clear();
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
     CXHandle::DumpObjectTracker();
 
 #ifdef HAS_DVD_DRIVE
@@ -4023,7 +3971,7 @@ PlayBackRet CApplication::PlayFile(const CFileItem& item, bool bRestart)
 
     }
 
-#if !defined(TARGET_DARWIN) && !defined(_LINUX)
+#if !defined(TARGET_POSIX)
     g_audioManager.Enable(false);
 #endif
 
@@ -5073,7 +5021,7 @@ void CApplication::ProcessSlow()
     UPNP::CUPnP::GetInstance()->UpdateState();
 #endif
 
-#if defined(_LINUX) && defined(HAS_FILESYSTEM_SMB)
+#if defined(TARGET_POSIX) && defined(HAS_FILESYSTEM_SMB)
   smb.CheckIfIdle();
 #endif
 
@@ -5517,12 +5465,6 @@ bool CApplication::SwitchToFullScreen()
   // See if we're playing a video, and are in GUI mode
   if ( IsPlayingVideo() && g_windowManager.GetActiveWindow() != WINDOW_FULLSCREEN_VIDEO)
   {
-    // Reset frame count so that timing is FPS will be correct.
-    {
-      CSingleLock lock(m_frameMutex);
-      m_frameCount = 0;
-    }
-
     // then switch to fullscreen mode
     g_windowManager.ActivateWindow(WINDOW_FULLSCREEN_VIDEO);
     return true;
@@ -5751,14 +5693,6 @@ bool CApplication::AlwaysProcess(const CAction& action)
 bool CApplication::IsCurrentThread() const
 {
   return CThread::IsCurrentThread(m_threadID);
-}
-
-bool CApplication::IsPresentFrame()
-{
-  CSingleLock lock(m_frameMutex);
-  bool ret = m_bPresentFrame;
-
-  return ret;
 }
 
 void CApplication::SetRenderGUI(bool renderGUI)

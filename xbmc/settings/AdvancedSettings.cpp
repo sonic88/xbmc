@@ -28,6 +28,7 @@
 #include "utils/LangCodeExpander.h"
 #include "LangInfo.h"
 #include "profiles/ProfilesManager.h"
+#include "settings/Setting.h"
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
@@ -72,6 +73,11 @@ void CAdvancedSettings::OnSettingsLoaded()
   CLog::SetLogLevel(m_logLevel);
 }
 
+void CAdvancedSettings::OnSettingsUnloaded()
+{
+  m_initialized = false;
+}
+
 void CAdvancedSettings::OnSettingChanged(const CSetting *setting)
 {
   if (setting == NULL)
@@ -99,6 +105,9 @@ void CAdvancedSettings::OnSettingAction(const CSetting *setting)
 
 void CAdvancedSettings::Initialize()
 {
+  if (m_initialized)
+    return;
+
   m_audioHeadRoom = 0;
   m_ac3Gain = 12.0f;
   m_audioApplyDrc = true;
@@ -321,7 +330,7 @@ void CAdvancedSettings::Initialize()
   m_bVirtualShares = true;
 
 //caused lots of jerks
-//#ifdef _WIN32
+//#ifdef TARGET_WINDOWS
 //  m_ForcedSwapTime = 2.0;
 //#else
   m_ForcedSwapTime = 0.0;
@@ -352,6 +361,7 @@ void CAdvancedSettings::Initialize()
   m_measureRefreshrate = false;
 
   m_cacheMemBufferSize = 1024 * 1024 * 20;
+  m_alwaysForceBuffer = false;
   m_addonPackageFolderSize = 200;
 
   m_jsonOutputCompact = true;
@@ -755,6 +765,7 @@ void CAdvancedSettings::ParseSettingsFile(const CStdString &file)
     XMLUtils::GetInt(pElement, "curlretries", m_curlretries, 0, 10);
     XMLUtils::GetBoolean(pElement,"disableipv6", m_curlDisableIPV6);
     XMLUtils::GetUInt(pElement, "cachemembuffersize", m_cacheMemBufferSize);
+    XMLUtils::GetBoolean(pElement, "alwaysforcebuffer", m_alwaysForceBuffer);
   }
 
   pElement = pRootElement->FirstChildElement("jsonrpc");
@@ -1189,7 +1200,6 @@ void CAdvancedSettings::GetCustomTVRegexps(TiXmlElement *pRootElement, SETTINGS_
           }
         }
         CStdString regExp = pRegExp->FirstChild()->Value();
-        regExp.MakeLower();
         if (iAction == 2)
           settings.insert(settings.begin() + i++, 1, TVShowRegexp(bByDate,regExp,iDefaultSeason));
         else

@@ -23,7 +23,9 @@
 #include "settings/Settings.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
+#ifdef HAS_PYTHON
 #include "interfaces/python/XBPython.h"
+#endif
 #if defined(TARGET_DARWIN)
 #include "../osx/OSXGNUReplacements.h"
 #endif
@@ -307,9 +309,9 @@ CAddon::CAddon(const CAddon &rhs, const AddonPtr &parent)
   m_checkedStrings  = false;
 }
 
-AddonPtr CAddon::Clone(const AddonPtr &self) const
+AddonPtr CAddon::Clone(const AddonPtr &parent) const
 {
-  return AddonPtr(new CAddon(*this, self));
+  return AddonPtr(new CAddon(*this, parent));
 }
 
 bool CAddon::MeetsVersion(const AddonVersion &version) const
@@ -516,7 +518,9 @@ void CAddon::SaveSettings(void)
   m_userSettingsLoaded = true;
   
   CAddonMgr::Get().ReloadSettings(ID());//push the settings changes to the running addon instance
+#ifdef HAS_PYTHON
   g_pythonParser.OnSettingsChanged(ID());
+#endif
 }
 
 CStdString CAddon::GetSetting(const CStdString& key)

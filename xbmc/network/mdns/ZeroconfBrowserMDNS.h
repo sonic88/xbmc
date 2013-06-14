@@ -28,11 +28,11 @@
 #include <dns_sd.h>
 
 //platform specific implementation of  zeroconfbrowser interface using native os x APIs
-class CZeroconfBrowserWIN : public CZeroconfBrowser
+class CZeroconfBrowserMDNS : public CZeroconfBrowser
 {
 public:
-  CZeroconfBrowserWIN();
-  ~CZeroconfBrowserWIN();
+  CZeroconfBrowserMDNS();
+  ~CZeroconfBrowserMDNS();
 
 private:
   ///implementation if CZeroconfBrowser interface
@@ -53,6 +53,17 @@ private:
                                         const char *regtype,
                                         const char *replyDomain,
                                         void *context);
+  /// GetAddrInfo callback
+  static void DNSSD_API GetAddrInfoCallback(DNSServiceRef                    sdRef,
+                                            DNSServiceFlags                  flags,
+                                            uint32_t                         interfaceIndex,
+                                            DNSServiceErrorType              errorCode,
+                                            const char                       *hostname,
+                                            const struct sockaddr            *address,
+                                            uint32_t                         ttl,
+                                            void                             *context
+                                            );
+
   /// resolve callback
   static void DNSSD_API ResolveCallback(DNSServiceRef                       sdRef,
                                         DNSServiceFlags                     flags,
@@ -83,4 +94,7 @@ private:
   typedef std::map<DNSServiceRef, std::vector<std::pair<ZeroconfService, unsigned int> > > tDiscoveredServicesMap;
   tDiscoveredServicesMap m_discovered_services;
   DNSServiceRef m_browser;
+  CZeroconfBrowser::ZeroconfService m_resolving_service;
+  CEvent m_resolved_event;
+  CEvent m_addrinfo_event;
 };

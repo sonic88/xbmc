@@ -306,6 +306,12 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       }
       break;
 
+    case TMSG_ACTIVATESCREENSAVER:
+      {
+        g_application.ActivateScreenSaver();
+      }
+      break;
+
     case TMSG_MEDIA_PLAY:
       {
         // first check if we were called from the PlayFile() function
@@ -704,6 +710,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       }
       break;
 
+#ifdef HAS_PYTHON
     case TMSG_GUI_PYTHON_DIALOG:
       {
         // This hack is not much better but at least I don't need to make ApplicationMessenger
@@ -712,6 +719,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
         ((CGUIWindow*)pMsg->lpVoid)->OnAction(caction);
       }
       break;
+#endif
 
     case TMSG_GUI_ACTION:
       {
@@ -1150,6 +1158,12 @@ void CApplicationMessenger::RestartApp()
 void CApplicationMessenger::InhibitIdleShutdown(bool inhibit)
 {
   ThreadMessage tMsg = {TMSG_INHIBITIDLESHUTDOWN, (unsigned int)inhibit};
+  SendMessage(tMsg);
+}
+
+void CApplicationMessenger::ActivateScreensaver()
+{
+  ThreadMessage tMsg = {TMSG_ACTIVATESCREENSAVER};
   SendMessage(tMsg);
 }
 

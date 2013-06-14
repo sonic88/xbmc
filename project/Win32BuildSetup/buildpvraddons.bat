@@ -9,14 +9,19 @@ SET DEPS_DIR=..\BuildDependencies
 SET TMP_DIR=%DEPS_DIR%\tmp
 
 SET LIBNAME=xbmc-pvr-addons
-REM SET VERSION=d9165b4e701f1655df03562acd87eb7309544fc3
+REM SET VERSION=b84a88f9e370543f0bf1760544c94ab0afb1dca2
 SET VERSION=development
 SET SOURCE=%LIBNAME%
 SET GIT_URL=git://github.com/margro/%LIBNAME%.git
 SET SOURCE_DIR=%TMP_DIR%\%SOURCE%
 SET BUILT_ADDONS_DIR=%SOURCE_DIR%\addons
 
-set OPTS_EXE=%SOURCE_DIR%\project\VS2010Express\xbmc-pvr-addons.sln /build Release
+REM check if MSBuild.exe is used because it requires different command line switches
+IF "%msbuildemitsolution%" == "1" (
+  set OPTS_EXE=%SOURCE_DIR%\project\VS2010Express\xbmc-pvr-addons.sln /t:Build /p:Configuration="Release"
+) ELSE (
+  set OPTS_EXE=%SOURCE_DIR%\project\VS2010Express\xbmc-pvr-addons.sln /build Release
+)
 
 REM Try wrapped msysgit - must be in the path
 SET GITEXE=git.cmd

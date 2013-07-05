@@ -66,7 +66,6 @@ protected:
 
   BitstreamStats            m_audioStats;
 
-  struct timespec           m_starttime, m_endtime;
   bool                      m_buffer_empty;
   bool                      m_flush;
   int                       m_nChannels;
@@ -109,7 +108,7 @@ public:
   void SubmitEOS();
   void  RegisterAudioCallback(IAudioCallback* pCallback);
   void  UnRegisterAudioCallback();
-  void SetCurrentVolume(float fVolume);
+  bool SetCurrentVolume(float fVolume);
   void SetSpeed(int iSpeed);
   int  GetAudioBitrate();
   std::string GetPlayerInfo();

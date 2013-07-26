@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -90,6 +90,9 @@ namespace MUSIC_INFO
 #define TMSG_INHIBITIDLESHUTDOWN  313
 #define TMSG_LOADPROFILE          314
 #define TMSG_ACTIVATESCREENSAVER  315
+#define TMSG_CECTOGGLESTATE       316
+#define TMSG_CECACTIVATESOURCE    317
+#define TMSG_CECSTANDBY           318
 
 #define TMSG_NETWORKMESSAGE         500
 
@@ -216,6 +219,9 @@ public:
   void SetCurrentItem(const CFileItem& item);
 
   void LoadProfile(unsigned int idx);
+  bool CECToggleState();
+  bool CECActivateSource();
+  bool CECStandby();
 
   CStdString GetResponse();
   int SetResponse(CStdString response);

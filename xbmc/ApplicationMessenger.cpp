@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,11 +25,9 @@
 #include "LangInfo.h"
 #include "PlayListPlayer.h"
 #include "Util.h"
-#ifdef HAS_PYTHON
-#include "interfaces/python/XBPython.h"
-#endif
 #include "pictures/GUIWindowSlideShow.h"
 #include "interfaces/Builtins.h"
+#include "interfaces/generic/ScriptInvocationManager.h"
 #include "network/Network.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
@@ -47,6 +45,7 @@
 #include "cores/AudioEngine/AEFactory.h"
 #include "music/tags/MusicInfoTag.h"
 
+#include "peripherals/Peripherals.h"
 #include "powermanagement/PowerManager.h"
 
 #ifdef TARGET_WINDOWS
@@ -75,6 +74,7 @@
 using namespace PVR;
 using namespace std;
 using namespace MUSIC_INFO;
+using namespace PERIPHERALS;
 
 CDelayedMessage::CDelayedMessage(ThreadMessage& msg, unsigned int delay) : CThread("DelayedMessage")
 {
@@ -565,9 +565,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       break;
 
     case TMSG_EXECUTE_SCRIPT:
-#ifdef HAS_PYTHON
-      g_pythonParser.evalFile(pMsg->strParam.c_str(),ADDON::AddonPtr());
-#endif
+      CScriptInvocationManager::Get().Execute(pMsg->strParam);
       break;
 
     case TMSG_EXECUTE_BUILT_IN:
@@ -826,6 +824,21 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
     case TMSG_LOADPROFILE:
     {
       CGUIWindowLoginScreen::LoadProfile(pMsg->dwParam1);
+      break;
+    }
+    case TMSG_CECTOGGLESTATE:
+    {
+      *((bool*)pMsg->lpVoid) = g_peripherals.ToggleDeviceState(STATE_SWITCH_TOGGLE);
+      break;
+    }
+    case TMSG_CECACTIVATESOURCE:
+    {
+      *((bool*)pMsg->lpVoid) = g_peripherals.ToggleDeviceState(STATE_ACTIVATE_SOURCE);
+      break;
+    }
+    case TMSG_CECSTANDBY:
+    {
+      *((bool*)pMsg->lpVoid) = g_peripherals.ToggleDeviceState(STATE_STANDBY);
       break;
     }
     case TMSG_START_ANDROID_ACTIVITY:
@@ -1350,4 +1363,37 @@ void CApplicationMessenger::StartAndroidActivity(const vector<CStdString> &param
   ThreadMessage tMsg = {TMSG_START_ANDROID_ACTIVITY};
   tMsg.params = params;
   SendMessage(tMsg, false);
+}
+
+bool CApplicationMessenger::CECToggleState()
+{
+  bool result;
+
+  ThreadMessage tMsg = {TMSG_CECTOGGLESTATE};
+  tMsg.lpVoid = (void*)&result;
+  SendMessage(tMsg, false);
+
+  return result;
+}
+
+bool CApplicationMessenger::CECActivateSource()
+{
+  bool result;
+
+  ThreadMessage tMsg = {TMSG_CECACTIVATESOURCE};
+  tMsg.lpVoid = (void*)&result;
+  SendMessage(tMsg, false);
+
+  return result;
+}
+
+bool CApplicationMessenger::CECStandby()
+{
+  bool result;
+
+  ThreadMessage tMsg = {TMSG_CECSTANDBY};
+  tMsg.lpVoid = (void*)&result;
+  SendMessage(tMsg, false);
+
+  return result;
 }

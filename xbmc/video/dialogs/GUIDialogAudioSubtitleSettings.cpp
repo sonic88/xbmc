@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -356,10 +356,9 @@ void CGUIDialogAudioSubtitleSettings::OnSettingChanged(SettingInfo &setting)
   }
   else if (setting.id == AUDIO_SETTINGS_MAKE_DEFAULT)
   {
-    if (CProfilesManager::Get().GetCurrentProfile().settingsLocked() &&
-        CProfilesManager::Get().GetMasterProfile().getLockMode() != ::LOCK_MODE_EVERYONE)
-      if (!g_passwordManager.IsMasterLockUnlocked(true))
-        return;
+    if (!g_passwordManager.CheckSettingLevelLock(SettingLevelExpert) &&
+        CProfilesManager::Get().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE)
+      return;
 
     // prompt user if they are sure
     if (CGUIDialogYesNo::ShowAndGetInput(12376, 750, 0, 12377))

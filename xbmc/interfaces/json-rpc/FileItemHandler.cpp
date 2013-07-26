@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -389,8 +389,12 @@ bool CFileItemHandler::FillFileItemList(const CVariant &parameterObject, CFileIt
         picture.Load(item->GetPath());
         *item->GetPictureInfoTag() = picture;
       }
-      if (item->GetLabel().IsEmpty())
+      if (item->GetLabel().empty())
+      {
         item->SetLabel(CUtil::GetTitleFromPath(file, false));
+        if (item->GetLabel().empty())
+          item->SetLabel(URIUtils::GetFileName(file));
+      }
       list.Add(item);
     }
   }

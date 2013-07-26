@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -196,18 +196,6 @@
 
 #ifdef HAVE_LIBSSH
 #define HAS_FILESYSTEM_SFTP
-#endif
-
-/*****************
- * Git revision
- *****************/
-
-#if defined(TARGET_DARWIN)
-#include "../git_revision.h"
-#endif
-
-#ifndef GIT_REV
-#define GIT_REV "Unknown"
 #endif
 
 /****************************************

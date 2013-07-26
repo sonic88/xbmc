@@ -2,7 +2,7 @@
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -252,6 +252,9 @@ protected:
   //set to true when adding something to m_captures, set to false when m_captures is made empty
   //std::list::empty() isn't thread safe, using an extra bool will save a lock per render when no captures are requested
   bool                       m_hasCaptures; 
+
+  // temporary fix for RendererHandlesPresent after #2811
+  bool m_firstFlipPage;
 };
 
 extern CXBMCRenderManager g_renderManager;

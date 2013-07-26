@@ -1,6 +1,9 @@
+#ifndef __XBMC_CODEC_TYPES_H__
+#define __XBMC_CODEC_TYPES_H__
+
 /*
- *      Copyright (C) 2011-2013 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +21,34 @@
  *
  */
 
-#pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#undef GIT_REV
+typedef unsigned int xbmc_codec_id_t;
+
+typedef enum
+{
+    XBMC_CODEC_TYPE_UNKNOWN = -1,
+    XBMC_CODEC_TYPE_VIDEO,
+    XBMC_CODEC_TYPE_AUDIO,
+    XBMC_CODEC_TYPE_DATA,
+    XBMC_CODEC_TYPE_SUBTITLE,
+    XBMC_CODEC_TYPE_NB
+} xbmc_codec_type_t;
+
+typedef struct
+{
+  xbmc_codec_type_t codec_type;
+  xbmc_codec_id_t   codec_id;
+} xbmc_codec_t;
+
+#define XBMC_INVALID_CODEC_ID   0
+#define XBMC_INVALID_CODEC      { XBMC_CODEC_TYPE_UNKNOWN, XBMC_INVALID_CODEC_ID }
+
+#ifdef __cplusplus
+};
+#endif
+
+#endif
 

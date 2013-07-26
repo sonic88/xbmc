@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
 
 #include "IDirectory.h"
 #include "Util.h"
@@ -61,9 +60,9 @@ bool IDirectory::IsAllowed(const CStdString& strFile) const
     CStdString fileName = URIUtils::GetFileName(strFile);
 
     // Allow filenames of the form video_ts.ifo or vts_##_0.ifo
-    return fileName == "video_ts.ifo" ||
-          (fileName.length() == 12 && fileName.Left(4) == "vts_" &&
-           fileName.Right(6) == "_0.ifo");
+    return fileName.CompareNoCase("video_ts.ifo") == 0 ||
+          (fileName.length() == 12 && fileName.Left(4).CompareNoCase("vts_") == 0 &&
+           fileName.Right(6).CompareNoCase("_0.ifo") == 0);
   }
   
   if (URIUtils::HasExtension(strFile, ".dat"))
@@ -73,8 +72,8 @@ bool IDirectory::IsAllowed(const CStdString& strFile) const
     // Allow filenames of the form AVSEQ##(#).DAT, ITEM###(#).DAT
     // and MUSIC##(#).DAT
     return (fileName.length() == 11 || fileName.length() == 12) &&
-           (fileName.Left(5) == "AVSEQ" || fileName.Left(5) == "MUSIC" ||
-            fileName.Left(4) == "ITEM");
+           (fileName.Left(5).CompareNoCase("AVSEQ") == 0 || fileName.Left(5).CompareNoCase("MUSIC") == 0 ||
+            fileName.Left(4).CompareNoCase("ITEM") == 0);
   }
 
   return true;

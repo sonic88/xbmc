@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -523,6 +523,8 @@ void CAutorun::SettingOptionAudioCdEncodersFiller(const CSetting *setting, std::
 #endif
   list.push_back(make_pair(g_localizeStrings.Get(34002), CDDARIP_ENCODER_WAV));
   list.push_back(make_pair(g_localizeStrings.Get(34005), CDDARIP_ENCODER_FLAC));
+  list.push_back(make_pair(g_localizeStrings.Get(34006), CDDARIP_ENCODER_FFMPEG_M4A));
+  list.push_back(make_pair(g_localizeStrings.Get(34007), CDDARIP_ENCODER_FFMPEG_WMA));
 }
 
 #endif

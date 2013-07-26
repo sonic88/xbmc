@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -155,6 +155,8 @@ const char* CCDDARipper::GetExtension(int iEncoder)
   if (iEncoder == CDDARIP_ENCODER_WAV) return ".wav";
   if (iEncoder == CDDARIP_ENCODER_VORBIS) return ".ogg";
   if (iEncoder == CDDARIP_ENCODER_FLAC) return ".flac";
+  if (iEncoder == CDDARIP_ENCODER_FFMPEG_M4A) return ".m4a";
+  if (iEncoder == CDDARIP_ENCODER_FFMPEG_WMA) return ".wma";
   return ".mp3";
 }
 

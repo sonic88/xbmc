@@ -1,6 +1,6 @@
 /*
  *      Copyright (C) 2005-2013 Team XBMC
- *      http://www.xbmc.org
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -697,7 +697,7 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
     // check size and stream index for being in a valid range
     else if (m_pkt.pkt.size < 0 ||
              m_pkt.pkt.stream_index < 0 ||
-             m_pkt.pkt.stream_index >= m_pFormatContext->nb_streams)
+             m_pkt.pkt.stream_index >= (int)m_pFormatContext->nb_streams)
     {
       // XXX, in some cases ffmpeg returns a negative packet size
       if(m_pFormatContext->pb && !m_pFormatContext->pb->eof_reached)
@@ -1186,9 +1186,7 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int iId)
     case AVMEDIA_TYPE_ATTACHMENT:
       { //mkv attachments. Only bothering with fonts for now.
         if(pStream->codec->codec_id == AV_CODEC_ID_TTF
-#if (!defined USE_EXTERNAL_FFMPEG)
           || pStream->codec->codec_id == AV_CODEC_ID_OTF
-#endif
           )
         {
           std::string fileName = "special://temp/fonts/";

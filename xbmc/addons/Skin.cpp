@@ -102,9 +102,9 @@ CSkinInfo::~CSkinInfo()
 {
 }
 
-bool CSkinInfo::HasSettings()
+AddonPtr CSkinInfo::Clone() const
 {
-  return HasSkinFile("SkinSettings.xml");
+  return AddonPtr(new CSkinInfo(*this));
 }
 
 struct closestRes

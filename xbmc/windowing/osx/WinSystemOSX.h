@@ -69,6 +69,8 @@ public:
   
   void* GetCGLContextObj();
 
+  std::string GetClipboardText(void);
+
 protected:
   void* CreateWindowedContext(void* shareCtx);
   void* CreateFullScreenContext(int screen_index, void* shareCtx);

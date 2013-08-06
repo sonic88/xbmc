@@ -54,6 +54,10 @@ extern "C" {
 #define AVSEEK_FORCE 0x20000
 #endif
 
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(55,12,100)
+#define AVFORMAT_HAS_STREAM_GET_R_FRAME_RATE
+#endif
+
 typedef int64_t offset_t;
 
 class DllAvFormatInterface
@@ -101,6 +105,9 @@ public:
   virtual int av_write_trailer(AVFormatContext *s)=0;
   virtual int av_write_frame  (AVFormatContext *s, AVPacket *pkt)=0;
   virtual int av_find_default_stream_index(AVFormatContext *s)=0;
+#if defined(AVFORMAT_HAS_STREAM_GET_R_FRAME_RATE)
+  virtual AVRational av_stream_get_r_frame_rate(const AVStream *s)=0;
+#endif
 };
 
 #if (defined USE_EXTERNAL_FFMPEG) || (defined TARGET_DARWIN) 
@@ -159,6 +166,9 @@ public:
   virtual int av_write_trailer(AVFormatContext *s) { return ::av_write_trailer(s); }
   virtual int av_write_frame  (AVFormatContext *s, AVPacket *pkt) { return ::av_write_frame(s, pkt); }
   virtual int av_find_default_stream_index(AVFormatContext *s) { return ::av_find_default_stream_index(s); }
+#if defined(AVFORMAT_HAS_STREAM_GET_R_FRAME_RATE)
+  virtual AVRational av_stream_get_r_frame_rate(const AVStream *s) { return ::av_stream_get_r_frame_rate(s); }
+#endif
 
   // DLL faking.
   virtual bool ResolveExports() { return true; }
@@ -228,6 +238,9 @@ class DllAvFormat : public DllDynamic, DllAvFormatInterface
   DEFINE_METHOD1(int, av_write_trailer, (AVFormatContext *p1))
   DEFINE_METHOD2(int, av_write_frame  , (AVFormatContext *p1, AVPacket *p2))
   DEFINE_METHOD1(int, av_find_default_stream_index, (AVFormatContext *p1))
+#if defined(AVFORMAT_HAS_STREAM_GET_R_FRAME_RATE)
+  DEFINE_METHOD1(AVRational, av_stream_get_r_frame_rate, (const AVStream *p1))
+#endif
   BEGIN_METHOD_RESOLVE()
     RESOLVE_METHOD_RENAME(av_register_all, av_register_all_dont_call)
     RESOLVE_METHOD_RENAME(avformat_network_init,   avformat_network_init_dont_call)
@@ -265,6 +278,9 @@ class DllAvFormat : public DllDynamic, DllAvFormatInterface
     RESOLVE_METHOD(av_write_trailer)
     RESOLVE_METHOD(av_write_frame)
     RESOLVE_METHOD(av_find_default_stream_index)
+#if defined(AVFORMAT_HAS_STREAM_GET_R_FRAME_RATE)
+    RESOLVE_METHOD(av_stream_get_r_frame_rate)
+#endif
   END_METHOD_RESOLVE()
 
   /* dependencies of libavformat */

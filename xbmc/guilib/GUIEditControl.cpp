@@ -27,6 +27,7 @@
 #include "Key.h"
 #include "LocalizeStrings.h"
 #include "XBDateTime.h"
+#include "windowing/WindowingFactory.h"
 #include "utils/md5.h"
 
 #if defined(TARGET_DARWIN)
@@ -142,6 +143,7 @@ bool CGUIEditControl::OnAction(const CAction &action)
     {
       ClearMD5();
       OnPasteClipboard();
+      return true;
     }
     else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_ASCII)
     {
@@ -576,29 +578,23 @@ void CGUIEditControl::OnSMSCharacter(unsigned int key)
 
 void CGUIEditControl::OnPasteClipboard()
 {
-#if defined(TARGET_DARWIN_OSX)
-  const char *szStr = Cocoa_Paste();
-  if (szStr)
+  CStdStringW unicode_text;
+  CStdStringA utf8_text;
+
+// Get text from the clipboard
+  utf8_text = g_Windowing.GetClipboardText();
+  g_charsetConverter.utf8ToW(utf8_text, unicode_text);
+
+  // Insert the pasted text at the current cursor position.
+  if (unicode_text.length() > 0)
   {
-    m_text2 += szStr;
-    m_cursorPos+=strlen(szStr);
+    CStdStringW left_end = m_text2.Left(m_cursorPos);
+    CStdStringW right_end = m_text2.Right(m_text2.length() - m_cursorPos);
+
+    m_text2 = left_end;
+    m_text2.append(unicode_text);
+    m_text2.append(right_end);
+    m_cursorPos += unicode_text.length();
     UpdateText();
   }
-#elif defined TARGET_WINDOWS
-  if (OpenClipboard(g_hWnd))
-  {
-    HGLOBAL hglb = GetClipboardData(CF_TEXT);
-    if (hglb != NULL)
-    {
-      LPTSTR lptstr = (LPTSTR)GlobalLock(hglb);
-      if (lptstr != NULL)
-      {
-        m_text2 = (char*)lptstr;
-        GlobalUnlock(hglb);
-      }
-    }
-    CloseClipboard();
-    UpdateText();
-  }
-#endif
 }

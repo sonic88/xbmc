@@ -165,6 +165,33 @@ std::string& StringUtils::TrimRight(std::string &str)
   return str;
 }
 
+std::string& StringUtils::RemoveDuplicatedSpacesAndTabs(std::string& str)
+{
+  std::string::iterator it = str.begin();
+  bool onSpace = false;
+  while(it != str.end())
+  {
+    if (*it == '\t')
+      *it = ' ';
+
+    if (*it == ' ')
+    {
+      if (onSpace)
+      {
+        it = str.erase(it);
+        continue;
+      }
+      else
+        onSpace = true;
+    }
+    else
+      onSpace = false;
+
+    ++it;
+  }
+  return str;
+}
+
 int StringUtils::Replace(string &str, char oldChar, char newChar)
 {
   int replacedChars = 0;
@@ -710,6 +737,16 @@ int StringUtils::FindBestMatch(const CStdString &str, const CStdStringArray &str
     }
   }
   return best;
+}
+
+bool StringUtils::ContainsKeyword(const CStdString &str, const CStdStringArray &keywords)
+{
+  for (CStdStringArray::const_iterator it = keywords.begin(); it != keywords.end(); it++)
+  {
+    if (str.find(*it) != str.npos)
+      return true;
+  }
+  return false;
 }
 
 size_t StringUtils::utf8_strlen(const char *s)

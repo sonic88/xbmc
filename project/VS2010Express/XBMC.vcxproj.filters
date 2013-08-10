@@ -3005,9 +3005,6 @@
     <ClCompile Include="..\..\xbmc\settings\SettingDependency.cpp">
       <Filter>settings</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\settings\SettingVisibility.cpp">
-      <Filter>settings</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\network\NetworkServices.cpp">
       <Filter>network</Filter>
     </ClCompile>
@@ -3053,6 +3050,9 @@
     <ClCompile Include="..\..\xbmc\addons\AddonCallbacksCodec.cpp">
       <Filter>addons</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\json-rpc\ProfilesOperations.cpp">
+      <Filter>interfaces\json-rpc</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\GitRevision.cpp" />
     <ClCompile Include="..\..\xbmc\cores\AudioEngine\Engines\ActiveAE\ActiveAE.cpp">
       <Filter>cores\AudioEngine\Engines\ActiveAE</Filter>
@@ -3076,6 +3076,9 @@
       <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\ApplicationPlayer.cpp" />
+    <ClCompile Include="..\..\xbmc\settings\SettingRequirement.cpp">
+      <Filter>settings</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\win32\pch.h">
@@ -5948,9 +5951,6 @@
     <ClInclude Include="..\..\xbmc\settings\SettingDependency.h">
       <Filter>settings</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\settings\SettingVisibility.h">
-      <Filter>settings</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\network\NetworkServices.h">
       <Filter>network</Filter>
     </ClInclude>
@@ -6008,6 +6008,9 @@
     <ClInclude Include="..\..\xbmc\addons\AddonCallbacksCodec.h">
       <Filter>addons</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\json-rpc\ProfilesOperations.h">
+      <Filter>interfaces\json-rpc</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\xbmc\win32\PlatformInclude.h" />
     <ClInclude Include="..\..\xbmc\cores\AudioEngine\Engines\ActiveAE\ActiveAE.h">
       <Filter>cores\AudioEngine\Engines\ActiveAE</Filter>
@@ -6031,6 +6034,9 @@
       <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\ApplicationPlayer.h" />
+    <ClInclude Include="..\..\xbmc\settings\SettingRequirement.h">
+      <Filter>settings</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\xbmc\win32\XBMC_PC.rc">

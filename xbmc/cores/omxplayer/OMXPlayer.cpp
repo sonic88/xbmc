@@ -1110,6 +1110,8 @@ void COMXPlayer::Process()
   if (!CachePVRStream())
     SetCaching(CACHESTATE_FLUSH);
 
+  EDEINTERLACEMODE current_deinterlace = CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode;
+
   while (!m_bAbortRequest)
   {
     const bool m_Pause = m_playSpeed == DVD_PLAYSPEED_PAUSE;
@@ -1124,6 +1126,17 @@ void COMXPlayer::Process()
     float video_fifo = video_pts / DVD_TIME_BASE - stamp * 1e-6;
     float threshold = 0.1f;
     bool audio_fifo_low = false, video_fifo_low = false, audio_fifo_high = false, video_fifo_high = false;
+
+    // if deinterlace setting has changed, we should close and open video
+    if (current_deinterlace != CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode)
+    {
+      int iStream = m_CurrentVideo.id, source = m_CurrentVideo.source;
+      CloseVideoStream(false);
+      OpenVideoStream(iStream, source);
+      if (m_State.canseek)
+        m_messenger.Put(new CDVDMsgPlayerSeek(GetTime(), true, true, true, true, true));
+      current_deinterlace = CMediaSettings::Get().GetCurrentVideoSettings().m_DeinterlaceMode;
+    }
 
     #ifdef _DEBUG
     static unsigned count;
@@ -1173,27 +1186,15 @@ void COMXPlayer::Process()
     {
       if (m_CurrentVideo.started)
       {
-        static double last = 0;
-        double now = m_clock.GetAbsoluteClock();
-        //if (m_av_clock.OMXIsPaused())
-        //  m_av_clock.OMXResume();
-        if (m_clock.GetAbsoluteClock() - last > 1e6/25)
+        if (m_av_clock.OMXMediaTime() == 0.0)
         {
-          // trickplay modes progress by stepping
-          //m_av_clock.OMXMediaTime(m_clock.GetClock());
+          /* trickplay modes progress by stepping */
+          CLog::Log(LOGDEBUG, "COMXPlayer::Process - Seeking step speed:%.2f last:%.2f v:%.2f", (double)m_playSpeed / DVD_PLAYSPEED_NORMAL, m_SpeedState.lastpts*1e-6, video_pts*1e-6);
           m_av_clock.OMXStep();
-          last = now;
         }
+        else
+          m_av_clock.OMXMediaTime(0.0);
       }
-    }
-    else if (not_accepts_data && (audio_fifo_low || video_fifo_low))
-    {
-      CLog::Log(LOGDEBUG, "%s - Flush! M:%.6f-%.6f (A:%.6f V:%.6f) PEF:%d%d%d S:%.2f A:%.2f V:%.2f/T:%.2f (A:%d%d V:%d%d) A:%d%% V:%d%% (%.2f,%.2f)", __FUNCTION__,
-        stamp*1e-6, m_av_clock.OMXClockAdjustment()*1e-6, audio_pts*1e-6, video_pts*1e-6, m_av_clock.OMXIsPaused(), bOmxSentEOFs, not_accepts_data, m_playSpeed * (1.0f/DVD_PLAYSPEED_NORMAL),
-        audio_pts == DVD_NOPTS_VALUE ? 0.0:audio_fifo, video_pts == DVD_NOPTS_VALUE ? 0.0:video_fifo, m_threshold,
-        audio_fifo_low, audio_fifo_high, video_fifo_low, video_fifo_high,
-        m_omxPlayerAudio.GetLevel(), m_omxPlayerVideo.GetLevel(), m_omxPlayerAudio.GetDelay(), (float)m_omxPlayerAudio.GetCacheTotal());
-      FlushBuffers(false);
     }
     else if(!m_Pause && (bOmxSentEOFs || not_accepts_data || (audio_fifo_high && video_fifo_high)))
     {
@@ -1207,7 +1208,7 @@ void COMXPlayer::Process()
     }
     else if (m_Pause || audio_fifo_low || video_fifo_low)
     {
-      if (!m_av_clock.OMXIsPaused())
+      if (!m_av_clock.OMXIsPaused() && !TPA(m_playSpeed))
       {
         if (!m_Pause)
           m_threshold = std::min(2.0f*m_threshold, 16.0f);
@@ -1775,7 +1776,8 @@ void COMXPlayer::HandlePlaySpeed()
     else if (m_CurrentVideo.id >= 0
           &&  m_CurrentVideo.inited == true
           &&  m_SpeedState.lastpts  != m_omxPlayerVideo.GetCurrentPts()
-          &&  m_SpeedState.lasttime != GetTime())
+          &&  m_SpeedState.lasttime != GetTime()
+          &&  m_av_clock.OMXMediaTime() != 0.0)
     {
       m_SpeedState.lastpts  = m_omxPlayerVideo.GetCurrentPts();
       m_SpeedState.lasttime = GetTime();
@@ -1946,7 +1948,8 @@ void COMXPlayer::UpdateTimestamps(COMXCurrentStream& current, DemuxPacket* pPack
   || abs(current.dts - current.dts_state) > DVD_MSEC_TO_TIME(200))
   {
     current.dts_state = current.dts;
-    if (current.inited)
+    /* don't use the DISPLAYTIME via player, it is not needed and makes reported time jittery during trickplay */
+    if (0 && current.inited)
     {
       // make sure we send no outdated state to a/v players
       UpdatePlayState(0);
@@ -1955,6 +1958,13 @@ void COMXPlayer::UpdateTimestamps(COMXCurrentStream& current, DemuxPacket* pPack
     else
     {
       CSingleLock lock(m_StateSection);
+
+      if(m_StateInput.time_src == COMXPlayer::ETIMESOURCE_CLOCK)
+        m_StateInput.time      = TP(m_playSpeed) ? DVD_TIME_TO_MSEC(m_av_clock.GetClock(m_StateInput.timestamp) + m_StateInput.time_offset) : \
+                                                   DVD_TIME_TO_MSEC(m_av_clock.OMXMediaTime());
+      else
+        m_StateInput.timestamp = m_av_clock.GetAbsoluteClock();
+
       m_State = m_StateInput;
     }
   }
@@ -2076,7 +2086,7 @@ void COMXPlayer::CheckAutoSceneSkip()
     /*
      * Seeking is NOT flushed so any content up to the demux point is retained when playing forwards.
      */
-    m_messenger.Put(new CDVDMsgPlayerSeek((int)seek, true, false, true, false, true));
+    m_messenger.Put(new CDVDMsgPlayerSeek((int)seek, true, true, true, false, true));
     /*
      * Seek doesn't always work reliably. Last physical seek time is recorded to prevent looping
      * if there was an error with seeking and it landed somewhere unexpected, perhaps back in the
@@ -2094,7 +2104,7 @@ void COMXPlayer::CheckAutoSceneSkip()
     /*
      * Seeking is NOT flushed so any content up to the demux point is retained when playing forwards.
      */
-    m_messenger.Put(new CDVDMsgPlayerSeek(cut.end + 1, true, false, true, false, true));
+    m_messenger.Put(new CDVDMsgPlayerSeek(cut.end + 1, true, true, true, false, true));
     /*
      * Each commercial break is only skipped once so poorly detected commercial breaks can be
      * manually re-entered. Start and end are recorded to prevent looping and to allow seeking back
@@ -2261,9 +2271,9 @@ void COMXPlayer::HandleMessages()
         if(!msg.GetTrickPlay())
         {
           g_infoManager.SetDisplayAfterSeek(100000);
-          if(msg.GetFlush())
-            SetCaching(CACHESTATE_FLUSH);
         }
+        if(msg.GetFlush())
+          SetCaching(CACHESTATE_FLUSH);
 
         double start = DVD_NOPTS_VALUE;
 
@@ -2290,7 +2300,9 @@ void COMXPlayer::HandleMessages()
 
           FlushBuffers(!msg.GetFlush(), start, msg.GetAccurate());
           // let clock know the new time so progress bar updates immediately
-          if(m_StateInput.dts != DVD_NOPTS_VALUE)
+          if(TP(m_playSpeed))
+            m_av_clock.OMXMediaTime(0.0);
+          else if(m_StateInput.dts != DVD_NOPTS_VALUE)
             m_av_clock.OMXMediaTime(m_StateInput.dts);
         }
         else
@@ -2458,8 +2470,9 @@ void COMXPlayer::HandleMessages()
 
         // when switching from trickplay to normal, we may not have a full set of reference frames
         // in decoder and we may get corrupt frames out. Seeking to current time will avoid this.
-        if ( (speed == DVD_PLAYSPEED_PAUSE || speed == DVD_PLAYSPEED_NORMAL) &&
-             (m_playSpeed != DVD_PLAYSPEED_PAUSE && m_playSpeed != DVD_PLAYSPEED_NORMAL) )
+        if ( TP(speed) || TP(m_playSpeed) ||
+           ( (speed == DVD_PLAYSPEED_PAUSE || speed == DVD_PLAYSPEED_NORMAL) &&
+             (m_playSpeed != DVD_PLAYSPEED_PAUSE && m_playSpeed != DVD_PLAYSPEED_NORMAL) ) )
           m_messenger.Put(new CDVDMsgPlayerSeek(DVD_TIME_TO_MSEC(m_clock.GetClock()), (speed < 0), true, false, false, true));
 
         m_playSpeed = speed;
@@ -2702,15 +2715,13 @@ bool COMXPlayer::CanSeek()
 
 void COMXPlayer::Seek(bool bPlus, bool bLargeStep)
 {
-#if 0
-  // sadly this doesn't work for now, audio player must
-  // drop packets at the same rate as we play frames
+  // Single step
   if( m_playSpeed == DVD_PLAYSPEED_PAUSE && bPlus && !bLargeStep)
   {
-    m_omxPlayerVideo.StepFrame();
+    m_av_clock.OMXStep();
     return;
   }
-#endif
+
   if (!m_State.canseek)
     return;
 
@@ -3046,8 +3057,6 @@ int64_t COMXPlayer::GetTime()
     if(offset < -limit) offset = -limit;
   }
   //{CLog::Log(LOGINFO, "%s: time:%.2f stamp:%.2f dts:%d m:%d (p:%d,c:%d) =%llu", __func__, (double)m_State.time, (double)m_State.timestamp, (int)DVD_TIME_TO_MSEC(m_State.dts + m_offset_pts), (int)DVD_TIME_TO_MSEC(m_av_clock.OMXMediaTime()), (int)m_playSpeed, (int)m_caching, llrint(m_State.time + DVD_TIME_TO_MSEC(offset)));}
-  if (TP(m_playSpeed))
-    return DVD_TIME_TO_MSEC(m_clock.GetClock());
   return llrint(m_State.time + DVD_TIME_TO_MSEC(offset));
 }
 
@@ -3444,7 +3453,8 @@ void COMXPlayer::FlushBuffers(bool queued, double pts, bool accurate)
     m_av_clock.OMXStop();
   m_av_clock.OMXPause();
 
-  if(accurate)
+  /* for now, ignore accurate flag as it discards keyframes and causes corrupt frames */
+  if(0 && accurate)
     startpts = pts;
   else
     startpts = DVD_NOPTS_VALUE;

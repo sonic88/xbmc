@@ -710,20 +710,6 @@ bool CApplication::Create()
   CStdString strExecutablePath;
   CUtil::GetHomePath(strExecutablePath);
 
-  // if we are running from DVD our UserData location will be TDATA
-  if (URIUtils::IsOnDVD(strExecutablePath))
-  {
-    // TODO: Should we copy over any UserData folder from the DVD?
-    if (!CFile::Exists("special://masterprofile/guisettings.xml")) // first run - cache userdata folder
-    {
-      CFileItemList items;
-      CUtil::GetRecursiveListing("special://xbmc/userdata",items,"");
-      for (int i=0;i<items.Size();++i)
-          CFile::Cache(items[i]->GetPath(),"special://masterprofile/"+URIUtils::GetFileName(items[i]->GetPath()));
-    }
-    g_advancedSettings.m_logFolder = "special://masterprofile/";
-  }
-
 #ifdef HAS_XRANDR
   g_xrandr.LoadCustomModeLinesToAllOutputs();
 #endif
@@ -1285,7 +1271,7 @@ bool CApplication::Initialize()
   m_dpms = new DPMSSupport();
   if (g_windowManager.Initialized())
   {
-    CSettings::Get().GetSetting("powermanagement.displaysoff")->SetVisible(m_dpms->IsSupported());
+    CSettings::Get().GetSetting("powermanagement.displaysoff")->SetRequirementsMet(m_dpms->IsSupported());
 
     g_windowManager.Add(new CGUIWindowHome);
     g_windowManager.Add(new CGUIWindowPrograms);
@@ -5710,4 +5696,25 @@ bool CApplication::SetLanguage(const CStdString &strLanguage)
   }
 
   return true;
+}
+
+void CApplication::CloseNetworkShares()
+{
+  CLog::Log(LOGDEBUG,"CApplication::CloseNetworkShares: Closing all network shares");
+
+#if defined(HAS_FILESYSTEM_SMB) && !defined(TARGET_WINDOWS)
+  smb.Deinit();
+#endif
+  
+#ifdef HAS_FILESYSTEM_NFS
+  gNfsConnection.Deinit();
+#endif
+  
+#ifdef HAS_FILESYSTEM_AFP
+  gAfpConnection.Deinit();
+#endif
+  
+#ifdef HAS_FILESYSTEM_SFTP
+  CSFTPSessionManager::DisconnectAllSessions();
+#endif
 }

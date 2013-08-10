@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2013 Team XBMC
  *      http://xbmc.org
@@ -18,31 +19,17 @@
  *
  */
 
-#include "SettingVisibility.h"
-#include "SettingsManager.h"
+#include "utils/StdString.h"
+#include "JSONRPC.h"
+#include "FileItemHandler.h"
 
-bool CSettingVisibilityCondition::Check() const
+namespace JSONRPC
 {
-  if (m_settingsManager == NULL)
-    return false;
-
-  bool found = m_settingsManager->GetConditions().Check("IsDefined", m_value);
-  if (m_negated)
-    return !found;
-
-  return found;
-}
-
-bool CSettingVisibilityConditionCombination::Check() const
-{
-  if (m_operations.empty() && m_values.empty())
-    return true;
-
-  return CSettingConditionCombination::Check();
-}
-
-CSettingVisibility::CSettingVisibility(CSettingsManager *settingsManager /* = NULL */)
-  : CSettingCondition(settingsManager)
-{
-  m_operation = CBooleanLogicOperationPtr(new CSettingVisibilityConditionCombination(m_settingsManager));
+  class CProfilesOperations : CFileItemHandler
+  {
+  public:
+    static JSONRPC_STATUS GetProfiles(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
+    static JSONRPC_STATUS GetCurrentProfile(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
+    static JSONRPC_STATUS LoadProfile(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
+  };
 }

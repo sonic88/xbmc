@@ -739,6 +739,7 @@
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\JSONServiceDescription.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\PlayerOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\PlaylistOperations.cpp" />
+    <ClCompile Include="..\..\xbmc\interfaces\json-rpc\ProfilesOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\PVROperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\SystemOperations.cpp" />
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\VideoLibrary.cpp" />
@@ -984,7 +985,7 @@
     <ClCompile Include="..\..\xbmc\settings\SettingSection.cpp" />
     <ClCompile Include="..\..\xbmc\settings\SettingsManager.cpp" />
     <ClCompile Include="..\..\xbmc\settings\SettingUpdate.cpp" />
-    <ClCompile Include="..\..\xbmc\settings\SettingVisibility.cpp" />
+    <ClCompile Include="..\..\xbmc\settings\SettingRequirement.cpp" />
     <ClCompile Include="..\..\xbmc\settings\SkinSettings.cpp" />
     <ClCompile Include="..\..\xbmc\settings\VideoSettings.cpp" />
     <ClCompile Include="..\..\xbmc\settings\windows\GUIControlSettings.cpp" />
@@ -1113,6 +1114,7 @@
     <ClInclude Include="..\..\xbmc\interfaces\generic\LanguageInvokerThread.h" />
     <ClInclude Include="..\..\xbmc\interfaces\generic\ScriptInvocationManager.h" />
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\FavouritesOperations.h" />
+    <ClInclude Include="..\..\xbmc\interfaces\json-rpc\ProfilesOperations.h" />
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\PVROperations.h" />
     <ClInclude Include="..\..\xbmc\interfaces\legacy\Addon.h" />
     <ClInclude Include="..\..\xbmc\interfaces\legacy\AddonCallback.h" />
@@ -1185,7 +1187,7 @@
     <ClInclude Include="..\..\xbmc\settings\SettingSection.h" />
     <ClInclude Include="..\..\xbmc\settings\SettingsManager.h" />
     <ClInclude Include="..\..\xbmc\settings\SettingUpdate.h" />
-    <ClInclude Include="..\..\xbmc\settings\SettingVisibility.h" />
+    <ClInclude Include="..\..\xbmc\settings\SettingRequirement.h" />
     <ClInclude Include="..\..\xbmc\settings\SkinSettings.h" />
     <ClInclude Include="..\..\xbmc\settings\windows\GUIControlSettings.h" />
     <ClInclude Include="..\..\xbmc\settings\windows\GUIWindowSettings.h" />

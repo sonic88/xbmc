@@ -33,7 +33,7 @@
 #include "utils/MathUtils.h"
 #include "threads/SingleLock.h"
 #if defined(HAS_AMLPLAYER)
-#include "cores/amlplayer/AMLUtils.h"
+#include "utils/AMLUtils.h"
 #endif
 
 #define ALSA_OPTIONS (SND_PCM_NONBLOCK | SND_PCM_NO_AUTO_FORMAT | SND_PCM_NO_AUTO_CHANNELS | SND_PCM_NO_AUTO_RESAMPLE)
@@ -346,6 +346,14 @@ bool CAESinkALSA::InitializeHW(AEAudioFormat &format)
   snd_pcm_hw_params_t *hw_params_copy;
   snd_pcm_hw_params_alloca(&hw_params_copy);
   snd_pcm_hw_params_copy(hw_params_copy, hw_params); // copy what we have and is already working
+
+  // Make sure to not initialize too large to not cause underruns
+  snd_pcm_uframes_t periodSizeMax = bufferSize / 3;
+  if(snd_pcm_hw_params_set_period_size_max(m_pcm, hw_params_copy, &periodSizeMax, NULL) != 0)
+  {
+    snd_pcm_hw_params_copy(hw_params_copy, hw_params); // restore working copy
+    CLog::Log(LOGDEBUG, "CAESinkALSA::InitializeHW - Request: Failed to limit periodSize to %lu", periodSizeMax);
+  }
   
   // first trying bufferSize, PeriodSize
   // for more info see here:
@@ -518,6 +526,7 @@ unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool ha
   }
 
   if ((unsigned int)ret < frames)
+  {
     if(blocking)
     {
       ret = snd_pcm_wait(m_pcm, m_timeout);
@@ -526,6 +535,7 @@ unsigned int CAESinkALSA::AddPackets(uint8_t *data, unsigned int frames, bool ha
     }
     else
       return 0;
+  }
 
   ret = snd_pcm_writei(m_pcm, (void*)data, frames);
   if (ret < 0)

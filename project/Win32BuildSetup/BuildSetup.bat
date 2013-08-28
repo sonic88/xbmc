@@ -76,13 +76,9 @@ IF %comp%==vs2010 (
   set EXE= "..\VS2010Express\XBMC\%buildconfig%\XBMC.exe"
   set PDB= "..\VS2010Express\XBMC\%buildconfig%\XBMC.pdb"
   
-  :: when building with jenkins there's no branch. First git command gets the branch even there
-  :: but is empty in a normal build environment. Second git command gets the branch there.
-  for /f "tokens=3 delims=/" %%a in ('git branch -r --contains HEAD') do set BRANCH=%%a
-  IF %BRANCH%==na (
-    for /f "tokens=* delims= " %%a in ('git rev-parse --abbrev-ref HEAD') do set BRANCH=%%a
-  )
-	
+  :: sets the BRANCH env var
+  call getbranch.bat
+
   rem	CONFIG END
   rem -------------------------------------------------------------
 
@@ -208,6 +204,17 @@ IF %comp%==vs2010 (
   Echo userdata\thumbnails\>>exclude.txt
   rem UserData\visualisations contains currently only xbox visualisationfiles
   Echo userdata\visualisations\>>exclude.txt
+  rem Exclude non Windows addons
+  Echo addons\repository.pvr-android.xbmc.org\>>exclude.txt
+  Echo addons\repository.pvr-ios.xbmc.org\>>exclude.txt
+  Echo addons\repository.pvr-osx32.xbmc.org\>>exclude.txt
+  Echo addons\repository.pvr-osx64.xbmc.org\>>exclude.txt
+  Echo addons\screensaver.rsxs.euphoria\>>exclude.txt
+  Echo addons\screensaver.rsxs.plasma\>>exclude.txt
+  Echo addons\screensaver.rsxs.solarwinds\>>exclude.txt
+  Echo addons\visualization.fishbmc\>>exclude.txt
+  Echo addons\visualization.projectm\>>exclude.txt
+  Echo addons\visualization.glspectrum\>>exclude.txt
   rem other platform stuff
   Echo lib-osx>>exclude.txt
   Echo players\mplayer>>exclude.txt
@@ -249,6 +256,10 @@ IF %comp%==vs2010 (
   ECHO ------------------------------------------------------------
   ECHO Building Confluence Skin...
   cd ..\..\addons\skin.confluence
+  call build.bat > NUL
+  cd %build_path%
+  ECHO Building Touched Skin...
+  cd ..\..\addons\skin.touched
   call build.bat > NUL
   cd %build_path%
   rem restore color and title, some scripts mess these up

@@ -292,7 +292,12 @@ bool CAddonMgr::Init()
 void CAddonMgr::DeInit()
 {
   if (m_cpluff)
+  {
+    m_cpluff->unregister_pcollections(m_cp_context);
+    m_cpluff->unregister_logger(m_cp_context, cp_logger);
+    m_cpluff->destroy_context(m_cp_context);
     m_cpluff->destroy();
+  }
   delete m_cpluff;
   m_cpluff = NULL;
   m_database.Close();

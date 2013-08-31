@@ -1529,7 +1529,6 @@ void CApplication::StartPVRManager(bool bOpenPVRWindow /* = false */)
 
 void CApplication::StopPVRManager()
 {
-  CLog::Log(LOGINFO, "stopping PVRManager");
   if (g_PVRManager.IsPlaying())
     StopPlaying();
   g_PVRManager.Stop();

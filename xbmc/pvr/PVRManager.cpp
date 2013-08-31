@@ -84,7 +84,6 @@ CPVRManager::CPVRManager(void) :
 CPVRManager::~CPVRManager(void)
 {
   Stop();
-  CLog::Log(LOGDEBUG,"PVRManager - destroyed");
 }
 
 CPVRManager &CPVRManager::Get(void)

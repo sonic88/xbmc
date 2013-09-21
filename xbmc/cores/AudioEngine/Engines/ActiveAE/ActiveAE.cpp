@@ -396,7 +396,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
             m_sink.m_controlPort.SendOutMessage(CSinkControlProtocol::SILENCEMODE, &silence, sizeof(bool));
           }
           LoadSettings();
-          ChangeResampleQuality();
+          ChangeResamplers();
           if (!NeedReconfigureBuffers() && !NeedReconfigureSink())
             return;
           m_state = AE_TOP_RECONFIGURING;
@@ -422,9 +422,9 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
         case CActiveAEControlProtocol::PAUSESTREAM:
           CActiveAEStream *stream;
           stream = *(CActiveAEStream**)msg->data;
-          stream->m_paused = true;
-          if (m_streams.size() == 1)
+          if (stream->m_paused != true && m_streams.size() == 1)
             FlushEngine();
+          stream->m_paused = true;
           return;
         case CActiveAEControlProtocol::RESUMESTREAM:
           stream = *(CActiveAEStream**)msg->data;
@@ -457,12 +457,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           par = (MsgStreamParameter*)msg->data;
           if (par->stream->m_resampleBuffers)
           {
-            if ((unsigned int)(par->stream->m_resampleBuffers->m_format.m_sampleRate * par->parameter.double_par) != par->stream->m_resampleBuffers->m_outSampleRate)
-            {
-              par->stream->m_resampleBuffers->m_resampleRatio = par->parameter.double_par;
-              par->stream->m_resampleBuffers->m_resampleQuality = AE_QUALITY_LOW;
-              par->stream->m_resampleBuffers->m_changeResampler = true;
-            }
+            par->stream->m_resampleBuffers->m_resampleRatio = par->parameter.double_par;
           }
           return;
         case CActiveAEControlProtocol::STREAMFADE:
@@ -795,13 +790,9 @@ void CActiveAE::Process()
   }
 }
 
-void CActiveAE::Configure(AEAudioFormat *desiredFmt)
+AEAudioFormat CActiveAE::GetInputFormat(AEAudioFormat *desiredFmt)
 {
-  bool initSink = false;
-
-  AEAudioFormat sinkInputFormat, inputFormat;
-  AEAudioFormat oldInternalFormat = m_internalFormat;
-  bool updateMode = true;
+  AEAudioFormat inputFormat;
 
   if (m_streams.empty())
   {
@@ -821,16 +812,28 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
   // keep format when having multiple streams
   else if (m_streams.size() > 1 && m_silenceBuffers == NULL)
   {
-    inputFormat = m_sinkRequestFormat;
-    updateMode = false;
+    inputFormat = m_inputFormat;
   }
   else
   {
     inputFormat = m_streams.front()->m_format;
+    m_inputFormat = inputFormat;
   }
 
+  return inputFormat;
+}
+
+void CActiveAE::Configure(AEAudioFormat *desiredFmt)
+{
+  bool initSink = false;
+
+  AEAudioFormat sinkInputFormat, inputFormat;
+  AEAudioFormat oldInternalFormat = m_internalFormat;
+
+  inputFormat = GetInputFormat(desiredFmt);
+
   m_sinkRequestFormat = inputFormat;
-  ApplySettingsToFormat(m_sinkRequestFormat, m_settings, updateMode);
+  ApplySettingsToFormat(m_sinkRequestFormat, m_settings, (int*)&m_mode);
   std::string device = AE_IS_RAW(m_sinkRequestFormat.m_dataFormat) ? m_settings.passthoughdevice : m_settings.device;
   std::string driver;
   CAESinkFactory::ParseDevice(device, driver);
@@ -854,6 +857,8 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
   if (m_streams.empty())
   {
     inputFormat = m_sinkFormat;
+    inputFormat.m_channelLayout = m_sinkRequestFormat.m_channelLayout;
+    inputFormat.m_channelLayout.ResolveChannels(m_sinkFormat.m_channelLayout);
     inputFormat.m_dataFormat = AE_FMT_FLOAT;
     inputFormat.m_frameSize = inputFormat.m_channelLayout.Count() *
                               (CAEUtil::DataFormatToBits(inputFormat.m_dataFormat) >> 3);
@@ -896,20 +901,7 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
     {
       outputFormat = inputFormat;
       outputFormat.m_dataFormat = AE_FMT_FLOATP;
-
-      if (g_advancedSettings.m_audioResample)
-      {
-        outputFormat.m_sampleRate = g_advancedSettings.m_audioResample;
-        CLog::Log(LOGINFO, "CActiveAE::Configure - Forcing samplerate to %d", inputFormat.m_sampleRate);
-      }
-
-      // check for valid sampling rates
-      if (inputFormat.m_sampleRate != 48000 &&
-          inputFormat.m_sampleRate != 44100 &&
-          inputFormat.m_sampleRate != 32000)
-      {
-        outputFormat.m_sampleRate = 48000;
-      }
+      outputFormat.m_sampleRate = 48000;
 
       // setup encoder
       if (!m_encoder)
@@ -989,7 +981,7 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
       if (!(*it)->m_resampleBuffers)
       {
         (*it)->m_resampleBuffers = new CActiveAEBufferPoolResample((*it)->m_inputBuffers->m_format, outputFormat, m_settings.resampleQuality);
-        (*it)->m_resampleBuffers->Create(MAX_CACHE_LEVEL*1000, false);
+        (*it)->m_resampleBuffers->Create(MAX_CACHE_LEVEL*1000, false, m_settings.stereoupmix);
       }
       if (m_mode == MODE_TRANSCODE || m_streams.size() > 1)
         (*it)->m_resampleBuffers->m_fillPackets = true;
@@ -1013,7 +1005,7 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
         vizFormat.m_dataFormat = AE_FMT_FLOAT;
         m_vizBuffers = new CActiveAEBufferPoolResample(m_internalFormat, vizFormat, m_settings.resampleQuality);
         // TODO use cache of sync + water level
-        m_vizBuffers->Create(2000, false);
+        m_vizBuffers->Create(2000, false, false);
         m_vizInitialized = false;
       }
     }
@@ -1029,7 +1021,7 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
   if (!m_sinkBuffers)
   {
     m_sinkBuffers = new CActiveAEBufferPoolResample(sinkInputFormat, m_sinkFormat, m_settings.resampleQuality);
-    m_sinkBuffers->Create(MAX_WATER_LEVEL*1000, true);
+    m_sinkBuffers->Create(MAX_WATER_LEVEL*1000, true, false);
   }
 
   // reset gui sounds
@@ -1198,21 +1190,26 @@ void CActiveAE::DiscardSound(CActiveAESound *sound)
   }
 }
 
-void CActiveAE::ChangeResampleQuality()
+void CActiveAE::ChangeResamplers()
 {
   std::list<CActiveAEStream*>::iterator it;
   for(it=m_streams.begin(); it!=m_streams.end(); ++it)
   {
-    if ((*it)->m_resampleBuffers && (*it)->m_resampleBuffers->m_resampler && ((*it)->m_resampleBuffers->m_resampleQuality != m_settings.resampleQuality))
+    if ((*it)->m_resampleBuffers && (*it)->m_resampleBuffers->m_resampler &&
+        (((*it)->m_resampleBuffers->m_resampleQuality != m_settings.resampleQuality) ||
+        ((*it)->m_resampleBuffers->m_stereoUpmix != m_settings.stereoupmix)))
+    {
       (*it)->m_resampleBuffers->m_changeResampler = true;
+    }
     (*it)->m_resampleBuffers->m_resampleQuality = m_settings.resampleQuality;
+    (*it)->m_resampleBuffers->m_stereoUpmix = m_settings.stereoupmix;
   }
 }
 
-void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &settings, bool setmode)
+void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &settings, int *mode)
 {
-  if (setmode)
-    m_mode = MODE_PCM;
+  if (mode)
+    *mode = MODE_PCM;
 
   // raw pass through
   if (m_settings.mode != AUDIO_ANALOG && AE_IS_RAW(format.m_dataFormat))
@@ -1225,8 +1222,8 @@ void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &sett
     {
       CLog::Log(LOGERROR, "CActiveAE::ApplySettingsToFormat - input audio format is wrong");
     }
-    if (setmode)
-      m_mode = MODE_RAW;
+    if (mode)
+      *mode = MODE_RAW;
   }
   // transcode
   else if (m_settings.mode != AUDIO_ANALOG && 
@@ -1238,29 +1235,43 @@ void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &sett
     format.m_dataFormat = AE_FMT_AC3;
     format.m_sampleRate = 48000;
     format.m_channelLayout = AE_CH_LAYOUT_2_0;
-    if (setmode)
-      m_mode = MODE_TRANSCODE;
+    if (mode)
+      *mode = MODE_TRANSCODE;
   }
   else
   {
     format.m_dataFormat = AE_FMT_FLOAT;
-    if ((format.m_channelLayout.Count() > 2) || settings.stereoupmix)
+    // consider user channel layout for those cases
+    // 1. input stream is multichannel
+    // 2. stereo upmix is selected
+    // 3. already playing > 2 channels and "audiophile" is not set
+    //    this is the case if e.g. a stream changes config from 5.1 to 2.0
+    //    which would cause a short audio drop-out if we changed the sink
+    if ((format.m_channelLayout.Count() > 2) ||
+         settings.stereoupmix ||
+         (m_stats.GetWaterLevel() > 0 && m_internalFormat.m_channelLayout.Count() > 2 && !g_advancedSettings.m_audioAudiophile))
     {
+      CAEChannelInfo stdLayout;
       switch (settings.channels)
       {
         default:
-        case  0: format.m_channelLayout = AE_CH_LAYOUT_2_0; break;
-        case  1: format.m_channelLayout = AE_CH_LAYOUT_2_0; break;
-        case  2: format.m_channelLayout = AE_CH_LAYOUT_2_1; break;
-        case  3: format.m_channelLayout = AE_CH_LAYOUT_3_0; break;
-        case  4: format.m_channelLayout = AE_CH_LAYOUT_3_1; break;
-        case  5: format.m_channelLayout = AE_CH_LAYOUT_4_0; break;
-        case  6: format.m_channelLayout = AE_CH_LAYOUT_4_1; break;
-        case  7: format.m_channelLayout = AE_CH_LAYOUT_5_0; break;
-        case  8: format.m_channelLayout = AE_CH_LAYOUT_5_1; break;
-        case  9: format.m_channelLayout = AE_CH_LAYOUT_7_0; break;
-        case 10: format.m_channelLayout = AE_CH_LAYOUT_7_1; break;
+        case  0: stdLayout = AE_CH_LAYOUT_2_0; break;
+        case  1: stdLayout = AE_CH_LAYOUT_2_0; break;
+        case  2: stdLayout = AE_CH_LAYOUT_2_1; break;
+        case  3: stdLayout = AE_CH_LAYOUT_3_0; break;
+        case  4: stdLayout = AE_CH_LAYOUT_3_1; break;
+        case  5: stdLayout = AE_CH_LAYOUT_4_0; break;
+        case  6: stdLayout = AE_CH_LAYOUT_4_1; break;
+        case  7: stdLayout = AE_CH_LAYOUT_5_0; break;
+        case  8: stdLayout = AE_CH_LAYOUT_5_1; break;
+        case  9: stdLayout = AE_CH_LAYOUT_7_0; break;
+        case 10: stdLayout = AE_CH_LAYOUT_7_1; break;
       }
+
+      if (g_advancedSettings.m_audioAudiophile)
+        format.m_channelLayout.ResolveChannels(stdLayout);
+      else
+        format.m_channelLayout = stdLayout;
     }
 
     if (m_settings.mode == AUDIO_IEC958 && format.m_sampleRate > 48000)
@@ -1281,14 +1292,17 @@ void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &sett
       format.m_channelLayout = AE_CH_LAYOUT_2_0;
     }
 
-    CAEChannelInfo stdLayout = format.m_channelLayout;
-    format.m_channelLayout.ResolveChannels(stdLayout);
+    // sinks may not support mono
+    if (format.m_channelLayout.Count() == 1)
+    {
+      format.m_channelLayout = AE_CH_LAYOUT_2_0;
+    }
   }
 }
 
 bool CActiveAE::NeedReconfigureBuffers()
 {
-  AEAudioFormat newFormat = m_sinkRequestFormat;
+  AEAudioFormat newFormat = GetInputFormat();
   ApplySettingsToFormat(newFormat, m_settings);
 
   if (newFormat.m_dataFormat != m_sinkRequestFormat.m_dataFormat ||
@@ -1301,7 +1315,7 @@ bool CActiveAE::NeedReconfigureBuffers()
 
 bool CActiveAE::NeedReconfigureSink()
 {
-  AEAudioFormat newFormat = m_sinkRequestFormat;
+  AEAudioFormat newFormat = GetInputFormat();
   ApplySettingsToFormat(newFormat, m_settings);
 
   std::string device = AE_IS_RAW(newFormat.m_dataFormat) ? m_settings.passthoughdevice : m_settings.device;
@@ -2309,6 +2323,7 @@ bool CActiveAE::ResampleSound(CActiveAESound *sound)
                   orig_config.sample_rate,
                   orig_config.fmt,
                   orig_config.bits_per_sample,
+                  false,
                   NULL,
                   AE_QUALITY_MID);
 
@@ -2324,7 +2339,8 @@ bool CActiveAE::ResampleSound(CActiveAESound *sound)
   }
   int samples = resampler->Resample(dst_buffer, dst_samples,
                                     sound->GetSound(true)->data,
-                                    sound->GetSound(true)->nb_samples);
+                                    sound->GetSound(true)->nb_samples,
+                                    1.0);
 
   sound->GetSound(false)->nb_samples = samples;
 
@@ -2356,7 +2372,7 @@ IAEStream *CActiveAE::MakeStream(enum AEDataFormat dataFormat, unsigned int samp
 
   Message *reply;
   if (m_dataPort.SendOutMessageSync(CActiveAEDataProtocol::NEWSTREAM,
-                                    &reply,1000,
+                                    &reply,10000,
                                     &msg, sizeof(MsgStreamNew)))
   {
     bool success = reply->signal == CActiveAEControlProtocol::ACC ? true : false;

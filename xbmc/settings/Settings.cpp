@@ -416,6 +416,9 @@ void CSettings::Uninitialize()
 #endif // defined(TARGET_LINUX)
   m_settingsManager->UnregisterCallback(&g_weatherManager);
   m_settingsManager->UnregisterCallback(&PERIPHERALS::CPeripherals::Get());
+#if defined(TARGET_DARWIN_OSX)
+  m_settingsManager->UnregisterCallback(&XBMCHelper::GetInstance());
+#endif
 
   // unregister ISubSettings implementations
   m_settingsManager->UnregisterSubSettings(&g_application);
@@ -766,8 +769,7 @@ void CSettings::InitializeConditions()
 #endif
 #if defined(TARGET_WINDOWS) && defined(HAS_DX)
   m_settingsManager->AddCondition("has_dx");
-  if (g_sysinfo.IsWindowsVersionAtLeast(CSysInfo::WindowsVersionVista))
-    m_settingsManager->AddCondition("hasdxva2");
+  m_settingsManager->AddCondition("hasdxva2");
 #endif
 
   if (g_application.IsStandAlone())

@@ -26,8 +26,11 @@
 #if defined(TARGET_DARWIN)
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#ifdef TARGET_DARWIN_OSX
+#include "osx/smc.h"
 #ifdef __ppc__
 #include <mach-o/arch.h>
+#endif
 #endif
 #endif
 
@@ -504,9 +507,14 @@ float CCPUInfo::getCPUFrequency()
 
 bool CCPUInfo::getTemperature(CTemperature& temperature)
 {
-  int         value = 0,
-              ret   = 0;
+  int         value = 0;
   char        scale = 0;
+  
+#if defined(TARGET_DARWIN_OSX)
+  value = SMCGetTemperature(SMC_KEY_CPU_TEMP);
+  scale = 'c';
+#else
+  int         ret   = 0;
   FILE        *p    = NULL;
   CStdString  cmd   = g_advancedSettings.m_cpuTempCmd;
 
@@ -546,6 +554,7 @@ bool CCPUInfo::getTemperature(CTemperature& temperature)
 
   if (ret != 2)
     return false; 
+#endif
 
   if (scale == 'C' || scale == 'c')
     temperature = CTemperature::CreateFromCelsius(value);

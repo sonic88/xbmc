@@ -733,11 +733,11 @@ void CGUIWindowVideoNav::OnDeleteItem(CFileItemPtr pItem)
 
     if (URIUtils::GetFileName(strDeletePath).Equals("VIDEO_TS.IFO"))
     {
-      URIUtils::GetDirectory(strDeletePath.Mid(0),strDeletePath);
+      strDeletePath = URIUtils::GetDirectory(strDeletePath);
       if (strDeletePath.Right(9).Equals("VIDEO_TS/"))
       {
         URIUtils::RemoveSlashAtEnd(strDeletePath);
-        URIUtils::GetDirectory(strDeletePath.Mid(0),strDeletePath);
+        strDeletePath = URIUtils::GetDirectory(strDeletePath);
       }
     }
     if (URIUtils::HasSlashAtEnd(strDeletePath))
@@ -826,11 +826,7 @@ bool CGUIWindowVideoNav::DeleteItem(CFileItem* pItem, bool bUnavailable /* = fal
   if (iType == VIDEODB_CONTENT_TVSHOWS)
     database.SetPathHash(path,"");
   else
-  {
-    CStdString strDirectory;
-    URIUtils::GetDirectory(path,strDirectory);
-    database.SetPathHash(strDirectory,"");
-  }
+    database.SetPathHash(URIUtils::GetDirectory(path), "");
 
   return true;
 }
@@ -943,15 +939,10 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
           else
             buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
         }
-        if (!g_application.IsVideoScanning() && item->IsVideoDb() && item->HasVideoInfoTag() &&
-           (!item->m_bIsFolder || m_vecItems->GetContent().Equals("movies") || m_vecItems->GetContent().Equals("tvshows")))
-        {
-          buttons.Add(CONTEXT_BUTTON_EDIT, 16106);
-        }
-        else if (!item->IsPlugin() && !item->IsScript() && !item->IsLiveTV() && !item->IsAddonsPath() &&
-                 item->GetPath() != "sources://video/" && item->GetPath() != "special://videoplaylists/" &&
-                 item->GetPath().Left(19) != "newsmartplaylist://" && item->GetPath().Left(14) != "newplaylist://" &&
-                 item->GetPath().Left(9) != "newtag://")
+        if (!item->IsPlugin() && !item->IsScript() && !item->IsLiveTV() && !item->IsAddonsPath() &&
+            item->GetPath() != "sources://video/" && item->GetPath() != "special://videoplaylists/" &&
+            item->GetPath().Left(19) != "newsmartplaylist://" && item->GetPath().Left(14) != "newplaylist://" &&
+            item->GetPath().Left(9) != "newtag://")
         {
           if (item->m_bIsFolder)
           {
@@ -966,6 +957,11 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
             else
               buttons.Add(CONTEXT_BUTTON_MARK_WATCHED, 16103);   //Mark as Watched
           }
+        }
+        if (!g_application.IsVideoScanning() && item->IsVideoDb() && item->HasVideoInfoTag() &&
+           (!item->m_bIsFolder || m_vecItems->GetContent().Equals("movies") || m_vecItems->GetContent().Equals("tvshows")))
+        {
+          buttons.Add(CONTEXT_BUTTON_EDIT, 16106);
         }
 
         if (node == NODE_TYPE_SEASONS && item->m_bIsFolder)

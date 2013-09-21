@@ -803,12 +803,16 @@ bool CGUIEPGGridContainer::OnMessage(CGUIMessage& message)
         m_programmeItems.push_back(items->Get(i));
 
       ClearGridIndex();
-      m_gridIndex = (struct GridItemsPtr **) calloc(1,m_channelItems.size()*sizeof(struct GridItemsPtr*));
-      if (m_gridIndex != NULL)
+
+      if (m_channelItems.size() > 0)
       {
-        for (unsigned int i = 0; i < m_channelItems.size(); i++)
+        m_gridIndex = (struct GridItemsPtr **) calloc(1,m_channelItems.size()*sizeof(struct GridItemsPtr*));
+        if (m_gridIndex != NULL)
         {
-          m_gridIndex[i] = (struct GridItemsPtr*) calloc(1,MAXBLOCKS*sizeof(struct GridItemsPtr));
+          for (unsigned int i = 0; i < m_channelItems.size(); i++)
+          {
+            m_gridIndex[i] = (struct GridItemsPtr*) calloc(1,MAXBLOCKS*sizeof(struct GridItemsPtr));
+          }
         }
       }
 

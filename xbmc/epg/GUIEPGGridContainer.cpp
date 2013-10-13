@@ -899,7 +899,10 @@ void CGUIEPGGridContainer::UpdateItems()
         CGUIListItemPtr item = m_programmeItems[progIdx];
         const CEpgInfoTag* tag = ((CFileItem *)item.get())->GetEPGInfoTag();
         if (tag == NULL)
+        {
           progIdx++;
+          continue;
+        }
 
         if (tag->EpgID() != iEpgId)
           break;
@@ -1902,6 +1905,8 @@ void CGUIEPGGridContainer::CalculateLayout()
 
 void CGUIEPGGridContainer::UpdateScrollOffset(unsigned int currentTime)
 {
+  if (!m_programmeLayout)
+    return;
   m_channelScrollOffset += m_channelScrollSpeed * (currentTime - m_channelScrollLastTime);
   if ((m_channelScrollSpeed < 0 && m_channelScrollOffset < m_channelOffset * m_programmeLayout->Size(m_orientation)) ||
       (m_channelScrollSpeed > 0 && m_channelScrollOffset > m_channelOffset * m_programmeLayout->Size(m_orientation)))

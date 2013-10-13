@@ -5796,7 +5796,16 @@ msgctxt "#13437"
 msgid "Prefer VDPAU Video Mixer"
 msgstr ""
 
-#empty strings from id 13438 to 13499
+#: system/settings/settings.xml
+msgctxt "#13438"
+msgid "Allow hardware acceleration (amcodec)"
+msgstr ""
+
+msgctxt "#13439"
+msgid "Allow hardware acceleration (MediaCodec)"
+msgstr ""
+
+#empty strings from id 13440 to 13499
 
 #: system/settings/settings.xml
 msgctxt "#13500"
@@ -5820,7 +5829,7 @@ msgstr ""
 
 #: system/settings/settings.xml
 msgctxt "#13504"
-msgid "Maximum resample amount (%)"
+msgid "Maximum speedup/slowdown amount (%)"
 msgstr ""
 
 #: system/settings/settings.xml
@@ -7843,7 +7852,7 @@ msgstr ""
 
 #: system/settings/settings.xml
 msgctxt "#19230"
-msgid "Prevent EPG updates while playing a TV stream"
+msgid "Prevent EPG updates during playback"
 msgstr ""
 
 #: system/settings/settings.xml
@@ -12348,7 +12357,12 @@ msgctxt "#35102"
 msgid "Disable joystick when this device is present"
 msgstr ""
 
-#empty strings from id 35103 to 35499
+#: system/settings/settings.xml
+msgctxt "#35103"
+msgid "Enable system keys in fullscreen"
+msgstr ""
+
+#empty strings from id 35104 to 35499
 
 #: Unknown
 msgctxt "#35500"
@@ -12928,7 +12942,7 @@ msgstr ""
 
 #: system/settings/settings.xml
 msgctxt "#36168"
-msgid "No info available yet."
+msgid "Maximum video speed adjust to match actual screen refresh rate."
 msgstr ""
 
 #: system/settings/settings.xml
@@ -14196,7 +14210,12 @@ msgctxt "#36421"
 msgid "Bypassing VDPAU mixer saves resources on low power systems but slightly reduces picture quality"
 msgstr ""
 
-#empty strings from id 36422 to 36499
+#: system/settings/settings.xml
+msgctxt "#36422"
+msgid "Enable hardware video decode using AMLogic decoder"
+msgstr ""
+
+#empty strings from id 36423 to 36499
 #end reservation
 
 #: system/settings/settings.xml
@@ -14249,6 +14268,7 @@ msgctxt "#36509"
 msgid "Monoscopic - 2D"
 msgstr ""
 
+#empty strings from id 36510 to 36519
 #reserved strings for 3d modes 36509 - 36520
 
 #: system/settings/settings.xml
@@ -14265,6 +14285,8 @@ msgstr ""
 msgctxt "#36522"
 msgid "Use preferred mode"
 msgstr ""
+
+#empty string with id 36523
 
 #: system/settings/settings.xml
 msgctxt "#36524"
@@ -14311,6 +14333,8 @@ msgctxt "#36532"
 msgid "Same as movie"
 msgstr ""
 
+#empty strings from id 36533 to 36534
+
 #: guilib/StereoscopicsManager.cpp
 msgctxt "#36535"
 msgid "Stereoscopic mode of video"
@@ -14356,6 +14380,12 @@ msgctxt "#36543"
 msgid "Enable this to make dialogue louder compared to background sounds when downmixing multichannel audio"
 msgstr ""
 
+#: system/settings/settings.xml
+msgctxt "#36544"
+msgid "Enable hardware decoding of video files."
+msgstr ""
+
+#empty strings from id 36545 to 36999
 #reserved strings 365XX
 
 #: xbmc/cores/dvdplayer/DVDInputStreams/DVDInputStreamNavigator.cpp
@@ -14413,4 +14443,9 @@ msgstr ""
 #: system/settings/rbp.xml
 msgctxt "#37018"
 msgid "Boost centre channel when downmixing"
+msgstr ""
+
+#: system/settings/settings.xml
+msgctxt "#37019"
+msgid "Enables system keys like printscreen, alt-tab and volume keys when in fullscreen"
 msgstr ""

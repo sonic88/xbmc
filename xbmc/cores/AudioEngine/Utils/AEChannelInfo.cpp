@@ -239,7 +239,7 @@ CAEChannelInfo::operator std::string()
 
 const char* CAEChannelInfo::GetChName(const enum AEChannel ch)
 {
-  ASSERT(ch >= 0 || ch < AE_CH_MAX);
+  ASSERT(ch >= 0 && ch < AE_CH_MAX);
 
   static const char* channels[AE_CH_MAX] =
   {

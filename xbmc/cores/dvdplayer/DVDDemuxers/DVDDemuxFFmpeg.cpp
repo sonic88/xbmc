@@ -461,7 +461,9 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput, bool streaminfo)
 
   if (m_streaminfo)
   {
-    m_pFormatContext->max_analyze_duration = 500000;
+    /* to speed up dvd switches, only analyse very short */
+    if(m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD))
+      m_pFormatContext->max_analyze_duration = 500000;
 
     CLog::Log(LOGDEBUG, "%s - avformat_find_stream_info starting", __FUNCTION__);
     int iErr = m_dllAvFormat.avformat_find_stream_info(m_pFormatContext, NULL);

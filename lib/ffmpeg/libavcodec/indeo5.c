@@ -113,7 +113,7 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
     }
 
     /* check if picture layout was changed and reallocate buffers */
-    if (ivi_pic_config_cmp(&pic_conf, &ctx->pic_conf)) {
+    if (ivi_pic_config_cmp(&pic_conf, &ctx->pic_conf) || ctx->gop_invalid) {
         result = ff_ivi_init_planes(ctx->planes, &pic_conf);
         if (result < 0) {
             av_log(avctx, AV_LOG_ERROR, "Couldn't reallocate color planes!\n");
@@ -148,38 +148,46 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
             /* select transform function and scan pattern according to plane and band number */
             switch ((p << 2) + i) {
             case 0:
-                band->inv_transform = ff_ivi_inverse_slant_8x8;
-                band->dc_transform  = ff_ivi_dc_slant_2d;
-                band->scan          = ff_zigzag_direct;
+                band->inv_transform  = ff_ivi_inverse_slant_8x8;
+                band->dc_transform   = ff_ivi_dc_slant_2d;
+                band->scan           = ff_zigzag_direct;
+                band->transform_size = 8;
                 break;
 
             case 1:
-                band->inv_transform = ff_ivi_row_slant8;
-                band->dc_transform  = ff_ivi_dc_row_slant;
-                band->scan          = ff_ivi_vertical_scan_8x8;
+                band->inv_transform  = ff_ivi_row_slant8;
+                band->dc_transform   = ff_ivi_dc_row_slant;
+                band->scan           = ff_ivi_vertical_scan_8x8;
+                band->transform_size = 8;
                 break;
 
             case 2:
-                band->inv_transform = ff_ivi_col_slant8;
-                band->dc_transform  = ff_ivi_dc_col_slant;
-                band->scan          = ff_ivi_horizontal_scan_8x8;
+                band->inv_transform  = ff_ivi_col_slant8;
+                band->dc_transform   = ff_ivi_dc_col_slant;
+                band->scan           = ff_ivi_horizontal_scan_8x8;
+                band->transform_size = 8;
                 break;
 
             case 3:
-                band->inv_transform = ff_ivi_put_pixels_8x8;
-                band->dc_transform  = ff_ivi_put_dc_pixel_8x8;
-                band->scan          = ff_ivi_horizontal_scan_8x8;
+                band->inv_transform  = ff_ivi_put_pixels_8x8;
+                band->dc_transform   = ff_ivi_put_dc_pixel_8x8;
+                band->scan           = ff_ivi_horizontal_scan_8x8;
+                band->transform_size = 8;
                 break;
 
             case 4:
-                band->inv_transform = ff_ivi_inverse_slant_4x4;
-                band->dc_transform  = ff_ivi_dc_slant_2d;
-                band->scan          = ff_ivi_direct_scan_4x4;
+                band->inv_transform  = ff_ivi_inverse_slant_4x4;
+                band->dc_transform   = ff_ivi_dc_slant_2d;
+                band->scan           = ff_ivi_direct_scan_4x4;
+                band->transform_size = 4;
                 break;
             }
 
             band->is_2d_trans = band->inv_transform == ff_ivi_inverse_slant_8x8 ||
                                 band->inv_transform == ff_ivi_inverse_slant_4x4;
+
+            if (band->transform_size != band->blk_size)
+                return AVERROR_INVALIDDATA;
 
             /* select dequant matrix according to plane and band number */
             if (!p) {
@@ -311,9 +319,9 @@ static int decode_pic_hdr(IVI45DecContext *ctx, AVCodecContext *avctx)
     ctx->frame_num = get_bits(&ctx->gb, 8);
 
     if (ctx->frame_type == FRAMETYPE_INTRA) {
-        ctx->gop_invalid = 1;
         if ((ret = decode_gop_header(ctx, avctx)) < 0) {
             av_log(avctx, AV_LOG_ERROR, "Invalid GOP header, skipping frames.\n");
+            ctx->gop_invalid = 1;
             return ret;
         }
         ctx->gop_invalid = 0;

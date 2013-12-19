@@ -1,1 +1,1 @@
-#define FFMPEG_VERSION "0.10.6"
+#define FFMPEG_VERSION "0.10.10"

@@ -255,6 +255,13 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
     if (nb_components <= 0 ||
         nb_components > MAX_COMPONENTS)
         return -1;
+    if (s->interlaced && (s->bottom_field == !s->interlace_polarity)) {
+        if (nb_components != s->nb_components) {
+            av_log(s->avctx, AV_LOG_ERROR,
+                   "nb_components changing in interlaced picture\n");
+            return AVERROR_INVALIDDATA;
+        }
+    }
     if (s->ls && !(s->bits <= 8 || nb_components == 1)) {
         av_log(s->avctx, AV_LOG_ERROR,
                "only <= 8 bits/component or 16-bit gray accepted for JPEG-LS\n");
@@ -711,6 +718,12 @@ static int ljpeg_decode_rgb_scan(MJpegDecodeContext *s, int nb_components, int p
     const int mask     = (1 << s->bits) - 1;
     int resync_mb_y = 0;
     int resync_mb_x = 0;
+
+    if (s->nb_components != 3 && s->nb_components != 4)
+        return AVERROR_INVALIDDATA;
+    if (s->v_max != 1 || s->h_max != 1 || !s->lossless)
+        return AVERROR_INVALIDDATA;
+
 
     s->restart_count = s->restart_interval;
 

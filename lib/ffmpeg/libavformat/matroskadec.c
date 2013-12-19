@@ -1114,7 +1114,8 @@ static void matroska_convert_tag(AVFormatContext *s, EbmlList *list,
     int i;
 
     for (i=0; i < list->nb_elem; i++) {
-        const char *lang = strcmp(tags[i].lang, "und") ? tags[i].lang : NULL;
+        const char *lang = tags[i].lang && strcmp(tags[i].lang, "und") ?
+                           tags[i].lang : NULL;
 
         if (!tags[i].name) {
             av_log(s, AV_LOG_WARNING, "Skipping invalid tag with no TagName.\n");
@@ -2070,10 +2071,11 @@ static int matroska_read_seek(AVFormatContext *s, int stream_index,
         if (tracks[i].type == MATROSKA_TRACK_TYPE_SUBTITLE
             && !tracks[i].stream->discard != AVDISCARD_ALL) {
             index_sub = av_index_search_timestamp(tracks[i].stream, st->index_entries[index].timestamp, AVSEEK_FLAG_BACKWARD);
-            if (index_sub >= 0
-                && st->index_entries[index_sub].pos < st->index_entries[index_min].pos
-                && st->index_entries[index].timestamp - st->index_entries[index_sub].timestamp < 30000000000/matroska->time_scale)
-                index_min = index_sub;
+            while(index_sub >= 0
+                  && index_min >= 0
+                  && tracks[i].stream->index_entries[index_sub].pos < st->index_entries[index_min].pos
+                  && st->index_entries[index].timestamp - tracks[i].stream->index_entries[index_sub].timestamp < 30000000000/matroska->time_scale)
+                index_min--;
         }
     }
 

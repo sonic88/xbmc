@@ -545,11 +545,13 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
             if (unsync || tunsync || tcomp) {
                 int64_t end = avio_tell(s->pb) + tlen;
                 uint8_t *b;
+
                 av_fast_malloc(&buffer, &buffer_size, dlen);
                 if (!buffer) {
                     av_log(s, AV_LOG_ERROR, "Failed to alloc %ld bytes\n", dlen);
                     goto seek;
                 }
+                b = buffer;
 #if CONFIG_ZLIB
                 if (tcomp) {
                     int n, err;
@@ -573,10 +575,14 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
                         av_log(s, AV_LOG_ERROR, "Failed to uncompress tag: %d\n", err);
                         goto seek;
                     }
+                    b += dlen;
                 }
 #endif
-
-                b = buffer;
+                if (unsync || tunsync) {
+                    if (tcomp) {
+                        av_log_ask_for_sample(s, "tcomp with unsync\n");
+                        goto seek;
+                    }
                 while (avio_tell(s->pb) < end && !s->pb->eof_reached) {
                     *b++ = avio_r8(s->pb);
                     if (*(b - 1) == 0xff && avio_tell(s->pb) < end - 1 &&

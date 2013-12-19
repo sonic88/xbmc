@@ -980,9 +980,12 @@ start_sync:
             }
 
 
-            if(   (st->discard >= AVDISCARD_DEFAULT && size==0)
-               /*|| (st->discard >= AVDISCARD_NONKEY && !(pkt->flags & AV_PKT_FLAG_KEY))*/ //FIXME needs a little reordering
-               || st->discard >= AVDISCARD_ALL){
+            if (!avi->dv_demux &&
+                ((st->discard >= AVDISCARD_DEFAULT && size==0) /* ||
+                //FIXME needs a little reordering
+                (st->discard >= AVDISCARD_NONKEY &&
+                 !(pkt->flags & AV_PKT_FLAG_KEY)) */
+                || st->discard >= AVDISCARD_ALL)) {
                 if (!exit_early) {
                     ast->frame_offset += get_duration(ast, size);
                     avio_skip(pb, size);
@@ -1280,7 +1283,7 @@ static int avi_read_idx1(AVFormatContext *s, int size)
         st = s->streams[index];
         ast = st->priv_data;
 
-        if(first_packet && first_packet_pos && len) {
+        if (first_packet && first_packet_pos) {
             data_offset = first_packet_pos - pos;
             first_packet = 0;
         }

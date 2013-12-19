@@ -927,10 +927,11 @@ static int mov_write_video_tag(AVIOContext *pb, MOVTrack *track)
         mov_write_avcc_tag(pb, track);
         if(track->mode == MODE_IPOD)
             mov_write_uuid_tag_ipod(pb);
-    } else if (track->enc->field_order != AV_FIELD_UNKNOWN)
-        mov_write_fiel_tag(pb, track);
-    else if(track->vosLen > 0)
+    } else if(track->vosLen > 0)
         mov_write_glbl_tag(pb, track);
+
+    if (track->enc->field_order != AV_FIELD_UNKNOWN)
+        mov_write_fiel_tag(pb, track);
 
     if (track->enc->sample_aspect_ratio.den && track->enc->sample_aspect_ratio.num &&
         track->enc->sample_aspect_ratio.den != track->enc->sample_aspect_ratio.num) {
@@ -2582,6 +2583,14 @@ static int mov_write_packet_internal(AVFormatContext *s, AVPacket *pkt)
         memcpy(trk->vosData, enc->extradata, trk->vosLen);
     }
 
+    if (enc->codec_id == CODEC_ID_AAC && pkt->size > 2 &&
+        (AV_RB16(pkt->data) & 0xfff0) == 0xfff0) {
+        if (!s->streams[pkt->stream_index]->nb_frames) {
+            av_log(s, AV_LOG_ERROR, "malformated aac bitstream, use -absf aac_adtstoasc\n");
+            return -1;
+        }
+        av_log(s, AV_LOG_WARNING, "aac bitstream error\n");
+    }
     if (enc->codec_id == CODEC_ID_H264 && trk->vosLen > 0 && *(uint8_t *)trk->vosData != 1) {
         /* from x264 or from bytestream h264 */
         /* nal reformating needed */
@@ -2592,10 +2601,6 @@ static int mov_write_packet_internal(AVFormatContext *s, AVPacket *pkt)
         } else {
             size = ff_avc_parse_nal_units(pb, pkt->data, pkt->size);
         }
-    } else if (enc->codec_id == CODEC_ID_AAC && pkt->size > 2 &&
-               (AV_RB16(pkt->data) & 0xfff0) == 0xfff0) {
-        av_log(s, AV_LOG_ERROR, "malformated aac bitstream, use -absf aac_adtstoasc\n");
-        return -1;
     } else {
         avio_write(pb, pkt->data, size);
     }

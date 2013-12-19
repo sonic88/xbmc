@@ -925,7 +925,10 @@ static void compute_frame_duration(int *pnum, int *pden, AVStream *st,
             *pnum = st->codec->time_base.num;
             *pden = st->codec->time_base.den;
             if (pc && pc->repeat_pict) {
-                *pnum = (*pnum) * (1 + pc->repeat_pict);
+                if (*pnum > INT_MAX / (1 + pc->repeat_pict))
+                    *pden /= 1 + pc->repeat_pict;
+                else
+                    *pnum *= 1 + pc->repeat_pict;
             }
             //If this codec can be interlaced or progressive then we need a parser to compute duration of a packet
             //Thus if we have no parser in such case leave duration undefined.
@@ -2053,7 +2056,7 @@ int avformat_seek_file(AVFormatContext *s, int stream_index, int64_t min_ts, int
     //Note the old has somewat different sematics
     AV_NOWARN_DEPRECATED(
     if(s->iformat->read_seek || 1)
-        return av_seek_frame(s, stream_index, ts, flags | (ts - min_ts > (uint64_t)(max_ts - ts) ? AVSEEK_FLAG_BACKWARD : 0));
+        return av_seek_frame(s, stream_index, ts, flags | ((uint64_t)ts - min_ts > (uint64_t)max_ts - ts ? AVSEEK_FLAG_BACKWARD : 0));
     )
 
     // try some generic seek like seek_frame_generic() but with new ts semantics

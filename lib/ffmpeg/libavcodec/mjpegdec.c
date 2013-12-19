@@ -63,8 +63,8 @@ static int build_vlc(VLC *vlc, const uint8_t *bits_table,
     if (is_ac)
         huff_sym[0] = 16 * 256;
 
-    return init_vlc_sparse(vlc, 9, nb_codes, huff_size, 1, 1,
-                           huff_code, 2, 2, huff_sym, 2, 2, use_static);
+    return ff_init_vlc_sparse(vlc, 9, nb_codes, huff_size, 1, 1,
+                              huff_code, 2, 2, huff_sym, 2, 2, use_static);
 }
 
 static void build_basic_mjpeg_vlc(MJpegDecodeContext *s)
@@ -197,7 +197,7 @@ int ff_mjpeg_decode_dht(MJpegDecodeContext *s)
         len -= n;
 
         /* build VLC and flush previous vlc if present */
-        free_vlc(&s->vlcs[class][index]);
+        ff_free_vlc(&s->vlcs[class][index]);
         av_log(s->avctx, AV_LOG_DEBUG, "class=%d index=%d nb_codes=%d\n",
                class, index, code_max + 1);
         if (build_vlc(&s->vlcs[class][index], bits_table, val_table,
@@ -205,7 +205,7 @@ int ff_mjpeg_decode_dht(MJpegDecodeContext *s)
             return -1;
 
         if (class > 0) {
-            free_vlc(&s->vlcs[2][index]);
+            ff_free_vlc(&s->vlcs[2][index]);
             if (build_vlc(&s->vlcs[2][index], bits_table, val_table,
                           code_max + 1, 0, 0) < 0)
                 return -1;
@@ -316,9 +316,7 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
         s->first_picture = 0;
     }
 
-    if (s->interlaced && (s->bottom_field == !s->interlace_polarity))
-        return 0;
-
+    if (!(s->interlaced && (s->bottom_field == !s->interlace_polarity))) {
     /* XXX: not complete test ! */
     pix_fmt_id = (s->h_count[0] << 28) | (s->v_count[0] << 24) |
                  (s->h_count[1] << 20) | (s->v_count[1] << 16) |
@@ -431,6 +429,7 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
 
     if (len != (8 + (3 * nb_components)))
         av_log(s->avctx, AV_LOG_DEBUG, "decode_sof0: error, len(%d) mismatch\n", len);
+    }
 
     /* totally blank picture as progressive JPEG will only add details to it */
     if (s->progressive) {
@@ -1774,7 +1773,7 @@ av_cold int ff_mjpeg_decode_end(AVCodecContext *avctx)
 
     for (i = 0; i < 3; i++) {
         for (j = 0; j < 4; j++)
-            free_vlc(&s->vlcs[i][j]);
+            ff_free_vlc(&s->vlcs[i][j]);
     }
     for (i = 0; i < MAX_COMPONENTS; i++) {
         av_freep(&s->blocks[i]);
